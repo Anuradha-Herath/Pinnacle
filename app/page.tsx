@@ -1,82 +1,151 @@
 "use client";
 
-import React, { useState } from 'react';
-import Link from 'next/link';
-import { Search, User, Heart, ShoppingBag, ChevronDown } from 'lucide-react';
+import React from "react";
+import Header from "./components/Header";
+import ProductCarousel from "./components/ProductCarousel";
+import Footer from "./components/Footer";
 
-const Header = () => {
-  const [searchQuery, setSearchQuery] = useState('');
+const products = [
+  {
+    id: 1,
+    name: "T-Shirt",
+    price: 19.99,
+    image: "/p1.webp",
+    colors: ["#000000", "#FFFFFF", "#FF5733"],
+    sizes: ["S", "M", "L", "XL"],
+  },
+  {
+    id: 2,
+    name: "Sneakers",
+    price: 49.99,
+    image: "/p2.webp",
+    colors: ["#FF0000", "#00FF00", "#0000FF"],
+    sizes: ["7", "8", "9", "10"],
+  },
+  {
+    id: 3,
+    name: "Jacket",
+    price: 79.99,
+    image: "/p3.webp",
+    colors: ["#333333", "#555555", "#777777"],
+    sizes: ["M", "L", "XL"],
+  },
+  {
+    id: 4,
+    name: "Hat",
+    price: 14.99,
+    image: "/p4.webp",
+    colors: ["#F4A261", "#264653", "#E76F51"],
+    sizes: ["One Size"],
+  },
+  {
+    id: 5,
+    name: "Jeans",
+    price: 39.99,
+    image: "/p5.webp",
+    colors: ["#1E3A8A", "#4B5563", "#9CA3AF"],
+    sizes: ["30", "32", "34", "36"],
+  },
+  {
+    id: 6,
+    name: "Watch",
+    price: 59.99,
+    image: "/p6.webp",
+    colors: ["#000000", "#C0C0C0", "#8B0000"],
+    sizes: ["One Size"],
+  },
+  {
+    id: 7,
+    name: "Backpack",
+    price: 34.99,
+    image: "/p7.webp",
+    colors: ["#8D8741", "#659DBD", "#DAAD86"],
+    sizes: ["One Size"],
+  },
+  {
+    id: 8,
+    name: "Sunglasses",
+    price: 29.99,
+    image: "/p8.webp",
+    colors: ["#222222", "#444444", "#666666"],
+    sizes: ["One Size"],
+  },
+  {
+    id: 9,
+    name: "Scarf",
+    price: 19.99,
+    image: "/p9.webp",
+    colors: ["#D72638", "#3F88C5", "#F49D37"],
+    sizes: ["One Size"],
+  },
+];
 
+const HomePage = () => {
   return (
-    <header className="bg-black text-white">
-      {/* Top Bar */}
-      <div className="max-w-7xl mx-auto px-4 py-3">
-        <div className="flex items-center justify-between">
-          {/* Logo */}
-          <Link href="/" className="text-2xl italic font-serif">
-            Pinnacle
-          </Link>
+    <div className="bg-gray-900 min-h-screen flex flex-col">
+      <Header />
 
-          {/* Search Bar */}
-          <div className="flex-1 max-w-2xl mx-8">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Search for products or brands"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-4 py-2 pl-10 bg-gray-800 rounded text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-600"
-              />
-              <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+      {/* Main Content */}
+      <div className="flex-grow">
+        {/* Men's Collection */}
+        <ProductCarousel title="Men's Collection" products={products} />
+
+        {/* Large Shop Now Images */}
+        <div className="flex gap-4 my-10 px-4 justify-center">
+          {/* Shop Men */}
+          <div className="relative w-[45%]">
+            <img
+              src="/shopmen.webp"
+              alt="Shop Men"
+              className="w-full h-[300px] object-cover rounded-lg"
+            />
+            <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30">
+              <button className="bg-white text-black font-semibold py-2 px-6 rounded hover:bg-gray-200">
+                Shop Men
+              </button>
             </div>
           </div>
 
-          {/* Right Icons */}
-          <div className="flex items-center space-x-6">
-            <div className="flex items-center cursor-pointer hover:text-gray-300">
-              <User className="h-6 w-6" />
-              <span className="ml-2">Sign in</span>
+          {/* Shop Women */}
+          <div className="relative w-[45%]">
+            <img
+              src="/shopwomen.webp"
+              alt="Shop Women"
+              className="w-full h-[300px] object-cover rounded-lg"
+            />
+            <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30">
+              <button className="bg-white text-black font-semibold py-2 px-6 rounded hover:bg-gray-200">
+                Shop Women
+              </button>
             </div>
-            <button className="hover:text-gray-300">
-              <Heart className="h-6 w-6" />
-            </button>
-            <button className="hover:text-gray-300">
-              <ShoppingBag className="h-6 w-6" />
+          </div>
+        </div>
+
+        {/* Large Accessories Banner */}
+        <div className="relative w-full my-10 px-4 md:px-8 lg:px-12">
+          <img
+            src="/cap.jpg"
+            alt="Accessories"
+            className="w-full h-[250px] object-cover rounded-lg"
+          />
+          <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30">
+            <button className="bg-white text-black font-semibold py-2 px-6 rounded hover:bg-gray-200">
+              Shop Accessories
             </button>
           </div>
         </div>
+
+        {/* Women's Collection */}
+        <ProductCarousel title="Women's Collection" products={products} />
+
+        {/* Accessories */}
+        <ProductCarousel title="Accessories" products={products} />
       </div>
 
-      {/* Navigation */}
-      <nav className="border-t border-gray-800">
-        <div className="max-w-7xl mx-auto px-4">
-          <ul className="flex space-x-8 py-3">
-            <li className="group relative">
-              <button className="flex items-center hover:text-gray-300">
-                Mens
-                <ChevronDown className="ml-1 h-4 w-4" />
-              </button>
-            </li>
-            <li className="group relative">
-              <button className="flex items-center hover:text-gray-300">
-                Women
-                <ChevronDown className="ml-1 h-4 w-4" />
-              </button>
-            </li>
-            <li className="group relative">
-              <button className="flex items-center hover:text-gray-300">
-                Accessories
-                <ChevronDown className="ml-1 h-4 w-4" />
-              </button>
-            </li>
-          </ul>
-        </div>
-      </nav>
-      <div className="banner">
-        <img src="/banner2.jpg" alt="Banner" className="w-full h-auto" />
-      </div>
-    </header>
+      {/* Footer */}
+      <Footer />
+    </div>
   );
 };
 
-export default Header;
+export default HomePage;

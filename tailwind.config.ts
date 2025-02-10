@@ -12,6 +12,12 @@ export default {
         background: "var(--background)",
         foreground: "var(--foreground)",
       },
+      // ...you can add more theme extensions here...
+    },
+  },
+  variants: {
+    extend: {
+      scrollBehavior: ["responsive", "hover", "focus"],
     },
   },
   plugins: [],
