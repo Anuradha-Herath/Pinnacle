@@ -11,7 +11,7 @@ const products = [
     name: "T-Shirt",
     price: 19.99,
     image: "/p1.webp",
-    colors: ["#000000", "#FFFFFF", "#FF5733"],
+    colors: ["/p1.webp", "/p1.webp", "/p1.webp"],
     sizes: ["S", "M", "L", "XL"],
   },
   {
@@ -19,23 +19,23 @@ const products = [
     name: "Sneakers",
     price: 49.99,
     image: "/p2.webp",
-    colors: ["#FF0000", "#00FF00", "#0000FF"],
-    sizes: ["7", "8", "9", "10"],
+    colors: ["/p2-white.webp", "/p2-black.webp", "/p2-gray.webp"],
+    sizes: ["6", "7", "8", "9", "10"],
   },
   {
     id: 3,
     name: "Jacket",
     price: 79.99,
     image: "/p3.webp",
-    colors: ["#333333", "#555555", "#777777"],
-    sizes: ["M", "L", "XL"],
+    colors: ["/p3-brown.webp", "/p3-gray.webp", "/p3-black.webp"],
+    sizes: ["S", "M", "L", "XL"],
   },
   {
     id: 4,
     name: "Hat",
     price: 14.99,
     image: "/p4.webp",
-    colors: ["#F4A261", "#264653", "#E76F51"],
+    colors: ["/p4-red.webp", "/p4-blue.webp", "/p4-black.webp"],
     sizes: ["One Size"],
   },
   {
@@ -43,15 +43,15 @@ const products = [
     name: "Jeans",
     price: 39.99,
     image: "/p5.webp",
-    colors: ["#1E3A8A", "#4B5563", "#9CA3AF"],
-    sizes: ["30", "32", "34", "36"],
+    colors: ["/p5-darkblue.webp", "/p5-lightblue.webp"],
+    sizes: ["28", "30", "32", "34", "36"],
   },
   {
     id: 6,
     name: "Watch",
     price: 59.99,
     image: "/p6.webp",
-    colors: ["#000000", "#C0C0C0", "#8B0000"],
+    colors: ["/p6-black.webp", "/p6-gold.webp", "/p6-silver.webp"],
     sizes: ["One Size"],
   },
   {
@@ -59,7 +59,7 @@ const products = [
     name: "Backpack",
     price: 34.99,
     image: "/p7.webp",
-    colors: ["#8D8741", "#659DBD", "#DAAD86"],
+    colors: ["/p7-black.webp", "/p7-gray.webp", "/p7-navy.webp"],
     sizes: ["One Size"],
   },
   {
@@ -67,7 +67,7 @@ const products = [
     name: "Sunglasses",
     price: 29.99,
     image: "/p8.webp",
-    colors: ["#222222", "#444444", "#666666"],
+    colors: ["/p8-black.webp", "/p8-brown.webp", "/p8-blue.webp"],
     sizes: ["One Size"],
   },
   {
@@ -75,10 +75,11 @@ const products = [
     name: "Scarf",
     price: 19.99,
     image: "/p9.webp",
-    colors: ["#D72638", "#3F88C5", "#F49D37"],
+    colors: ["/p9-red.webp", "/p9-gray.webp", "/p9-black.webp"],
     sizes: ["One Size"],
   },
 ];
+
 
 const HomePage = () => {
   return (
