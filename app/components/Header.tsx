@@ -1,4 +1,3 @@
-// app/components/Header.tsx
 "use client";
 
 import React, { useState } from "react";
@@ -7,6 +6,21 @@ import { Search, User, Heart, ShoppingBag, ChevronDown } from "lucide-react";
 
 const Header = () => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  let timeout: NodeJS.Timeout;
+
+  // Show dropdown when hovering
+  const handleMouseEnter = (menu: string) => {
+    clearTimeout(timeout); // Prevents immediate closing
+    setOpenDropdown(menu);
+  };
+
+  // Hide dropdown with a slight delay
+  const handleMouseLeave = () => {
+    timeout = setTimeout(() => {
+      setOpenDropdown(null);
+    }, 200); // Delay of 200ms to allow smooth transition
+  };
 
   return (
     <header className="bg-black text-white">
@@ -52,27 +66,142 @@ const Header = () => {
       <nav className="border-t border-gray-800">
         <div className="max-w-7xl mx-auto px-4">
           <ul className="flex space-x-8 py-3">
-            <li className="group relative">
+            {/* Mens Dropdown */}
+            <li
+              className="relative"
+              onMouseEnter={() => handleMouseEnter("mens")}
+              onMouseLeave={handleMouseLeave}
+            >
               <button className="flex items-center hover:text-gray-300">
                 Mens
                 <ChevronDown className="ml-1 h-4 w-4" />
               </button>
+              {openDropdown === "mens" && (
+                <ul
+                  className="absolute left-0 mt-2 w-48 bg-white text-black shadow-lg rounded-lg"
+                  onMouseEnter={() => clearTimeout(timeout)}
+                  onMouseLeave={handleMouseLeave}
+                >
+                  <li>
+                    <Link
+                      href="/mens/shirts"
+                      className="block px-4 py-2 hover:bg-gray-200"
+                    >
+                      Shirts
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      href="/mens/pants"
+                      className="block px-4 py-2 hover:bg-gray-200"
+                    >
+                      Pants
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      href="/mens/shoes"
+                      className="block px-4 py-2 hover:bg-gray-200"
+                    >
+                      Shoes
+                    </Link>
+                  </li>
+                </ul>
+              )}
             </li>
-            <li className="group relative">
+
+            {/* Women Dropdown */}
+            <li
+              className="relative"
+              onMouseEnter={() => handleMouseEnter("women")}
+              onMouseLeave={handleMouseLeave}
+            >
               <button className="flex items-center hover:text-gray-300">
                 Women
                 <ChevronDown className="ml-1 h-4 w-4" />
               </button>
+              {openDropdown === "women" && (
+                <ul
+                  className="absolute left-0 mt-2 w-48 bg-white text-black shadow-lg rounded-lg"
+                  onMouseEnter={() => clearTimeout(timeout)}
+                  onMouseLeave={handleMouseLeave}
+                >
+                  <li>
+                    <Link
+                      href="/women/dresses"
+                      className="block px-4 py-2 hover:bg-gray-200"
+                    >
+                      Dresses
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      href="/women/tops"
+                      className="block px-4 py-2 hover:bg-gray-200"
+                    >
+                      Tops
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      href="/women/shoes"
+                      className="block px-4 py-2 hover:bg-gray-200"
+                    >
+                      Shoes
+                    </Link>
+                  </li>
+                </ul>
+              )}
             </li>
-            <li className="group relative">
+
+            {/* Accessories Dropdown */}
+            <li
+              className="relative"
+              onMouseEnter={() => handleMouseEnter("accessories")}
+              onMouseLeave={handleMouseLeave}
+            >
               <button className="flex items-center hover:text-gray-300">
                 Accessories
                 <ChevronDown className="ml-1 h-4 w-4" />
               </button>
+              {openDropdown === "accessories" && (
+                <ul
+                  className="absolute left-0 mt-2 w-48 bg-white text-black shadow-lg rounded-lg"
+                  onMouseEnter={() => clearTimeout(timeout)}
+                  onMouseLeave={handleMouseLeave}
+                >
+                  <li>
+                    <Link
+                      href="/accessories/hats"
+                      className="block px-4 py-2 hover:bg-gray-200"
+                    >
+                      Hats
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      href="/accessories/bags"
+                      className="block px-4 py-2 hover:bg-gray-200"
+                    >
+                      Bags
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      href="/accessories/jewelry"
+                      className="block px-4 py-2 hover:bg-gray-200"
+                    >
+                      Jewelry
+                    </Link>
+                  </li>
+                </ul>
+              )}
             </li>
           </ul>
         </div>
       </nav>
+
+      {/* Banner */}
       <div className="banner">
         <img src="/banner2.jpg" alt="Banner" className="w-full h-auto" />
       </div>
