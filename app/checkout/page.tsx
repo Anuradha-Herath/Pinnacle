@@ -24,15 +24,15 @@ const CheckoutPage = () => {
     0
   );
 
-  const handleChange = (e) => {
+  const handleChange = (e: { target: { name: any; value: any; }; }) => {
     setBillingDetails({ ...billingDetails, [e.target.name]: e.target.value });
   };
 
-  const handlePaymentChange = (e) => {
+  const handlePaymentChange = (e: { target: { value: React.SetStateAction<string>; }; }) => {
     setPaymentMethod(e.target.value);
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: { preventDefault: () => void; }) => {
     e.preventDefault();
     alert(`Order placed successfully with ${paymentMethod}!`);
   };
