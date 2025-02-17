@@ -201,10 +201,7 @@ const Header = () => {
         </div>
       </nav>
 
-      {/* Banner */}
-      <div className="banner">
-        <img src="/banner2.jpg" alt="Banner" className="w-full h-auto" />
-      </div>
+      
     </header>
   );
 };

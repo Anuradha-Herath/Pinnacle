@@ -85,6 +85,10 @@ const HomePage = () => {
   return (
     <div className="bg-gray-900 min-h-screen flex flex-col">
       <Header />
+      {/* Banner */}
+      <div className="banner">
+        <img src="/banner2.jpg" alt="Banner" className="w-full h-auto" />
+      </div>
 
       {/* Main Content */}
       <div className="flex-grow">
