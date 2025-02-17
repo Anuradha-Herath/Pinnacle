@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { Search, User, Heart, ShoppingBag, ChevronDown } from "react-feather";
 import Footer from "../components/Footer";
+import ProductCard from "../components/ProductCard";
 
 const products = [
   {
@@ -13,6 +14,7 @@ const products = [
     price: "Rs. 4,200.00",
     image: "/p8.webp",
     colors: ["/p2.webp", "/p3.webp", "/p4.webp", "/p5.webp", "/p7.webp"],
+    sizes: ["S", "M", "L", "XL", "XXL"],
   },
   {
     id: 2,
@@ -20,6 +22,7 @@ const products = [
     price: "Rs. 4,200.00",
     image: "/p5.webp",
     colors: ["/p6.webp", "/p7.webp", "/p8.webp"],
+    sizes: ["S", "M", "L", "XL", "XXL"],
   },
   {
     id: 3,
@@ -27,6 +30,7 @@ const products = [
     price: "Rs. 4,200.00",
     image: "/p3.webp",
     colors: ["/p4.webp", "/p5.webp", "/p6.webp"],
+    sizes: ["S", "M", "L", "XL", "XXL"],
   },
 ];
 
@@ -53,7 +57,6 @@ const WishlistPage = () => {
           <Link href="/" className="text-2xl italic font-serif">
             Pinnacle
           </Link>
-
           <div className="relative flex-1 max-w-2xl mx-8">
             <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
             <input
@@ -68,7 +71,6 @@ const WishlistPage = () => {
               className="w-full px-4 py-2 pl-10 bg-gray-800 rounded text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-600"
             />
           </div>
-
           <div className="flex items-center space-x-6">
             <div className="flex items-center cursor-pointer hover:text-gray-300">
               <User className="h-6 w-6" />
@@ -82,8 +84,6 @@ const WishlistPage = () => {
             </button>
           </div>
         </div>
-
-        {/* Navigation */}
         <nav className="border-t border-gray-800">
           <div className="max-w-7xl mx-auto px-4">
             <ul className="flex space-x-8 py-3">
@@ -104,27 +104,39 @@ const WishlistPage = () => {
                       onMouseEnter={() => clearTimeout(timeoutRef.current!)}
                       onMouseLeave={handleMouseLeave}
                     >
-                      {category === "mens" && ["Shirts", "Pants", "Shoes"].map((item) => (
-                        <li key={item}>
-                          <Link href={`/mens/${item.toLowerCase()}`} className="block px-4 py-2 hover:bg-gray-200">
-                            {item}
-                          </Link>
-                        </li>
-                      ))}
-                      {category === "women" && ["Dresses", "Tops", "Shoes"].map((item) => (
-                        <li key={item}>
-                          <Link href={`/women/${item.toLowerCase()}`} className="block px-4 py-2 hover:bg-gray-200">
-                            {item}
-                          </Link>
-                        </li>
-                      ))}
-                      {category === "accessories" && ["Hats", "Bags", "Jewelry"].map((item) => (
-                        <li key={item}>
-                          <Link href={`/accessories/${item.toLowerCase()}`} className="block px-4 py-2 hover:bg-gray-200">
-                            {item}
-                          </Link>
-                        </li>
-                      ))}
+                      {category === "mens" &&
+                        ["Shirts", "Pants", "Shoes"].map((item) => (
+                          <li key={item}>
+                            <Link
+                              href={`/mens/${item.toLowerCase()}`}
+                              className="block px-4 py-2 hover:bg-gray-200"
+                            >
+                              {item}
+                            </Link>
+                          </li>
+                        ))}
+                      {category === "women" &&
+                        ["Dresses", "Tops", "Shoes"].map((item) => (
+                          <li key={item}>
+                            <Link
+                              href={`/women/${item.toLowerCase()}`}
+                              className="block px-4 py-2 hover:bg-gray-200"
+                            >
+                              {item}
+                            </Link>
+                          </li>
+                        ))}
+                      {category === "accessories" &&
+                        ["Hats", "Bags", "Jewelry"].map((item) => (
+                          <li key={item}>
+                            <Link
+                              href={`/accessories/${item.toLowerCase()}`}
+                              className="block px-4 py-2 hover:bg-gray-200"
+                            >
+                              {item}
+                            </Link>
+                          </li>
+                        ))}
                     </ul>
                   )}
                 </li>
@@ -133,34 +145,16 @@ const WishlistPage = () => {
           </div>
         </nav>
       </header>
-
       <div className="max-w-7xl mx-auto px-4 py-8">
         <h1 className="text-2xl font-bold mb-6">Your Wishlist</h1>
         <h2 className="text-medium mb-3">Recently added</h2>
-
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
           {products.map((product) => (
-            <div key={product.id} className="border rounded-lg p-3 shadow-md bg-white relative">
-              <button className="absolute top-2 right-2 bg-white p-2 rounded shadow hover:text-red-500">
-                <Heart className="h-6 w-6 text-gray-600" />
-              </button>
-              <Image src={product.image} alt={product.name} width={200} height={300} priority={true} className="w-full object-cover rounded-md" />
-              <h2 className="text-md font-semibold mt-2">{product.name}</h2>
-              <p className="text-gray-600">{product.price}</p>
-              <div className="flex gap-1 my-2">
-                {product.colors.map((color, index) => (
-                  <Image key={index} src={color} alt="color option" width={40} height={40} className="border rounded-sm cursor-pointer" />
-                ))}
-              </div>
-              <div className="flex gap-1 my-2">
-                {["S", "M", "L", "XL", "XXL"].map((size) => (
-                  <button key={size} className="border px-2 py-1 rounded-sm hover:bg-gray-200">{size}</button>
-                ))}
-              </div>
-                <button className="w-1/2 bg-black text-white py-2 rounded-full mt-2 hover:bg-gray-800 text-sm">
-                Add To Cart
-                </button>
-            </div>
+            <ProductCard
+              key={product.id}
+              product={product}
+              hideWishlist={true}
+            />
           ))}
         </div>
       </div>
@@ -169,4 +163,4 @@ const WishlistPage = () => {
   );
 };
 
-export default WishlistPage;
+export default WishlistPage;

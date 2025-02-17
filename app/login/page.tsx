@@ -6,75 +6,70 @@ import Link from "next/link";
 const LoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [rememberMe, setRememberMe] = useState(false);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-900">
-      <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
-        <h2 className="text-2xl font-semibold text-center mb-6">Login</h2>
+    <div className="min-h-screen flex items-center justify-center bg-white">
+      <div className="w-full max-w-sm text-center">
+        {/* LOGIN Title */}
+        {/*<h1 className="text-4xl font-bold mb-2">LOGIN</h1>8/}
 
-        <form>
-          {/* Email Field */}
-          <div className="mb-4">
-            <label className="block text-gray-700 font-medium mb-2">
-              Email
-            </label>
-            <input
-              type="email"
-              className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-gray-800"
-              placeholder="Enter your email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </div>
+        {/* Instruction Text */}
+        <h1 className="text-5xl font-bold mb-2">LOGIN</h1>
+        <p className="text-gray-600 text-sm mb-6">
+          If you have an account with us, please log in.
+        </p>
 
-          {/* Password Field */}
-          <div className="mb-4">
-            <label className="block text-gray-700 font-medium mb-2">
-              Password
-            </label>
-            <input
-              type="password"
-              className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-gray-800"
-              placeholder="Enter your password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </div>
+        <form className="space-y-4">
+          {/* Email Input */}
+          <style jsx>{`
+            input[type="email"],
+            input[type="password"] {
+              width: 100%;
+            }
+            h1,
+            p,
+            a {
+              color: #333;
+            }
+          `}</style>
+          <input
+            type="email"
+            placeholder="Email Address"
+            className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-gray-800"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
 
-          {/* Remember Me & Forgot Password */}
-          <div className="flex items-center justify-between mb-4">
-            <label className="flex items-center text-gray-700">
-              <input
-                type="checkbox"
-                className="mr-2"
-                checked={rememberMe}
-                onChange={() => setRememberMe(!rememberMe)}
-              />
-              Remember Me
-            </label>
-            <Link href="#" className="text-gray-800 hover:underline">
-              Forgot Password?
-            </Link>
-          </div>
+          {/* Password Input */}
+          <input
+            type="password"
+            placeholder="Password"
+            className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-gray-800"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
 
-          {/* Login Button */}
+          {/* Sign In Button */}
           <button
             type="submit"
-            className="w-full bg-black text-white py-2 rounded-md hover:bg-gray-800 transition"
+            className="w-full bg-gray-900 text-white font-semibold py-2 rounded-full hover:bg-gray-800 transition"
           >
-            Login
+            SIGN IN
           </button>
         </form>
 
-        {/* Signup Link */}
-        <p className="text-center text-gray-600 mt-4">
+        {/* Sign-up & Forgot Password Links */}
+        <p className="text-sm text-gray-600 mt-4">
           Don't have an account?{" "}
+          <Link href="/signup" className="font-semibold hover:underline">
+            Create an account
+          </Link>{" "}
+          or{" "}
           <Link
-            href="/signup"
-            className="text-gray-800 font-medium hover:underline"
+            href="/forgot-password"
+            className="font-semibold hover:underline"
           >
-            Sign up
+            Forgot your password?
           </Link>
         </p>
       </div>
