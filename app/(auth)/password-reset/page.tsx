@@ -3,56 +3,66 @@
 import React, { useState } from "react";
 import Link from "next/link";
 
-const ForgotPasswordPage = () => {
-  const [email, setEmail] = useState("");
+const ResetPasswordPage = () => {
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState("");
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    // Validate passwords
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+
+    setError("");
+    // Handle password reset logic here
+    console.log("Password successfully reset!");
+  };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-900">
-      <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
-        <h2 className="text-2xl font-semibold text-center mb-6">
-          Forgot Password
-        </h2>
-        <p className="text-gray-600 text-center mb-4">
-          Enter your email and we will send you a password reset link.
-        </p>
+    <div className="min-h-screen flex items-center justify-center bg-white">
+      <div className="w-full max-w-sm text-center">
+        {/* Title */}
+        <h1 className="text-3xl font-bold mb-2 whitespace-nowrap">
+          RESET ACCOUNT PASSWORD
+        </h1>
+        <p className="text-gray-600 text-sm mb-6">Enter a new password.</p>
 
-        <form>
-          {/* Email Field */}
-          <div className="mb-4">
-            <label className="block text-gray-700 font-medium mb-2">
-              Email
-            </label>
-            <input
-              type="email"
-              className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-gray-800"
-              placeholder="Enter your email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-          </div>
+        {/* Reset Password Form */}
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <input
+            type="password"
+            placeholder="Password"
+            className="w-3/4 px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-gray-800"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
 
-          {/* Submit Button */}
+          <input
+            type="password"
+            placeholder="Confirm Password"
+            className="w-3/4 px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-gray-800"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+          />
+
+          {/* Error Message */}
+          {error && <p className="text-red-500 text-sm">{error}</p>}
+
+          {/* Reset Password Button */}
           <button
             type="submit"
-            className="w-full bg-black text-white py-2 rounded-md hover:bg-gray-800 transition"
+            className="w-3/4 bg-gray-900 text-white font-semibold py-2 rounded-full hover:bg-gray-800 transition"
           >
-            Send Reset Link
+            RESET PASSWORD
           </button>
         </form>
-
-        {/* Back to Login */}
-        <p className="text-center text-gray-600 mt-4">
-          Remembered your password?{" "}
-          <Link
-            href="/login"
-            className="text-gray-800 font-medium hover:underline"
-          >
-            Login
-          </Link>
-        </p>
       </div>
     </div>
   );
 };
 
-export default ForgotPasswordPage;
+export default ResetPasswordPage;
