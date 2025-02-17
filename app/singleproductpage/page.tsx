@@ -10,7 +10,7 @@ const SingleProductPage = () => {
     id: 1,
     name: "Black T-Shirt",
     price: 25.99,
-    image: "/images/tshirt.jpg",
+    image: "p1.webp",
     description:
       "A stylish and comfortable black t-shirt made from 100% cotton.",
     details: [

@@ -10,14 +10,14 @@ const CartPage = () => {
       id: 1,
       name: "Black T-Shirt",
       price: 25.99,
-      image: "/products/black-tshirt.jpg",
+      image: "/p1.webp",
       quantity: 1,
     },
     {
       id: 2,
       name: "Blue Jeans",
       price: 49.99,
-      image: "/products/blue-jeans.jpg",
+      image: "/p1.webp",
       quantity: 1,
     },
   ]);

@@ -11,7 +11,7 @@ const products = [
     size: "M",
     color: "Blue",
     inStock: true,
-    image: "/shirt1.jpg",
+    image: "/p1.webp",
   },
   {
     id: 2,
@@ -21,7 +21,7 @@ const products = [
     size: "L",
     color: "White",
     inStock: false,
-    image: "/shirt2.jpg",
+    image: "/p1.webp",
   },
   {
     id: 3,
@@ -31,7 +31,7 @@ const products = [
     size: "XL",
     color: "Black",
     inStock: true,
-    image: "/pants1.jpg",
+    image: "/p1.webp",
   },
   {
     id: 4,
@@ -41,7 +41,7 @@ const products = [
     size: "S",
     color: "Beige",
     inStock: true,
-    image: "/pants2.jpg",
+    image: "/p1.webp",
   },
   {
     id: 5,
@@ -51,7 +51,7 @@ const products = [
     size: "M",
     color: "Red",
     inStock: true,
-    image: "/shoes1.jpg",
+    image: "/p1.webp",
   },
   {
     id: 6,
@@ -61,7 +61,7 @@ const products = [
     size: "L",
     color: "Brown",
     inStock: false,
-    image: "/shoes2.jpg",
+    image: "/p1.webp",
   },
 ];
 

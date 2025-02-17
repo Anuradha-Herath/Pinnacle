@@ -5,8 +5,8 @@ import Link from "next/link";
 
 const WishlistPage = () => {
   const [wishlist, setWishlist] = useState([
-    { id: 1, name: "Black T-Shirt", price: 25.99, image: "/images/tshirt.jpg" },
-    { id: 2, name: "Blue Jeans", price: 49.99, image: "/images/jeans.jpg" },
+    { id: 1, name: "Black T-Shirt", price: 25.99, image: "p1.webp" },
+    { id: 2, name: "Blue Jeans", price: 49.99, image: "p2.webp" },
   ]);
 
   const removeFromWishlist = (id) => {
