@@ -11,7 +11,7 @@ const products = [
   {
     id: 1,
     name: "Lykon Tee",
-    price: "Rs. 4,200.00",
+    price: 4200,
     image: "/p8.webp",
     colors: ["/p2.webp", "/p3.webp", "/p4.webp", "/p5.webp", "/p7.webp"],
     sizes: ["S", "M", "L", "XL", "XXL"],
@@ -86,7 +86,7 @@ const WishlistPage = () => {
         </div>
         <nav className="border-t border-gray-800">
           <div className="max-w-7xl mx-auto px-4">
-            <ul className="flex space-x-8 py-3">
+            <ul className="flex space-x-8 py-3">i
               {["mens", "women", "accessories"].map((category) => (
                 <li
                   key={category}
