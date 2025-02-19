@@ -126,24 +126,24 @@ function Checkout() {
       {/* Left Section: Form */}
       <div className="w-full md:w-4/5 p-8 bg-white rounded-lg shadow-md border border-gray-200">
         <h2 className="text-xl font-semibold mb-4">Contact</h2>
-        <input type="email" placeholder="Email Address" className="w-full p-2 mb-4 border border-gray-200 rounded" />
+        <input type="email" placeholder="Email Address" className="w-full p-2 mb-4 border border-gray-500 rounded" />
         <label className="flex items-center gap-2 mb-4">
           <input type="checkbox" /> Email me with news and offers
         </label>
 
         <h2 className="text-xl font-semibold mb-4">Delivery</h2>
         <div className="flex gap-4 mb-4">
-          <div className="p-3 border border-gray-600 rounded-lg bg-white flex items-center gap-2 w-full">
+          <div className="p-3 border border-gray-500 rounded-lg bg-white flex items-center gap-2 w-full">
             <input type="radio" name="delivery" checked={shipping === "ship"} onChange={() => setShipping("ship")} /> 
             <span>Ship</span>
           </div>
-          <div className="p-3 border border-gray-600 rounded-lg bg-white flex items-center gap-2 w-full">
+          <div className="p-3 border border-gray-500 rounded-lg bg-white flex items-center gap-2 w-full">
             <input type="radio" name="delivery" checked={shipping === "pickup"} onChange={() => setShipping("pickup")} />
             <span>Pickup in store</span>
           </div>
         </div>
 
-        <select className="w-full p-2 mb-4 border border-gray-600 rounded">
+        <select className="w-full p-2 mb-4 border border-gray-500 rounded">
           <option>Country/Region</option>
           <option>India</option>
           <option>United States</option>
@@ -156,21 +156,21 @@ function Checkout() {
           <input type="text" placeholder="Last name" className="p-2 border border-gray-500 rounded" />
         </div>
 
-        <input type="text" placeholder="Address" className="w-full p-2 mb-4 border border-gray-600 rounded" />
+        <input type="text" placeholder="Address" className="w-full p-2 mb-4 border border-gray-500 rounded" />
         <div className="grid grid-cols-2 gap-4 mb-4">
-          <input type="text" placeholder="City" className="p-2 border border-gray-800 rounded" />
-          <input type="text" placeholder="Postal code" className="p-2 border border-gray-600 rounded" />
+          <input type="text" placeholder="City" className="p-2 border border-gray-500 rounded" />
+          <input type="text" placeholder="Postal code" className="p-2 border border-gray-500 rounded" />
         </div>
-        <input type="text" placeholder="Phone" className="w-full p-2 mb-4 border border-gray-600 rounded" />
+        <input type="text" placeholder="Phone" className="w-full p-2 mb-4 border border-gray-500 rounded" />
 
         <h2 className="text-xl font-semibold mb-4">Shipping method</h2>
-        <div className="p-3 border border-gray-600 rounded bg-white flex justify-between">
+        <div className="p-3 border border-gray-500 rounded bg-white flex justify-between">
           <span>Standard Shipping</span>
           <span>Rs 650.00</span>
         </div>
         <div className="p-6 bg-gray-100 rounded-lg shadow-md border border-gray-300 mt-6">
           <h2 className="text-xl font-semibold mb-4">Payment</h2>
-          <p className="text-gray-600 mb-2">All transactions are secure and encrypted</p>
+          <p className="text-gray-500 mb-2">All transactions are secure and encrypted</p>
           <input type="text" placeholder="Card Number" className="w-full p-2 mb-4 border border-gray-300 rounded" />
           <div className="grid grid-cols-2 gap-4 mb-4">
             <input type="text" placeholder="Exp date (MM/YY)" className="p-2 border border-gray-300 rounded" />
@@ -222,7 +222,7 @@ function Checkout() {
           <span>Shipping</span>
           <span>Rs 650.00</span>
         </div>
-        <div className="flex justify-between font-bold text-lg mt-2">
+        <div className="flex justify-between font-bold text-xl mt-3">
           <span>Total</span>
           <span>Rs 10,610.00</span>
         </div>
