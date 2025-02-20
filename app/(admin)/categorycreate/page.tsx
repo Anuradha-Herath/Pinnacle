@@ -1,5 +1,5 @@
 "use client";
-import { EyeIcon, PencilIcon, TrashIcon, BellIcon, Cog6ToothIcon, ClockIcon } from "@heroicons/react/24/solid";
+import { EyeIcon, PencilIcon, TrashIcon, BellIcon, Cog6ToothIcon, ClockIcon, PhotoIcon } from "@heroicons/react/24/solid";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar from "../../components/Sidebar";
@@ -49,9 +49,10 @@ export default function CategoryCreate() {
         </div>
 
         {/* Add Thumbnail Photo Section */}
-        <div className="bg-white p-6 rounded-lg shadow-md mb-6 w-3/4 ml-36 ">
+        <div className="bg-white p-6 rounded-lg shadow-md mb-6 w-3/4 ml-36">
           <h2 className="text-lg font-semibold mb-4">Add Thumbnail Photo</h2>
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center h-48 flex justify-center items-center">
+          <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center h-48 flex flex-col justify-center items-center">
+            <PhotoIcon className="h-10 w-10 text-gray-400 mb-2 text-orange-500" />
             <p className="text-gray-500">Drop your image here,</p>
             <p className="text-gray-500">Jpeg, png are allowed</p>
           </div>
@@ -100,7 +101,7 @@ export default function CategoryCreate() {
           </button>
           <button
             onClick={handleCreateCategory}
-            className="bg-orange-500 text-white px-4 py-2 rounded-md shadow-md hover:bg-orange-600 "
+            className="bg-orange-500 text-white px-4 py-2 rounded-md shadow-md hover:bg-orange-600"
           >
             CREATE CATEGORY
           </button>
