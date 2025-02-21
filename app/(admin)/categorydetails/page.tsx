@@ -85,6 +85,8 @@ export default function CategoryDetails() {
           <span className="text-gray-600 font-semibold">Men</span>
           &gt;
           <span className="text-gray-600 font-semibold">T-Shirts</span>
+          &gt;
+          <span className="text-orange-500 font-semibold">Details</span>
         </div>
 
         <div className="grid grid-cols-2 gap-6 h-80">
