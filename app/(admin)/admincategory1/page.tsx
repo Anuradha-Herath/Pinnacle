@@ -28,19 +28,19 @@ export default function CategoryList() {
           <h1 className="text-2xl font-semibold">Category List</h1>
 
           {/* Top-Right Icons */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
             {/* Notifications */}
-            <button onClick={() => router.push("/notifications")} className="p-2 ">
-              <BellIcon className="h-6 w-6 text-gray-600" />
+            <button onClick={() => router.push("/notifications")} className="p-2 hover:bg-gray-200 rounded-lg">
+              <BellIcon className="h-6 w-6 text-gray-600  " />
             </button>
 
             {/* Settings */}
-            <button onClick={() => router.push("/settings")} className="p-2 ">
+            <button onClick={() => router.push("/settings")} className="p-2 hover:bg-gray-200 rounded-lg">
               <Cog6ToothIcon className="h-6 w-6 text-gray-600" />
             </button>
 
             {/* Clock Icon (e.g., Order History, Activity Log, etc.) */}
-            <button onClick={() => router.push("/history")} className="p-2 ">
+            <button onClick={() => router.push("/history")} className="p-2 hover:bg-gray-200 rounded-lg">
               <ClockIcon className="h-6 w-6 text-gray-600" />
             </button>
 
@@ -53,7 +53,7 @@ export default function CategoryList() {
 
         {/* Add Category Button */}
         <div className="flex justify-end mb-6">
-          <a href="categorycreate"><button className="bg-orange-500 text-white px-4 py-2 rounded-md flex items-center gap-2 shadow-md">
+          <a href="categorycreate"><button className="bg-orange-500 text-white px-4 py-2 rounded-md flex items-center gap-2 shadow-md hover:bg-orange-600">
             ➕ Add A New Category
           </button></a>
         </div>
@@ -84,7 +84,7 @@ export default function CategoryList() {
             <input
               type="text"
               placeholder="🔍 Search"
-              className="border px-3 py-2 rounded-md shadow-sm focus:ring-2 focus:ring-blue-400"
+              className="border px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
             />
           </div>
 
@@ -112,7 +112,7 @@ export default function CategoryList() {
                     
                     {/* View (Eye) Button */}
                     <button
-                      className="p-2  bg-orange-500 text-white rounded-md shadow-md"
+                      className="p-2  bg-orange-500 text-white rounded-md shadow-md hover:bg-orange-600"
                       onClick={() => router.push(`/categories/view/${category.id}`)}
                     >
                       <EyeIcon className="h-5 w-5 " />
@@ -120,7 +120,7 @@ export default function CategoryList() {
 
                     {/* Edit (Pencil) Button */}
                     <button
-                      className="p-2 bg-orange-500 text-white rounded-md shadow-md"
+                      className="p-2 bg-orange-500 text-white rounded-md shadow-md hover:bg-orange-600"
                       onClick={() => router.push(`/categories/edit/${category.id}`)}
                     >
                       <PencilIcon className="h-5 w-5" />
@@ -128,7 +128,7 @@ export default function CategoryList() {
 
                     {/* Delete (Trash) Button */}
                     <button
-                      className="p-2 bg-orange-500 text-white rounded-md shadow-md"
+                      className="p-2 bg-orange-500 text-white rounded-md shadow-md hover:bg-orange-600"
                       onClick={() => router.push(`/categories/delete/${category.id}`)}
                     >
                       <TrashIcon className="h-5 w-5" />
