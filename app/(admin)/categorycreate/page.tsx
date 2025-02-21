@@ -3,6 +3,7 @@ import { EyeIcon, PencilIcon, TrashIcon, BellIcon, Cog6ToothIcon, ClockIcon, Pho
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar from "../../components/Sidebar";
+import Link from "next/link";
 
 export default function CategoryCreate() {
   const router = useRouter();
@@ -25,19 +26,19 @@ export default function CategoryCreate() {
           <h1 className="text-2xl font-semibold">Category Create</h1>
 
           {/* Top-Right Icons */}
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
             {/* Notifications */}
-            <button onClick={() => router.push("/notifications")} className="p-2 hover:shadow-lg">
+            <button onClick={() => router.push("/notifications")} className="p-2 hover:bg-gray-200 rounded-lg">
               <BellIcon className="h-6 w-6 text-gray-600" />
             </button>
 
             {/* Settings */}
-            <button onClick={() => router.push("/settings")} className="p-2 hover:shadow-lg">
+            <button onClick={() => router.push("/settings")} className="p-2 hover:bg-gray-200 rounded-lg">
               <Cog6ToothIcon className="h-6 w-6 text-gray-600" />
             </button>
 
             {/* Clock Icon (e.g., Order History, Activity Log, etc.) */}
-            <button onClick={() => router.push("/history")} className="p-2 hover:shadow-lg">
+            <button onClick={() => router.push("/history")} className="p-2 hover:bg-gray-200 rounded-lg">
               <ClockIcon className="h-6 w-6 text-gray-600" />
             </button>
 
@@ -46,6 +47,15 @@ export default function CategoryCreate() {
               <img src="/p9.webp" alt="Profile" className="h-8 w-8 rounded-full object-cover" />
             </button>
           </div>
+        </div>
+
+        {/* Breadcrumb Navigation */}
+        <div className="text-sm text-gray-500 mb-4">
+          <Link href="../admincategory1" className="text-gray-600 font-semibold hover:text-orange-500">
+            Category
+          </Link>{" "}
+          &gt;{" "}
+          <span className="text-orange-500 font-semibold">Create</span>
         </div>
 
         {/* Add Thumbnail Photo Section */}
@@ -68,7 +78,7 @@ export default function CategoryCreate() {
                 type="text"
                 value={categoryTitle}
                 onChange={(e) => setCategoryTitle(e.target.value)}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-400"
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
               />
             </div>
             <div>
@@ -76,7 +86,7 @@ export default function CategoryCreate() {
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-400"
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
               />
             </div>
             <div>
@@ -85,7 +95,7 @@ export default function CategoryCreate() {
                 type="text"
                 value={priceRange}
                 onChange={(e) => setPriceRange(e.target.value)}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-400"
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
               />
             </div>
           </div>
