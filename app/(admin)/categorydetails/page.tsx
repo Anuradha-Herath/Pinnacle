@@ -52,9 +52,15 @@ export default function CategoryDetails() {
             </div>
 
             {/* Notifications */}
+
+            <button onClick={() => router.push("/notifications")} className="p-2 hover:bg-gray-200 rounded-lg">
+              <BellIcon className="h-6 w-6 text-gray-600" />
+
+              
             <button onClick={() => router.push("/notifications")} className="p-2 hover:bg-gray-200 rounded-lg ">
               <BellIcon className="h-6 w-6 text-gray-600 " />
-            </button>
+
+              </button>
 
             {/* Settings */}
             <button onClick={() => router.push("/settings")} className="p-2 hover:bg-gray-200 rounded-lg">
@@ -69,16 +75,24 @@ export default function CategoryDetails() {
             {/* Profile */}
             <button
               onClick={() => router.push("../../profilepage")}
+
+              className="p-1 rounded-full border-2 border-gray-300 hover:shadow-lg"
+
               className="p-1 rounded-full border-2 border-gray-300"
-            >
+
+              >
               <img src="/p9.webp" alt="Profile" className="h-8 w-8 rounded-full object-cover" />
             </button>
           </div>
         </div>
 
         {/* Breadcrumb / Page Path with Links */}
-        <div className="text-sm text-gray-500 mb-4 ">
-          <Link href="../admincategory1" className="text-gray-600 font-semibold hover:text-orange-500">
+
+          <div className="text-sm text-gray-500 mb-4">
+
+            <div className="text-sm text-gray-500 mb-4 ">
+
+              <Link href="../admincategory1" className="text-gray-600 font-semibold hover:text-orange-500">
             Category
           </Link>
           &gt;
@@ -112,13 +126,22 @@ export default function CategoryDetails() {
                 <p className="font-semibold">$20.00 to $100</p>
               </div>
             </div>
-            <div className=" ">
+
+            <div className="mt-4">
+              <a href="../categoryedit">
+                <button className="bg-orange-500 text-white w-1/4 py-2 rounded-md hover:bg-orange-600">
+                  EDIT
+                </button>
+              </a>
+
+              <div className=" ">
             <a href="../categoryedit ">
               <button className="bg-orange-500 text-white w-1/4 py-2 rounded-md mt-4 hover:bg-orange-600">
                 EDIT
               </button>
             </a>
-            </div>
+
+              </div>
           </div>
 
           {/* CATEGORY IMAGE */}
@@ -139,18 +162,30 @@ export default function CategoryDetails() {
                 {/* ACTION BUTTONS (View, Edit, Delete) */}
                 <div className="absolute top-4 right-4 flex flex-col gap-2">
                   <button
+
+                    className="p-1 bg-orange-500 text-white rounded-md shadow-md hover:bg-orange-600 hover:shadow-lg"
+
                     className="p-1 bg-orange-500 text-white rounded-md shadow-md hover:bg-orange-600 "
+
                     onClick={() => router.push(`/products/view/${index}`)}
                   >
                     <EyeIcon className="h-4 w-4" />
                   </button>
                   <button
+
+                    className="p-1 bg-orange-500 text-white rounded-md shadow-md hover:bg-orange-600 hover:shadow-lg"
+
                     className="p-1 bg-orange-500 text-white rounded-md shadow-md hover:bg-orange-600 "
+
                     onClick={() => router.push(`/products/edit/${index}`)}
                   >
                     <PencilIcon className="h-4 w-4" />
                   </button>
-                  <button className="p-1 bg-orange-500 text-white rounded-md shadow-md hover:bg-orange-600 ">
+
+                  <button className="p-1 bg-orange-500 text-white rounded-md shadow-md hover:bg-orange-600 hover:shadow-lg">
+
+                    <button className="p-1 bg-orange-500 text-white rounded-md shadow-md hover:bg-orange-600 ">
+
                     <TrashIcon className="h-4 w-4" />
                   </button>
                 </div>
@@ -159,6 +194,8 @@ export default function CategoryDetails() {
           </div>
 
           {/* VIEW ALL BUTTON */}
+          <div className="flex justify-end mt-6">
+            <button className="bg-orange-500 text-white px-6 py-2 rounded-md shadow-md hover:bg-orange-600 hover:shadow-lg">
           <div className="flex justify-end mt-6 ">
             <button className="bg-orange-500 text-white px-6 py-2 rounded-md shadow-md hover:bg-orange-600">
               VIEW ALL

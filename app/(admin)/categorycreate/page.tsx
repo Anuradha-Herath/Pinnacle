@@ -27,21 +27,25 @@ export default function CategoryCreate() {
           {/* Top-Right Icons */}
           <div className="flex items-center gap-4">
             {/* Notifications */}
+            <button onClick={() => router.push("/notifications")} className="p-2 hover:shadow-lg">
             <button onClick={() => router.push("/notifications")} className="p-2">
               <BellIcon className="h-6 w-6 text-gray-600" />
             </button>
 
             {/* Settings */}
+            <button onClick={() => router.push("/settings")} className="p-2 hover:shadow-lg">
             <button onClick={() => router.push("/settings")} className="p-2">
               <Cog6ToothIcon className="h-6 w-6 text-gray-600" />
             </button>
 
             {/* Clock Icon (e.g., Order History, Activity Log, etc.) */}
+            <button onClick={() => router.push("/history")} className="p-2 hover:shadow-lg">
             <button onClick={() => router.push("/history")} className="p-2">
               <ClockIcon className="h-6 w-6 text-gray-600" />
             </button>
 
             {/* Profile */}
+            <button onClick={() => router.push("../../profilepage")} className="p-1 rounded-full border-2 border-gray-300 hover:shadow-lg">
             <button onClick={() => router.push("../../profilepage")} className="p-1 rounded-full border-2 border-gray-300">
               <img src="/p9.webp" alt="Profile" className="h-8 w-8 rounded-full object-cover" />
             </button>
@@ -95,12 +99,14 @@ export default function CategoryCreate() {
         <div className="flex justify-end mt-6 space-x-4 mr-40">
           <button
             onClick={() => router.push("/categorylist")}
+            className="bg-gray-300 text-gray-700 px-4 py-2 rounded-md shadow-md hover:bg-gray-400 hover:shadow-lg"
             className="bg-gray-300 text-gray-700 px-4 py-2 rounded-md shadow-md hover:bg-gray-400"
           >
             CANCEL
           </button>
           <button
             onClick={handleCreateCategory}
+            className="bg-orange-500 text-white px-4 py-2 rounded-md shadow-md hover:bg-orange-600 hover:shadow-lg"
             className="bg-orange-500 text-white px-4 py-2 rounded-md shadow-md hover:bg-orange-600"
           >
             CREATE CATEGORY
