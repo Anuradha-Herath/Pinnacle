@@ -40,7 +40,7 @@ export default function CategoryDetails() {
           <h1 className="text-2xl font-semibold">Category Details</h1>
 
           {/* Icons + Search Bar + Profile */}
-          <div className="flex items-center gap-0">
+          <div className="flex items-center gap-2">
             {/* Search Bar */}
             <div className="relative">
               <input
