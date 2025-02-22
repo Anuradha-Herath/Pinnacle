@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { Search, User, Heart, ShoppingBag, ChevronDown } from "lucide-react";
 
@@ -8,19 +8,121 @@ const Header = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   let timeout: NodeJS.Timeout;
+  const dropdownRef = useRef(null);
 
-  // Show dropdown when hovering
   const handleMouseEnter = (menu: string) => {
-    clearTimeout(timeout); // Prevents immediate closing
+    clearTimeout(timeout);
     setOpenDropdown(menu);
   };
 
-  // Hide dropdown with a slight delay
   const handleMouseLeave = () => {
     timeout = setTimeout(() => {
       setOpenDropdown(null);
-    }, 200); // Delay of 200ms to allow smooth transition
+    }, 200);
   };
+
+  const dropdownData = {
+    mens: {
+      Clothing: {
+        items: [
+          "Tees",
+          "Tanks",
+          "Jackets",
+          "Shirts",
+          "Jeans",
+          "Pants",
+          "Shorts",
+          "Joggers",
+          "Compression",
+          "Boxers",
+        ],
+        image: "/images/mens-clothing.jpg",
+      },
+      Footwear: {
+        items: ["Shoes", "Sliders", "Flip Flops"],
+        image: "/images/mens-footwear.jpg",
+      },
+      Accessories: {
+        items: ["Hats", "Caps", "Socks"],
+        image: "/images/mens-accessories.jpg",
+      },
+      rightImage: "/p1.webp", // Large right image for Mens dropdown
+    },
+    womens: {
+      Clothing: {
+        items: [
+          "Tees",
+          "Tanks",
+          "Jackets",
+          "Shirts",
+          "Jeans",
+          "Pants",
+          "Shorts",
+          "Joggers",
+          "Compression",
+          "Boxers",
+          "Dresses",
+          "Skirts",
+          "Leggings",
+        ],
+        image: "/images/womens-clothing.jpg",
+      },
+      Footwear: {
+        items: ["Shoes", "Sliders", "Flip Flops", "Heels", "Boots", "Sandals"],
+        image: "/images/womens-footwear.jpg",
+      },
+      Accessories: {
+        items: [
+          "Hats",
+          "Caps",
+          "Socks",
+          "Scarves",
+          "Gloves",
+          "Belts",
+          "Jewelry",
+        ],
+        image: "/images/womens-accessories.jpg",
+      },
+      rightImage: "/images/womens-right-image.jpg", // Large right image for Womens dropdown
+    },
+    accessories: {
+      Accessories: {
+        items: [
+          "Hats",
+          "Caps",
+          "Socks",
+          "Bags",
+          "Jewelry",
+          "Watches",
+          "Sunglasses",
+          "Wallets",
+        ],
+        image: "/images/accessories-main.jpg",
+      },
+      rightImage: "/images/accessories-right-image.jpg", // Large right image for Accessories dropdown
+    },
+  };
+
+  // Remove 'Collections' from dropdownData
+  delete dropdownData.mens.Collections;
+  delete dropdownData.womens.Collections;
+
+  useEffect(() => {
+    const handleDocumentClick = (event: MouseEvent) => {
+      if (
+        openDropdown &&
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setOpenDropdown(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleDocumentClick);
+    return () => {
+      document.removeEventListener("mousedown", handleDocumentClick);
+    };
+  }, [openDropdown]);
 
   return (
     <header className="bg-black text-white">
@@ -64,7 +166,9 @@ const Header = () => {
 
       {/* Navigation */}
       <nav className="border-t border-gray-800">
-        <div className="max-w-7xl mx-auto px-4">
+        <div className="mx-auto px-4 w-full">
+          {" "}
+          {/* Make nav container full width */}
           <ul className="flex space-x-8 py-3">
             {/* Mens Dropdown */}
             <li
@@ -77,80 +181,152 @@ const Header = () => {
                 <ChevronDown className="ml-1 h-4 w-4" />
               </button>
               {openDropdown === "mens" && (
-                <ul
-                  className="absolute left-0 mt-2 w-48 bg-white text-black shadow-lg rounded-lg"
+                <div
+                  ref={dropdownRef}
+                  className="absolute left-0 mt-2 bg-white text-black shadow-lg rounded-lg p-4  w-screen max-h-[70vh] overflow-y-auto grid grid-cols-2" // Full screen width, 2 columns
+                  style={{ left: 0, width: "100vw" }} // Ensure full viewport width
                   onMouseEnter={() => clearTimeout(timeout)}
                   onMouseLeave={handleMouseLeave}
                 >
-                  <li>
-                    <Link
-                      href="/mens/shirts"
-                      className="block px-4 py-2 hover:bg-gray-200"
-                    >
-                      Shirts
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      href="/mens/pants"
-                      className="block px-4 py-2 hover:bg-gray-200"
-                    >
-                      Pants
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      href="/mens/shoes"
-                      className="block px-4 py-2 hover:bg-gray-200"
-                    >
-                      Shoes
-                    </Link>
-                  </li>
-                </ul>
+                  {/* Left side - Categories and Items */}
+                  <div className="grid grid-cols-3 gap-x-4">
+                    {Object.entries(dropdownData.mens)
+                      .filter(([key]) => key !== "rightImage")
+                      .map(
+                        (
+                          [category, categoryData] // Filter out rightImage and now Collections is gone automatically
+                        ) => (
+                          <div key={category}>
+                            <div className="flex items-center mb-2">
+                              {categoryData.image && (
+                                <img
+                                  src={categoryData.image}
+                                  alt={category}
+                                  className="w-8 h-8 mr-2 rounded-md"
+                                />
+                              )}
+                              <h3 className="font-semibold">{category}</h3>
+                            </div>
+                            <ul className="space-y-2">
+                              {categoryData.items.map((item) => (
+                                <li key={item}>
+                                  <Link
+                                    href={`/mens/${category.toLowerCase()}/${item
+                                      .toLowerCase()
+                                      .replace(/ /g, "-")}`}
+                                    className="block px-4 py-1 hover:bg-gray-200 rounded-md"
+                                  >
+                                    {item}
+                                  </Link>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )
+                      )}
+                    <div className="col-span-3 border-t border-gray-200 mt-2 pt-2">
+                      <Link
+                        href="/mens"
+                        className="block px-4 py-2 hover:bg-gray-200 rounded-md text-center font-semibold"
+                      >
+                        Shop All Mens
+                      </Link>
+                    </div>
+                  </div>
+
+                  {/* Right side - Smaller Image with fixed max-height */}
+                  <div className="pl-4 border-l border-gray-200 flex items-center justify-center">
+                    {" "}
+                    {/* Center image */}
+                    {dropdownData.mens.rightImage && (
+                      <img
+                        src={dropdownData.mens.rightImage}
+                        alt="Mens Collection"
+                        className="max-h-[450px] w-auto rounded-md object-contain" // **Fixed max-h in pixels, object-contain**
+                      />
+                    )}
+                  </div>
+                </div>
               )}
             </li>
 
-            {/* Women Dropdown */}
+            {/* Womens Dropdown */}
             <li
               className="relative"
-              onMouseEnter={() => handleMouseEnter("women")}
+              onMouseEnter={() => handleMouseEnter("womens")}
               onMouseLeave={handleMouseLeave}
             >
               <button className="flex items-center hover:text-gray-300">
-                Women
+                Womens
                 <ChevronDown className="ml-1 h-4 w-4" />
               </button>
-              {openDropdown === "women" && (
-                <ul
-                  className="absolute left-0 mt-2 w-48 bg-white text-black shadow-lg rounded-lg"
+              {openDropdown === "womens" && (
+                <div
+                  ref={dropdownRef}
+                  className="absolute left-0 mt-2 bg-white text-black shadow-lg rounded-lg p-4  w-screen max-h-[70vh] overflow-y-auto grid grid-cols-2" // Full screen width, 2 columns
+                  style={{ left: 0, width: "100vw" }} // Ensure full viewport width
                   onMouseEnter={() => clearTimeout(timeout)}
                   onMouseLeave={handleMouseLeave}
                 >
-                  <li>
-                    <Link
-                      href="/women/dresses"
-                      className="block px-4 py-2 hover:bg-gray-200"
-                    >
-                      Dresses
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      href="/women/tops"
-                      className="block px-4 py-2 hover:bg-gray-200"
-                    >
-                      Tops
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      href="/women/shoes"
-                      className="block px-4 py-2 hover:bg-gray-200"
-                    >
-                      Shoes
-                    </Link>
-                  </li>
-                </ul>
+                  {/* Left side - Categories and Items */}
+                  <div className="grid grid-cols-3 gap-x-4">
+                    {Object.entries(dropdownData.womens)
+                      .filter(([key]) => key !== "rightImage")
+                      .map(
+                        (
+                          [category, categoryData] // Filter out rightImage, Collections gone
+                        ) => (
+                          <div key={category}>
+                            <div className="flex items-center mb-2">
+                              {categoryData.image && (
+                                <img
+                                  src={categoryData.image}
+                                  alt={category}
+                                  className="w-8 h-8 mr-2 rounded-md"
+                                />
+                              )}
+                              <h3 className="font-semibold">{category}</h3>
+                            </div>
+                            <ul className="space-y-2">
+                              {categoryData.items.map((item) => (
+                                <li key={item}>
+                                  <Link
+                                    href={`/womens/${category.toLowerCase()}/${item
+                                      .toLowerCase()
+                                      .replace(/ /g, "-")}`}
+                                    className="block px-4 py-1 hover:bg-gray-200 rounded-md"
+                                  >
+                                    {item}
+                                  </Link>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )
+                      )}
+                    <div className="col-span-3 border-t border-gray-200 mt-2 pt-2">
+                      <Link
+                        href="/womens"
+                        className="block px-4 py-2 hover:bg-gray-200 rounded-md text-center font-semibold"
+                      >
+                        Shop All Womens
+                      </Link>
+                    </div>
+                  </div>
+
+                  {/* Right side - Smaller Image with fixed max-height */}
+                  <div className="pl-4 border-l border-gray-200 flex items-center justify-center">
+                    {" "}
+                    {/* Center image */}
+                    {dropdownData.womens.rightImage && (
+                      <img
+                        src={dropdownData.womens.rightImage}
+                        alt="Womens Collection"
+                        className="max-h-[300px] w-auto rounded-md object-contain" // **Fixed max-h in pixels, object-contain**
+                      />
+                    )}
+                  </div>
+                </div>
               )}
             </li>
 
@@ -165,43 +341,80 @@ const Header = () => {
                 <ChevronDown className="ml-1 h-4 w-4" />
               </button>
               {openDropdown === "accessories" && (
-                <ul
-                  className="absolute left-0 mt-2 w-48 bg-white text-black shadow-lg rounded-lg"
+                <div
+                  ref={dropdownRef}
+                  className="absolute left-0 mt-2 bg-white text-black shadow-lg rounded-lg p-4  w-screen max-h-[70vh] overflow-y-auto grid grid-cols-2" // Full screen width, 2 columns
+                  style={{ left: 0, width: "100vw" }} // Ensure full viewport width
                   onMouseEnter={() => clearTimeout(timeout)}
                   onMouseLeave={handleMouseLeave}
                 >
-                  <li>
-                    <Link
-                      href="/accessories/hats"
-                      className="block px-4 py-2 hover:bg-gray-200"
-                    >
-                      Hats
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      href="/accessories/bags"
-                      className="block px-4 py-2 hover:bg-gray-200"
-                    >
-                      Bags
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      href="/accessories/jewelry"
-                      className="block px-4 py-2 hover:bg-gray-200"
-                    >
-                      Jewelry
-                    </Link>
-                  </li>
-                </ul>
+                  {/* Left side - Categories and Items */}
+                  <div className="grid grid-cols-1 gap-x-4">
+                    {" "}
+                    {/* Single column for Accessories */}
+                    {Object.entries(dropdownData.accessories)
+                      .filter(([key]) => key !== "rightImage")
+                      .map(
+                        (
+                          [category, categoryData] // Filter rightImage and Collections gone
+                        ) => (
+                          <div key={category}>
+                            <div className="flex items-center mb-2">
+                              {categoryData.image && (
+                                <img
+                                  src={categoryData.image}
+                                  alt={category}
+                                  className="w-8 h-8 mr-2 rounded-md"
+                                />
+                              )}
+                              <h3 className="font-semibold">{category}</h3>
+                            </div>
+                            <ul className="space-y-2">
+                              {categoryData.items.map((item) => (
+                                <li key={item}>
+                                  <Link
+                                    href={`/accessories/${item
+                                      .toLowerCase()
+                                      .replace(/ /g, "-")}`}
+                                    className="block px-4 py-1 hover:bg-gray-200 rounded-md"
+                                  >
+                                    {item}
+                                  </Link>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )
+                      )}
+                    <div className="border-t border-gray-200 mt-2 pt-2">
+                      <Link
+                        href="/accessories"
+                        className="block px-4 py-2 hover:bg-gray-200 rounded-md text-center font-semibold"
+                      >
+                        Shop All Accessories
+                      </Link>
+                    </div>
+                  </div>
+
+                  {/* Right side - Smaller Image with fixed max-height */}
+                  <div className="pl-4 border-l border-gray-200 flex items-center justify-center">
+                    {" "}
+                    {/* Center image */}
+                    {dropdownData.accessories.rightImage && (
+                      <img
+                        src={dropdownData.accessories.rightImage}
+                        alt="Accessories Collection"
+                        className="max-h-[300px] w-auto rounded-md object-contain" // **Fixed max-h in pixels, object-contain**
+                      />
+                    )}
+                  </div>
+                </div>
               )}
             </li>
+            {/* Footwear, E-Voucher and Sale Links Removed */}
           </ul>
         </div>
       </nav>
-
-      
     </header>
   );
 };
