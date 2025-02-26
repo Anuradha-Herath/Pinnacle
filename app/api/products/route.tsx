@@ -37,6 +37,24 @@ const uploadToCloudinary = async (imageData: string) => {
   }
 };
 
+// GET method to fetch all products
+export async function GET() {
+  try {
+    // Connect to the database
+    await connectDB();
+    
+    // Get all products from the database
+    const products = await Product.find({}).sort({ createdAt: -1 });
+    
+    return NextResponse.json({ products });
+  } catch (error) {
+    console.error("Error fetching products:", error);
+    return NextResponse.json({ 
+      error: error instanceof Error ? error.message : "Failed to fetch products" 
+    }, { status: 500 });
+  }
+}
+
 export async function POST(request: Request) {
   try {
     // Connect to the database
