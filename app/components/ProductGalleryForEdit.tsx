@@ -1,58 +1,50 @@
-import { useState, useRef } from "react";
+"use client";
+import { useRef } from "react";
 
-interface ProductGalleryProps {
-  onGalleryChange: (
-    gallery: { src: string | ArrayBuffer | null; name: string; color: string }[]
-  ) => void;
-  onMainImageRemove: (index: number) => void;
-}
+type GalleryItem = {
+  src: string | ArrayBuffer | null;
+  name: string;
+  color: string;
+};
 
-export default function ProductGallery({
-  onGalleryChange,
-  onMainImageRemove,
-}: ProductGalleryProps) {
-  const [gallery, setGallery] = useState<
-    { src: string | ArrayBuffer | null; name: string; color: string }[]
-  >([]);
+export default function ProductGalleryForEdit({
+  gallery,
+  onGalleryUpdate,
+  onImageRemove,
+}: {
+  gallery: GalleryItem[];
+  onGalleryUpdate: (gallery: GalleryItem[]) => void;
+  onImageRemove: (index: number) => void;
+}) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files) return;
-    const files = Array.from(e.target.files);
-    if (files.length === 0) return;
+  const handleAddImages = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
 
-    files.forEach((file: File) => {
-      const color = prompt(`Enter the color for ${file.name}:`);
+    const newItems: GalleryItem[] = [];
+
+    Array.from(files).forEach((file) => {
+      const color = prompt(`Enter color name for ${file.name}:`);
       if (!color) {
-        alert("Color is required!");
+        alert("Color name is required!");
         return;
       }
 
       const reader = new FileReader();
-      reader.onload = (event) => {
-        if (event.target && event.target.result) {
-          const result = event.target.result;
-          const newGallery = [
-            ...gallery,
-            { src: result, name: file.name, color },
-          ];
-          setGallery(newGallery);
-          onGalleryChange(newGallery);
+      reader.onload = (loadEvent) => {
+        newItems.push({
+          src: loadEvent.target?.result || null,
+          name: file.name,
+          color: color.trim(),
+        });
+
+        if (newItems.length === files.length) {
+          onGalleryUpdate([...gallery, ...newItems]);
         }
       };
       reader.readAsDataURL(file);
     });
-
-    e.target.value = "";
-  };
-
-  const handleRemove = (index: number) => {
-    const newGallery = gallery.filter((_, i) => i !== index);
-    setGallery(newGallery);
-    onGalleryChange(newGallery);
-    if (index === 0) {
-      onMainImageRemove(index);
-    }
   };
 
   return (
@@ -60,6 +52,7 @@ export default function ProductGallery({
       <label className="block text-sm font-medium mb-2">
         Product Gallery <span className="text-red-500">*</span>
       </label>
+
       <div className="border-dashed border-2 border-gray-300 p-6 rounded-lg text-center">
         <input
           type="file"
@@ -67,11 +60,11 @@ export default function ProductGallery({
           multiple
           className="hidden"
           ref={fileInputRef}
-          onChange={handleFileChange}
+          onChange={handleAddImages}
         />
         <button
           type="button"
-          onClick={() => fileInputRef.current && fileInputRef.current.click()}
+          onClick={() => fileInputRef.current?.click()}
           className="px-4 py-2 border rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
         >
           ADD IMAGE
@@ -91,7 +84,7 @@ export default function ProductGallery({
         {gallery.map((item, index) => (
           <div key={index} className="relative border p-2 rounded-md">
             <img
-              src={typeof item.src === "string" ? item.src : undefined}
+              src={typeof item.src === "string" ? item.src : ""}
               alt={item.name}
               className="w-full h-32 object-cover rounded-md"
             />
@@ -99,7 +92,7 @@ export default function ProductGallery({
               <span className="text-white text-sm">{item.color}</span>
             </div>
             <button
-              onClick={() => handleRemove(index)}
+              onClick={() => onImageRemove(index)}
               className="absolute top-2 right-2 bg-red-500 text-white px-2 py-1 text-xs rounded"
             >
               Remove
