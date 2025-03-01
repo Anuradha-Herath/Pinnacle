@@ -35,6 +35,8 @@ export default function ProductCreate() {
     string | ArrayBuffer | null
   >(null);
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const handleChange = (e: { target: { name: any; value: any } }) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -66,7 +68,7 @@ export default function ProductCreate() {
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (
       !formData.productName ||
       !formData.category ||
@@ -81,8 +83,36 @@ export default function ProductCreate() {
       return;
     }
 
-    console.log("Saved Data:", formData); // Log the entire formData, including gallery
-    alert("Product saved successfully!");
+    setIsSubmitting(true);
+    
+    try {
+      const response = await fetch('/api/products', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create product');
+      }
+
+      const result = await response.json();
+      console.log("Product created:", result);
+      alert("Product saved successfully!");
+      
+      // Optional: Reset form or redirect
+      // setFormData({ ... }); // reset form
+      // window.location.href = '/products'; // redirect
+      
+    } catch (error) {
+      console.error("Error saving product:", error);
+      alert(`Failed to save product: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -224,15 +254,17 @@ export default function ProductCreate() {
             <button
               type="button"
               className="px-20 py-2 border rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+              disabled={isSubmitting}
             >
               CANCEL
             </button>
             <button
               type="button"
               onClick={handleSave}
-              className="px-20 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors"
+              disabled={isSubmitting}
+              className={`px-20 py-2 ${isSubmitting ? 'bg-gray-400' : 'bg-orange-600 hover:bg-orange-700'} text-white rounded-md transition-colors`}
             >
-              SAVE
+              {isSubmitting ? 'SAVING...' : 'SAVE'}
             </button>
           </div>
         </div>

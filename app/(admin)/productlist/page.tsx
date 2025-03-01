@@ -1,21 +1,57 @@
 "use client";
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Sidebar from '../../components/Sidebar';
 import AdminProductCart from '../../components/AdminProductCard';
 import TopBar from '../../components/TopBar';
+import { useRouter } from 'next/navigation';
+
+interface Product {
+  _id: string;
+  productName: string;
+  gallery: { src: string; color: string; name: string }[];
+  regularPrice: number;
+  sales?: number;  // Optional as it might not exist in newly created products
+  remaining?: number; // Optional as it might not exist in newly created products
+}
 
 const ProductsPage = () => {
-  const [products, setProducts] = useState([
-    { id: 1, name: "T-Shirt", image: "/p1.webp", price: 110.40, sales: 1269, remaining: 1269 },
-    { id: 2, name: "Hoodie", image: "/p2.webp", price: 120.99, sales: 980, remaining: 520 },
-    { id: 3, name: "Cap", image: "/cap1.webp", price: 50.00, sales: 500, remaining: 300 },
-    { id: 4, name: "Backpack", image: "/p3.webp", price: 75.20, sales: 400, remaining: 200 },
-    { id: 5, name: "T-Shirt", image: "/p4.webp", price: 110.40, sales: 1269, remaining: 1269 },
-    { id: 6, name: "Hoodie", image: "/p5.webp", price: 120.99, sales: 980, remaining: 520 },
-    { id: 7, name: "Cap", image: "/cap2.webp", price: 50.00, sales: 500, remaining: 300 },
-    { id: 8, name: "Backpack", image: "/p6.webp", price: 75.20, sales: 500, remaining: 500 },
-    { id: 9, name: "Hoodie", image: "/p2.webp", price: 120.99, sales: 980, remaining: 520 },
-  ]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/products');
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch products');
+        }
+        
+        const data = await response.json();
+        setProducts(data.products);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+        console.error('Error fetching products:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, []);
+
+  // Transform database products to the format expected by AdminProductCard
+  const formattedProducts = products.map(product => ({
+    id: product._id,
+    name: product.productName,
+    image: product.gallery && product.gallery.length > 0 ? product.gallery[0].src : '/placeholder.png',
+    price: product.regularPrice,
+    sales: product.sales || 0,  // Default to 0 if sales doesn't exist
+    remaining: product.remaining || 100  // Default to 100 if remaining doesn't exist
+  }));
 
   return (
     <div className="flex min-h-screen bg-gray-100">
@@ -30,21 +66,63 @@ const ProductsPage = () => {
         <div className="p-6">
           <header className="flex justify-between items-center mb-6">
             <h1 className="text-2xl font-bold">All Products</h1>
-            <button className="bg-orange-500 text-white px-4 py-2 rounded-lg">Add New Product</button>
+            <button 
+              onClick={() => router.push('/productcreate')} 
+              className="bg-orange-500 text-white px-4 py-2 rounded-lg"
+            >
+              Add New Product
+            </button>
           </header>
 
-          {/* Product Grid - Always 3 columns */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {products.map((product) => (
-              <AdminProductCart key={product.id} product={product} />
-            ))}
-          </div>
+          {/* Loading state */}
+          {loading && (
+            <div className="text-center py-10">
+              <p>Loading products...</p>
+            </div>
+          )}
 
-          {/* Pagination */}
-          <footer className="mt-6 flex justify-center">
-            <button className="bg-gray-300 px-3 py-1 rounded-md mr-2">Previous</button>
-            <button className="bg-gray-300 px-3 py-1 rounded-md">Next</button>
-          </footer>
+          {/* Error state */}
+          {error && (
+            <div className="text-center py-10">
+              <p className="text-red-500">Error: {error}</p>
+              <button 
+                onClick={() => window.location.reload()} 
+                className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-md"
+              >
+                Try Again
+              </button>
+            </div>
+          )}
+
+          {/* Empty state */}
+          {!loading && !error && formattedProducts.length === 0 && (
+            <div className="text-center py-10">
+              <p className="text-gray-500">No products found. Create your first product!</p>
+              <button 
+                onClick={() => router.push('/productcreate')} 
+                className="mt-4 px-4 py-2 bg-orange-500 text-white rounded-md"
+              >
+                Add New Product
+              </button>
+            </div>
+          )}
+
+          {/* Product Grid - Always 3 columns */}
+          {!loading && !error && formattedProducts.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {formattedProducts.map((product) => (
+                <AdminProductCart key={product.id} product={product} />
+              ))}
+            </div>
+          )}
+
+          {/* Pagination - Only show if there are products */}
+          {!loading && !error && formattedProducts.length > 0 && (
+            <footer className="mt-6 flex justify-center">
+              <button className="bg-gray-300 px-3 py-1 rounded-md mr-2">Previous</button>
+              <button className="bg-gray-300 px-3 py-1 rounded-md">Next</button>
+            </footer>
+          )}
         </div>
       </div>
     </div>

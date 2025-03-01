@@ -3,6 +3,7 @@ import Image from 'next/image';
 import { Eye, Pencil, Trash2 } from 'lucide-react';
 
 interface Product {
+  id: string;
   image: string;
   name: string;
   price: number;
@@ -11,6 +12,10 @@ interface Product {
 }
 
 const AdminProductCard = ({ product }: { product: Product }) => {
+    // Calculate percentage for the progress bar with a safety check
+    const total = product.sales + product.remaining;
+    const remainingPercentage = total > 0 ? (product.remaining / total) * 100 : 0;
+    
     return (
         <div className="bg-white shadow-lg rounded-2xl p-4 relative">
       {/* Action Buttons */}
@@ -22,7 +27,17 @@ const AdminProductCard = ({ product }: { product: Product }) => {
 
       {/* Product Image */}
       <div className="flex justify-center">
-        <Image src={product.image} alt={product.name} width={150} height={150} className="rounded-md" />
+        <Image 
+          src={product.image || '/placeholder.png'} 
+          alt={product.name} 
+          width={150} 
+          height={150} 
+          className="rounded-md object-cover"
+          onError={(e) => {
+            // Fallback if image fails to load
+            (e.target as HTMLImageElement).src = '/placeholder.png';
+          }}
+        />
       </div>
 
       {/* Product Info */}
@@ -43,7 +58,10 @@ const AdminProductCard = ({ product }: { product: Product }) => {
           <span className="text-gray-500">{product.remaining}</span>
         </div>
         <div className="w-full bg-gray-300 rounded-full h-2 mt-1">
-          <div className="bg-orange-500 h-2 rounded-full" style={{ width: `${(product.remaining / (product.sales + product.remaining)) * 100}%` }}></div>
+          <div 
+            className="bg-orange-500 h-2 rounded-full" 
+            style={{ width: `${remainingPercentage}%` }}
+          ></div>
         </div>
       </div>
     </div>
