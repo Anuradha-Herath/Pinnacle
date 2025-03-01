@@ -1,11 +1,12 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import Header from "./components/Header";
 import ProductCarousel from "./components/ProductCarousel";
 import Footer from "./components/Footer";
 
-const products = [
+// Mock products as fallback
+const mockProducts = [
   {
     id: 1,
     name: "T-Shirt",
@@ -80,8 +81,67 @@ const products = [
   },
 ];
 
-
 const HomePage = () => {
+  const [products, setProducts] = useState(mockProducts);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Categories we want to display
+  const categories = ["Mens", "Womens", "Accessories"];
+  const [categoryProducts, setCategoryProducts] = useState<Record<string, any[]>>({
+    Mens: [],
+    Womens: [],
+    Accessories: []
+  });
+
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch all products
+        const response = await fetch('/api/customer/products');
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch products');
+        }
+        
+        const data = await response.json();
+        
+        if (data.products && data.products.length > 0) {
+          setProducts(data.products);
+          
+          // Organize products by category
+          const productsByCategory: Record<string, any[]> = {
+            Mens: [],
+            Womens: [],
+            Accessories: []
+          };
+          
+          data.products.forEach((product: any) => {
+            // Match category to our predefined categories
+            if (product.category?.toLowerCase() === "mens") {
+              productsByCategory.Mens.push(product);
+            } else if (product.category?.toLowerCase() === "womens") {
+              productsByCategory.Womens.push(product);
+            } else {
+              productsByCategory.Accessories.push(product);
+            }
+          });
+          
+          setCategoryProducts(productsByCategory);
+        }
+      } catch (err) {
+        console.error('Error fetching products:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load products');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchProducts();
+  }, []);
+
   return (
     <div className="bg-gray-900 min-h-screen flex flex-col">
       <Header />
@@ -93,7 +153,10 @@ const HomePage = () => {
       {/* Main Content */}
       <div className="flex-grow">
         {/* Men's Collection */}
-        <ProductCarousel title="Men's Collection" products={products} />
+        <ProductCarousel 
+          title="Men's Collection" 
+          products={categoryProducts.Mens.length > 0 ? categoryProducts.Mens : products} 
+        />
 
         {/* Large Shop Now Images */}
         <div className="flex gap-4 my-10 px-4 justify-center">
@@ -141,10 +204,16 @@ const HomePage = () => {
         </div>
 
         {/* Women's Collection */}
-        <ProductCarousel title="Women's Collection" products={products} />
+        <ProductCarousel 
+          title="Women's Collection" 
+          products={categoryProducts.Womens.length > 0 ? categoryProducts.Womens : products}
+        />
 
         {/* Accessories */}
-        <ProductCarousel title="Accessories" products={products} />
+        <ProductCarousel 
+          title="Accessories" 
+          products={categoryProducts.Accessories.length > 0 ? categoryProducts.Accessories : products}
+        />
       </div>
 
       {/* Footer */}

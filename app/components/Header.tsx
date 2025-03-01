@@ -3,8 +3,10 @@
 import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { Search, User, Heart, ShoppingBag, ChevronDown } from "lucide-react";
+import { useWishlist } from "../context/WishlistContext";
 
 const Header = () => {
+  const { wishlist } = useWishlist();
   const [searchQuery, setSearchQuery] = useState("");
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   let timeout: NodeJS.Timeout;
@@ -154,9 +156,14 @@ const Header = () => {
               <User className="h-6 w-6" />
               <span className="ml-2">Sign in</span>
             </div>
-            <button className="hover:text-gray-300">
+            <Link href="/wishlist" className="hover:text-gray-300 relative">
               <Heart className="h-6 w-6" />
-            </button>
+              {wishlist.length > 0 && (
+                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                  {wishlist.length}
+                </span>
+              )}
+            </Link>
             <button className="hover:text-gray-300">
               <ShoppingBag className="h-6 w-6" />
             </button>
