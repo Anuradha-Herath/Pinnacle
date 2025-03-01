@@ -1,6 +1,7 @@
 import React from 'react'
 import Image from 'next/image';
 import { Eye, Pencil, Trash2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 interface Product {
   id: string;
@@ -12,17 +13,41 @@ interface Product {
 }
 
 const AdminProductCard = ({ product }: { product: Product }) => {
+    const router = useRouter();
+    
     // Calculate percentage for the progress bar with a safety check
     const total = product.sales + product.remaining;
     const remainingPercentage = total > 0 ? (product.remaining / total) * 100 : 0;
+    
+    // Navigate to edit page with product ID
+    const handleEditClick = () => {
+      router.push(`/productedit/${product.id}`);
+    };
+    
+    // Navigate to view details page with product ID
+    const handleViewClick = () => {
+      router.push(`/productdetails/${product.id}`);
+    };
     
     return (
         <div className="bg-white shadow-lg rounded-2xl p-4 relative">
       {/* Action Buttons */}
       <div className="absolute top-4 right-4 flex flex-col gap-2">
-        <button className="bg-orange-500 text-white p-2 rounded-full"><Eye size={16} /></button>
-        <button className="bg-orange-500 text-white p-2 rounded-full"><Pencil size={16} /></button>
-        <button className="bg-orange-500 text-white p-2 rounded-full"><Trash2 size={16} /></button>
+        <button 
+          onClick={handleViewClick}
+          className="bg-orange-500 text-white p-2 rounded-full"
+        >
+          <Eye size={16} />
+        </button>
+        <button 
+          onClick={handleEditClick}
+          className="bg-orange-500 text-white p-2 rounded-full"
+        >
+          <Pencil size={16} />
+        </button>
+        <button className="bg-orange-500 text-white p-2 rounded-full">
+          <Trash2 size={16} />
+        </button>
       </div>
 
       {/* Product Image */}

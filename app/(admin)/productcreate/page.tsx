@@ -3,6 +3,7 @@ import { useState, useRef } from "react";
 import TopBar from "../../components/TopBar";
 import Sidebar from "../../components/Sidebar";
 import ProductGallery from "@/app/components/ProductGallery";
+import { useRouter } from "next/navigation"; // Make sure this import is present
 
 interface GalleryItem {
   src: string | ArrayBuffer | null;
@@ -11,6 +12,7 @@ interface GalleryItem {
 }
 
 export default function ProductCreate() {
+  const router = useRouter(); // Make sure this hook is defined
   const [formData, setFormData] = useState<{
     productName: string;
     description: string;
@@ -103,9 +105,8 @@ export default function ProductCreate() {
       console.log("Product created:", result);
       alert("Product saved successfully!");
       
-      // Optional: Reset form or redirect
-      // setFormData({ ... }); // reset form
-      // window.location.href = '/products'; // redirect
+      // Redirect to product list page
+      router.push('/productlist');
       
     } catch (error) {
       console.error("Error saving product:", error);
