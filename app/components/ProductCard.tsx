@@ -4,6 +4,8 @@ import React from "react";
 import { Heart } from "lucide-react";
 import Image from "next/image";
 import { useWishlist } from "../context/WishlistContext";
+import { useCart } from "../context/CartContext";
+import { toast } from "react-hot-toast";
 
 interface Product {
   id: string; // Changed from number to string to match MongoDB _id
@@ -21,6 +23,7 @@ interface ProductCardProps {
 
 const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
   const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist();
+  const { addToCart } = useCart();
   const isWishlisted = isInWishlist(product.id);
 
   // Ensure we have valid data with defaults
@@ -38,6 +41,22 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
       removeFromWishlist(product.id);
     } else {
       addToWishlist(product.id);
+    }
+  };
+
+  const handleAddToCart = () => {
+    addToCart({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      image: product.image
+    });
+    
+    // Optional: show a toast notification
+    if (typeof toast !== 'undefined') {
+      toast.success(`${product.name} added to cart!`);
+    } else {
+      alert(`${product.name} added to cart!`);
     }
   };
 
@@ -101,7 +120,10 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
         </div>
       )}
       
-      <button className="mt-3 w-full bg-black text-white py-2 rounded hover:bg-gray-800">
+      <button 
+        onClick={handleAddToCart}
+        className="mt-3 w-full bg-black text-white py-2 rounded hover:bg-gray-800 transition-colors"
+      >
         Add to Cart
       </button>
     </div>
