@@ -20,28 +20,34 @@ const ProductsPage = () => {
   const [error, setError] = useState<string | null>(null);
   const router = useRouter();
 
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch('/api/products');
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch products');
-        }
-        
-        const data = await response.json();
-        setProducts(data.products);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'An error occurred');
-        console.error('Error fetching products:', err);
-      } finally {
-        setLoading(false);
+  const fetchProducts = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/products');
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch products');
       }
-    };
+      
+      const data = await response.json();
+      setProducts(data.products);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+      console.error('Error fetching products:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchProducts();
   }, []);
+
+  // Handle product deletion and refresh list
+  const handleProductDelete = (deletedProductId: string) => {
+    // Remove the deleted product from the state
+    setProducts(products.filter(product => product._id !== deletedProductId));
+  };
 
   // Transform database products to the format expected by AdminProductCard
   const formattedProducts = products.map(product => ({
@@ -111,7 +117,11 @@ const ProductsPage = () => {
           {!loading && !error && formattedProducts.length > 0 && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {formattedProducts.map((product) => (
-                <AdminProductCart key={product.id} product={product} />
+                <AdminProductCart 
+                  key={product.id} 
+                  product={product} 
+                  onDelete={handleProductDelete}
+                />
               ))}
             </div>
           )}
