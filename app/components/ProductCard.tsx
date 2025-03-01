@@ -3,6 +3,7 @@
 import React from "react";
 import { Heart } from "lucide-react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useWishlist } from "../context/WishlistContext";
 import { useCart } from "../context/CartContext";
 import { toast } from "react-hot-toast";
@@ -22,6 +23,7 @@ interface ProductCardProps {
 }
 
 const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
+  const router = useRouter();
   const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist();
   const { addToCart } = useCart();
   const isWishlisted = isInWishlist(product.id);
@@ -44,7 +46,10 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
     }
   };
 
-  const handleAddToCart = () => {
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
     addToCart({
       id: product.id,
       name: product.name,
@@ -59,37 +64,81 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
       alert(`${product.name} added to cart!`);
     }
   };
+  
+  const navigateToProductDetail = () => {
+    router.push(`/product/${product.id}`);
+  };
+
+  // Enhanced image validation function
+  const isValidImageUrl = (url: string): boolean => {
+    if (!url) return false;
+    if (url.trim() === '') return false;
+    
+    // Check for known valid image paths
+    const validBasePaths = ['/p1.webp', '/p2.webp', '/p3.webp', '/p4.webp', 
+                          '/p5.webp', '/p6.webp', '/p7.webp', '/p8.webp', '/p9.webp',
+                          '/placeholder.png'];
+    
+    if (validBasePaths.includes(url)) return true;
+    
+    // Path starts with '/' and has a valid image extension
+    if (url.startsWith('/') && 
+        /\.(jpg|jpeg|png|webp|gif|svg)$/i.test(url)) return true;
+    
+    try {
+      // Check if it's a fully qualified URL
+      new URL(url);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  };
+
+  // Set default placeholder image
+  const placeholderImage = '/placeholder.png'; 
+  
+  // Ensure image is valid with improved validation
+  const productImage = isValidImageUrl(product.image) ? product.image : placeholderImage;
+
+  // Filter valid color images with improved validation
+  const validColorImages = Array.isArray(productWithDefaults.colors) ? 
+    productWithDefaults.colors
+      .filter(isValidImageUrl)
+      .slice(0, 3) : 
+    [];
 
   return (
-    <div className="w-[300px] min-w-[300px] bg-white shadow-md rounded-lg p-4 relative">
+    <div 
+      className="w-[300px] min-w-[300px] bg-white shadow-md rounded-lg p-4 relative cursor-pointer hover:shadow-lg transition-shadow"
+      onClick={navigateToProductDetail}
+    >
       {!hideWishlist && (
         <button 
           onClick={handleWishlistToggle}
-          className={`absolute top-3 right-3 ${isWishlisted ? 'text-red-500' : 'text-gray-600'} hover:scale-110 transition-all`}
+          className={`absolute top-3 right-3 ${isWishlisted ? 'text-red-500' : 'text-gray-600'} hover:scale-110 transition-all z-10`}
         >
           <Heart size={20} fill={isWishlisted ? "currentColor" : "none"} />
         </button>
       )}
       <div className="w-full h-60 flex items-center justify-center">
         <Image
-          src={product.image}
+          src={productImage}
           alt={product.name}
           width={240}
           height={240}
           className="w-full h-full object-contain rounded-md"
           onError={(e) => {
-            // Fallback if image fails to load
-            (e.target as HTMLImageElement).src = '/placeholder.png';
+            (e.target as HTMLImageElement).src = placeholderImage;
           }}
         />
       </div>
       <h3 className="mt-2 font-semibold">{product.name}</h3>
       <p className="text-gray-600">${product.price.toFixed(2)}</p>
       
-      {/* Color images */}
-      {productWithDefaults.colors.length > 0 && (
+      {/* Color images - only show if we have valid images */}
+      {validColorImages.length > 0 && (
         <div className="flex gap-2 mt-2">
-          {productWithDefaults.colors.slice(0, 3).map((colorImg, index) => (
+          {validColorImages.map((colorImg, index) => (
             <Image
               key={index}
               src={colorImg}
@@ -98,8 +147,7 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
               height={40}
               className="w-10 h-10 object-contain rounded-md border cursor-pointer hover:border-black"
               onError={(e) => {
-                // Fallback if image fails to load
-                (e.target as HTMLImageElement).src = '/placeholder.png';
+                (e.target as HTMLImageElement).src = placeholderImage;
               }}
             />
           ))}

@@ -11,6 +11,21 @@ import { Trash, Plus, Minus, ShoppingBag } from "lucide-react";
 const CartPage = () => {
   const { cartItems, removeFromCart, updateQuantity, getCartTotal } = useCart();
   const total = getCartTotal();
+  const placeholderImage = '/placeholder.png';
+
+  // Helper function to validate image URLs
+  const isValidImageUrl = (url: string): boolean => {
+    if (!url) return false;
+    if (url.trim() === '') return false;
+    
+    try {
+      if (url.startsWith('/')) return true;
+      new URL(url);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
@@ -36,56 +51,63 @@ const CartPage = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="md:col-span-2 space-y-4">
-              {cartItems.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-white p-4 rounded-lg shadow-sm"
-                >
-                  <div className="flex items-center space-x-4">
-                    <div className="relative w-20 h-20">
-                      <Image
-                        src={item.image}
-                        alt={item.name}
-                        fill
-                        className="object-contain rounded"
-                        sizes="80px"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = '/placeholder.png';
-                        }}
-                      />
-                    </div>
-                    <div>
-                      <h2 className="text-lg font-medium">{item.name}</h2>
-                      <p className="text-gray-600">${item.price.toFixed(2)}</p>
-                    </div>
-                  </div>
+              {cartItems.map((item) => {
+                // Ensure image is valid
+                const itemImage = isValidImageUrl(item.image) ? 
+                  (item.image.startsWith('data:') ? placeholderImage : item.image) : 
+                  placeholderImage;
                   
-                  <div className="flex items-center space-x-6 mt-4 sm:mt-0 self-end sm:self-auto">
-                    <div className="flex items-center border rounded-md">
+                return (
+                  <div
+                    key={item.id}
+                    className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-white p-4 rounded-lg shadow-sm"
+                  >
+                    <div className="flex items-center space-x-4">
+                      <div className="relative w-20 h-20">
+                        <Image
+                          src={itemImage}
+                          alt={item.name}
+                          fill
+                          className="object-contain rounded"
+                          sizes="80px"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).src = placeholderImage;
+                          }}
+                        />
+                      </div>
+                      <div>
+                        <h2 className="text-lg font-medium">{item.name}</h2>
+                        <p className="text-gray-600">${item.price.toFixed(2)}</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center space-x-6 mt-4 sm:mt-0 self-end sm:self-auto">
+                      <div className="flex items-center border rounded-md">
+                        <button
+                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                          className="px-3 py-1 hover:bg-gray-100 rounded-l-md"
+                          disabled={item.quantity <= 1}
+                        >
+                          <Minus size={16} />
+                        </button>
+                        <span className="px-3 py-1 border-x">{item.quantity}</span>
+                        <button
+                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                          className="px-3 py-1 hover:bg-gray-100 rounded-r-md"
+                        >
+                          <Plus size={16} />
+                        </button>
+                      </div>
                       <button
-                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                        className="px-3 py-1 hover:bg-gray-100 rounded-l-md"
-                        disabled={item.quantity <= 1}
+                        onClick={() => removeFromCart(item.id)}
+                        className="text-red-500 hover:text-red-700"
                       >
-                        <Minus size={16} />
-                      </button>
-                      <span className="px-3 py-1 border-x">{item.quantity}</span>
-                      <button
-                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                        className="px-3 py-1 hover:bg-gray-100 rounded-r-md"
-                      >
-                        <Plus size={16} />
+                        <Trash size={20} />
                       </button>
                     </div>
-                    <button
-                      onClick={() => removeFromCart(item.id)}
-                      className="text-red-500 hover:text-red-700"
-                    >
-                      <Trash size={20} />
-                    </button>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
             
             {/* Order Summary */}

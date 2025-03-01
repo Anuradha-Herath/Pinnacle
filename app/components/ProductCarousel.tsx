@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import ProductCard from "./ProductCard";
 
@@ -46,9 +46,35 @@ const ProductCarousel: React.FC<ProductCarouselProps> = ({
     }
   };
 
+  // Add console logging to debug
+  useEffect(() => {
+    if (products.length > 0) {
+      console.log("ProductCarousel received products:", products);
+    }
+  }, [products]);
+
+  // Improve title styling based on background
+  const titleClass = title === "RECENTLY VIEWED" || title === "YOU MIGHT ALSO LIKE" 
+    ? "text-2xl font-bold mb-4 text-black" 
+    : "text-2xl font-bold mb-4 text-white";
+
+  // More robust validation for products
+  const validProducts = products
+    .filter(product => product && typeof product === 'object') // Ensure it's a valid object
+    .map(product => ({
+      ...product,
+      image: product.image || '/placeholder.png',
+      colors: Array.isArray(product.colors) 
+        ? product.colors.filter(c => c && typeof c === 'string').slice(0, 3) 
+        : [],
+      sizes: Array.isArray(product.sizes) 
+        ? product.sizes.filter(s => s && typeof s === 'string')
+        : []
+    }));
+
   return (
     <div className="my-8 px-4 md:px-8 lg:px-12">
-      <h2 className="text-2xl font-bold mb-4 text-white">{title}</h2>
+      <h2 className={titleClass}>{title}</h2>
       <div className="relative">
         {/* Left Arrow */}
         {showLeftArrow && (
@@ -95,9 +121,9 @@ const ProductCarousel: React.FC<ProductCarouselProps> = ({
                 <div className="h-10 bg-gray-600 rounded w-full mt-3"></div>
               </div>
             ))
-          ) : products.length > 0 ? (
-            // Actual products
-            products.map((product) => (
+          ) : validProducts.length > 0 ? (
+            // Use validated products array
+            validProducts.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))
           ) : (
