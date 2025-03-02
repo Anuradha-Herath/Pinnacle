@@ -57,9 +57,13 @@ const CartPage = () => {
                   (item.image.startsWith('data:') ? placeholderImage : item.image) : 
                   placeholderImage;
                   
+                // Generate unique key including variants
+                const itemKey = item.variantKey || 
+                  `${item.id}_${item.size || 'default'}_${item.color || 'default'}`;
+                  
                 return (
                   <div
-                    key={item.variantKey || item.id}
+                    key={itemKey}
                     className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-white p-4 rounded-lg shadow-sm"
                   >
                     <div className="flex items-center space-x-4">
@@ -77,34 +81,35 @@ const CartPage = () => {
                       </div>
                       <div>
                         <h2 className="text-lg font-medium">{item.name}</h2>
-                        <div className="text-gray-500 text-sm">
+                        <div className="text-gray-500 text-sm space-y-1">
                           {/* Display variant information if available */}
-                          {item.size && <span className="mr-2">Size: {item.size}</span>}
-                          {item.color && 
-                            <span className="flex items-center">
+                          {item.size && <p>Size: {item.size}</p>}
+                          {item.color && item.color !== item.image && (
+                            <div className="flex items-center">
                               <span className="mr-1">Color:</span>
                               <span className="relative w-4 h-4 rounded-full overflow-hidden inline-block align-middle">
                                 <Image 
                                   src={item.color} 
                                   alt="Color" 
-                                  fill 
+                                  width={16}
+                                  height={16}
                                   className="object-cover"
                                   onError={(e) => {
                                     (e.target as HTMLImageElement).src = placeholderImage;
                                   }}
                                 />
                               </span>
-                            </span>
-                          }
+                            </div>
+                          )}
                         </div>
-                        <p className="text-gray-600">${item.price.toFixed(2)}</p>
+                        <p className="text-gray-600 mt-1">${item.price.toFixed(2)}</p>
                       </div>
                     </div>
                     
                     <div className="flex items-center space-x-6 mt-4 sm:mt-0 self-end sm:self-auto">
                       <div className="flex items-center border rounded-md">
                         <button
-                          onClick={() => updateQuantity(item.variantKey || item.id, item.quantity - 1)}
+                          onClick={() => updateQuantity(itemKey, item.quantity - 1)}
                           className="px-3 py-1 hover:bg-gray-100 rounded-l-md"
                           disabled={item.quantity <= 1}
                         >
@@ -112,14 +117,14 @@ const CartPage = () => {
                         </button>
                         <span className="px-3 py-1 border-x">{item.quantity}</span>
                         <button
-                          onClick={() => updateQuantity(item.variantKey || item.id, item.quantity + 1)}
+                          onClick={() => updateQuantity(itemKey, item.quantity + 1)}
                           className="px-3 py-1 hover:bg-gray-100 rounded-r-md"
                         >
                           <Plus size={16} />
                         </button>
                       </div>
                       <button
-                        onClick={() => removeFromCart(item.variantKey || item.id)}
+                        onClick={() => removeFromCart(itemKey)}
                         className="text-red-500 hover:text-red-700"
                       >
                         <Trash size={20} />

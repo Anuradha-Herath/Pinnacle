@@ -180,7 +180,7 @@ export default function EnhancedProductDetailPage() {
     setQuantity(Math.max(1, quantity + value));
   };
   
-  // Add to cart handler with variant information
+  // Add to cart handler with quantity support
   const handleAddToCart = () => {
     if (!product) return;
     
@@ -201,9 +201,10 @@ export default function EnhancedProductDetailPage() {
       image: selectedImage,
       size: selectedSize || undefined,
       color: selectedImage, // Use the image URL as the color identifier
+      quantity: quantity // Pass the selected quantity
     });
     
-    toast.success(`${product.name} added to cart!`);
+    toast.success(`${quantity} ${product.name} added to cart!`);
   };
   
   // Toggle wishlist handler

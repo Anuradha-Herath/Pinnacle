@@ -8,18 +8,26 @@ export interface CartItem {
   price: number;
   image: string;
   quantity: number;
-  // Add new fields for variants
   size?: string;
   color?: string;
-  // Generate a unique key for each variant combination
   variantKey?: string;
+}
+
+interface AddToCartParams {
+  id: string;
+  name: string;
+  price: number;
+  image: string;
+  size?: string;
+  color?: string;
+  quantity?: number; // Make quantity optional in the params
 }
 
 interface CartContextType {
   cartItems: CartItem[];
-  addToCart: (product: Omit<CartItem, 'quantity' | 'variantKey'>) => void;
-  removeFromCart: (variantKey: string) => void;
-  updateQuantity: (variantKey: string, quantity: number) => void;
+  addToCart: (product: AddToCartParams) => void;
+  removeFromCart: (id: string) => void;
+  updateQuantity: (id: string, quantity: number) => void;
   clearCart: () => void;
   getCartTotal: () => number;
   getCartCount: () => number;
@@ -52,25 +60,37 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return `${id}_${size || 'default'}_${color || 'default'}`;
   };
 
-  const addToCart = (product: Omit<CartItem, 'quantity' | 'variantKey'>) => {
+  const addToCart = (product: AddToCartParams) => {
     setCartItems(prevItems => {
       // Generate a variant key for this product configuration
       const variantKey = generateVariantKey(product.id, product.size, product.color);
       
-      // Check if this specific variant already exists in cart
-      const existingItemIndex = prevItems.findIndex(item => item.variantKey === variantKey);
+      // Use provided quantity or default to 1
+      const itemQuantity = product.quantity || 1;
+      
+      // Check if item already exists in cart
+      const existingItemIndex = prevItems.findIndex(item => 
+        item.variantKey === variantKey || 
+        (item.id === product.id && 
+         item.size === product.size && 
+         item.color === product.color)
+      );
       
       if (existingItemIndex >= 0) {
-        // This exact variant exists, increase quantity
+        // Item exists, increase quantity by the specified amount
         const updatedItems = [...prevItems];
         updatedItems[existingItemIndex] = {
           ...updatedItems[existingItemIndex],
-          quantity: updatedItems[existingItemIndex].quantity + 1
+          quantity: updatedItems[existingItemIndex].quantity + itemQuantity
         };
         return updatedItems;
       } else {
-        // This variant doesn't exist, add new item with quantity 1
-        return [...prevItems, { ...product, variantKey, quantity: 1 }];
+        // Item doesn't exist, add new item with specified quantity
+        return [...prevItems, { 
+          ...product, 
+          variantKey, 
+          quantity: itemQuantity 
+        }];
       }
     });
   };
