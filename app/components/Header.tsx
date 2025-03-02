@@ -17,6 +17,16 @@ interface Suggestion {
   type?: string;
 }
 
+// Define types for categories
+interface Category {
+  _id: string;
+  title: string;
+  description: string;
+  priceRange: string;
+  thumbnailImage: string;
+  mainCategory: string;
+}
+
 const Header = () => {
   const router = useRouter();
   const { wishlist } = useWishlist();
@@ -27,6 +37,11 @@ const Header = () => {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [menCategories, setMenCategories] = useState<Category[]>([]);
+  const [womenCategories, setWomenCategories] = useState<Category[]>([]);
+  const [accessoriesCategories, setAccessoriesCategories] = useState<Category[]>([]);
+  const [categoriesLoading, setCategoriesLoading] = useState(false);
   
   // Refs for click outside detection
   const searchRef = useRef<HTMLDivElement>(null);
@@ -100,96 +115,37 @@ const Header = () => {
     }, 200);
   };
 
-  // Define dropdown data with proper structure
-  const dropdownData = {
-    mens: {
-      Clothing: {
-        items: [
-          "Tees",
-          "Tanks",
-          "Jackets",
-          "Shirts",
-          "Jeans",
-          "Pants",
-          "Shorts",
-          "Joggers",
-          "Compression",
-          "Boxers",
-        ],
-        image: "/images/mens-clothing.jpg",
-      },
-      Footwear: {
-        items: ["Shoes", "Sliders", "Flip Flops"],
-        image: "/images/mens-footwear.jpg",
-      },
-      Accessories: {
-        items: ["Hats", "Caps", "Socks"],
-        image: "/images/mens-accessories.jpg",
-      },
-      rightImage: "/p1.webp", // Large right image for Mens dropdown
-    },
-    womens: {
-      Clothing: {
-        items: [
-          "Tees",
-          "Tanks",
-          "Jackets",
-          "Shirts",
-          "Jeans",
-          "Pants",
-          "Shorts",
-          "Joggers",
-          "Compression",
-          "Boxers",
-          "Dresses",
-          "Skirts",
-          "Leggings",
-        ],
-        image: "/images/womens-clothing.jpg",
-      },
-      Footwear: {
-        items: ["Shoes", "Sliders", "Flip Flops", "Heels", "Boots", "Sandals"],
-        image: "/images/womens-footwear.jpg",
-      },
-      Accessories: {
-        items: [
-          "Hats",
-          "Caps",
-          "Socks",
-          "Scarves",
-          "Gloves",
-          "Belts",
-          "Jewelry",
-        ],
-        image: "/images/womens-accessories.jpg",
-      },
-      rightImage: "/p2.webp", // Large right image for Womens dropdown
-    },
-    accessories: {
-      Accessories: {
-        items: [
-          "Hats",
-          "Caps",
-          "Socks",
-          "Bags",
-          "Jewelry",
-          "Watches",
-          "Sunglasses",
-          "Wallets",
-        ],
-        image: "/images/accessories-main.jpg",
-      },
-      rightImage: "/p3.webp", // Large right image for Accessories dropdown
-    },
-  };
-
-  // Safely remove Collections property if it exists
-  if (dropdownData.mens && 'Collections' in dropdownData.mens) {
-    delete dropdownData.mens.Collections;
-  }
-  if (dropdownData.womens && 'Collections' in dropdownData.womens) {
-    delete dropdownData.womens.Collections;
-  }
+  // Fetch categories from the API
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setCategoriesLoading(true);
+        const response = await fetch('/api/categories');
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch categories');
+        }
+        
+        const data = await response.json();
+        setCategories(data.categories || []);
+        
+        // Group categories by mainCategory
+        const men = data.categories.filter((cat: Category) => cat.mainCategory === 'Men');
+        const women = data.categories.filter((cat: Category) => cat.mainCategory === 'Women');
+        const accessories = data.categories.filter((cat: Category) => cat.mainCategory === 'Accessories');
+        
+        setMenCategories(men);
+        setWomenCategories(women);
+        setAccessoriesCategories(accessories);
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+      } finally {
+        setCategoriesLoading(false);
+      }
+    };
+    
+    fetchCategories();
+  }, []);
 
   useEffect(() => {
     const handleDocumentClick = (event: MouseEvent) => {
@@ -338,10 +294,10 @@ const Header = () => {
               onMouseEnter={() => handleMouseEnter("mens")}
               onMouseLeave={handleMouseLeave}
             >
-              <button className="flex items-center hover:text-gray-300">
+              <Link href="/category/Men" className="flex items-center hover:text-gray-300">
                 Mens
                 <ChevronDown className="ml-1 h-4 w-4" />
-              </button>
+              </Link>
               
               {openDropdown === "mens" && (
                 <div
@@ -353,60 +309,66 @@ const Header = () => {
                 >
                   {/* Mens dropdown content */}
                   <div className="grid grid-cols-3 gap-x-4">
-                    {Object.entries(dropdownData.mens)
-                      .filter(([key]) => key !== "rightImage")
-                      .map(([category, categoryData]) => (
-                        <div key={category} className="mb-6">
-                          <h3 className="font-semibold text-lg mb-2 border-b pb-1">{category}</h3>
-                          <ul className="space-y-2">
-                            {/* @ts-ignore - We know categoryData has items property */}
-                            {categoryData.items && categoryData.items.map((item: string) => (
-                              <li key={item}>
-                                <Link 
-                                  href={`/mens/${category.toLowerCase()}/${item.toLowerCase()}`} 
-                                  className="hover:text-orange-500 block py-1"
-                                >
-                                  {item}
-                                </Link>
-                              </li>
+                    {categoriesLoading ? (
+                      <div className="col-span-3 text-center py-8">
+                        <div className="mx-auto h-6 w-6 border-2 border-t-orange-500 rounded-full animate-spin"></div>
+                        <p className="mt-2 text-gray-500">Loading categories...</p>
+                      </div>
+                    ) : menCategories.length === 0 ? (
+                      <div className="col-span-3 text-center py-8">
+                        <p className="text-gray-500">No categories found</p>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Group by subcategories - we'll show all men categories directly for now */}
+                        <div className="col-span-3">
+                          <h3 className="font-semibold text-lg mb-2 border-b pb-1">Men's Categories</h3>
+                          <div className="grid grid-cols-3 gap-x-4 gap-y-2">
+                            {menCategories.map((category) => (
+                              <Link 
+                                key={category._id} 
+                                href={`/category/${encodeURIComponent(category.mainCategory)}/${encodeURIComponent(category.title)}`}
+                                className="hover:text-orange-500 py-1"
+                              >
+                                {category.title}
+                              </Link>
                             ))}
-                          </ul>
+                          </div>
                         </div>
-                      ))}
-                    <div className="col-span-3 border-t border-gray-200 mt-2 pt-2">
+                      </>
+                    )}
+                    <div className="col-span-3 border-t border-gray-200 mt-4 pt-2">
                       <Link
-                        href="/mens"
+                        href="/category/Men"
                         className="block px-4 py-2 hover:bg-gray-200 rounded-md text-center font-semibold"
                       >
-                        Shop All Mens
+                        Shop All Men's
                       </Link>
                     </div>
                   </div>
                   
                   {/* Right side image */}
                   <div className="pl-4 border-l border-gray-200 flex items-center justify-center">
-                    {dropdownData.mens.rightImage && (
-                      <img
-                        src={dropdownData.mens.rightImage}
-                        alt="Mens Collection"
-                        className="max-h-[450px] w-auto rounded-md object-contain"
-                      />
-                    )}
+                    <img
+                      src="/p1.webp"
+                      alt="Men's Collection"
+                      className="max-h-[450px] w-auto rounded-md object-contain"
+                    />
                   </div>
                 </div>
               )}
             </li>
 
-            {/* Womens Dropdown */}
+            {/* Women's Dropdown */}
             <li
               className="relative"
               onMouseEnter={() => handleMouseEnter("womens")}
               onMouseLeave={handleMouseLeave}
             >
-              <button className="flex items-center hover:text-gray-300">
+              <Link href="/category/Women" className="flex items-center hover:text-gray-300">
                 Womens
                 <ChevronDown className="ml-1 h-4 w-4" />
-              </button>
+              </Link>
               
               {openDropdown === "womens" && (
                 <div
@@ -416,47 +378,53 @@ const Header = () => {
                   onMouseEnter={() => clearTimeout(timeout)}
                   onMouseLeave={handleMouseLeave}
                 >
-                  {/* Left side - Categories and Items */}
+                  {/* Women's dropdown content */}
                   <div className="grid grid-cols-3 gap-x-4">
-                    {Object.entries(dropdownData.womens)
-                      .filter(([key]) => key !== "rightImage")
-                      .map(([category, categoryData]) => (
-                        <div key={category} className="mb-6">
-                          <h3 className="font-semibold text-lg mb-2 border-b pb-1">{category}</h3>
-                          <ul className="space-y-2">
-                            {/* @ts-ignore - We know categoryData has items property */}
-                            {categoryData.items && categoryData.items.map((item: string) => (
-                              <li key={item}>
-                                <Link 
-                                  href={`/womens/${category.toLowerCase()}/${item.toLowerCase()}`} 
-                                  className="hover:text-orange-500 block py-1"
-                                >
-                                  {item}
-                                </Link>
-                              </li>
+                    {categoriesLoading ? (
+                      <div className="col-span-3 text-center py-8">
+                        <div className="mx-auto h-6 w-6 border-2 border-t-orange-500 rounded-full animate-spin"></div>
+                        <p className="mt-2 text-gray-500">Loading categories...</p>
+                      </div>
+                    ) : womenCategories.length === 0 ? (
+                      <div className="col-span-3 text-center py-8">
+                        <p className="text-gray-500">No categories found</p>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Display women categories */}
+                        <div className="col-span-3">
+                          <h3 className="font-semibold text-lg mb-2 border-b pb-1">Women's Categories</h3>
+                          <div className="grid grid-cols-3 gap-x-4 gap-y-2">
+                            {womenCategories.map((category) => (
+                              <Link 
+                                key={category._id} 
+                                href={`/category/${encodeURIComponent(category.mainCategory)}/${encodeURIComponent(category.title)}`}
+                                className="hover:text-orange-500 py-1"
+                              >
+                                {category.title}
+                              </Link>
                             ))}
-                          </ul>
+                          </div>
                         </div>
-                      ))}
-                    <div className="col-span-3 border-t border-gray-200 mt-2 pt-2">
+                      </>
+                    )}
+                    <div className="col-span-3 border-t border-gray-200 mt-4 pt-2">
                       <Link
-                        href="/womens"
+                        href="/category/Women"
                         className="block px-4 py-2 hover:bg-gray-200 rounded-md text-center font-semibold"
                       >
-                        Shop All Womens
+                        Shop All Women's
                       </Link>
                     </div>
                   </div>
-
+                  
                   {/* Right side image */}
                   <div className="pl-4 border-l border-gray-200 flex items-center justify-center">
-                    {dropdownData.womens.rightImage && (
-                      <img
-                        src={dropdownData.womens.rightImage}
-                        alt="Womens Collection"
-                        className="max-h-[300px] w-auto rounded-md object-contain"
-                      />
-                    )}
+                    <img
+                      src="/p2.webp"
+                      alt="Women's Collection"
+                      className="max-h-[300px] w-auto rounded-md object-contain"
+                    />
                   </div>
                 </div>
               )}
@@ -468,10 +436,10 @@ const Header = () => {
               onMouseEnter={() => handleMouseEnter("accessories")}
               onMouseLeave={handleMouseLeave}
             >
-              <button className="flex items-center hover:text-gray-300">
+              <Link href="/category/Accessories" className="flex items-center hover:text-gray-300">
                 Accessories
                 <ChevronDown className="ml-1 h-4 w-4" />
-              </button>
+              </Link>
               
               {openDropdown === "accessories" && (
                 <div
@@ -481,47 +449,53 @@ const Header = () => {
                   onMouseEnter={() => clearTimeout(timeout)}
                   onMouseLeave={handleMouseLeave}
                 >
-                  {/* Left side - Categories and Items */}
+                  {/* Accessories dropdown content */}
                   <div className="grid grid-cols-3 gap-x-4">
-                    {Object.entries(dropdownData.accessories)
-                      .filter(([key]) => key !== "rightImage")
-                      .map(([category, categoryData]) => (
-                        <div key={category} className="mb-6">
-                          <h3 className="font-semibold text-lg mb-2 border-b pb-1">{category}</h3>
-                          <ul className="space-y-2">
-                            {/* @ts-ignore - We know categoryData has items property */}
-                            {categoryData.items && categoryData.items.map((item: string) => (
-                              <li key={item}>
-                                <Link 
-                                  href={`/accessories/${category.toLowerCase()}/${item.toLowerCase()}`} 
-                                  className="hover:text-orange-500 block py-1"
-                                >
-                                  {item}
-                                </Link>
-                              </li>
+                    {categoriesLoading ? (
+                      <div className="col-span-3 text-center py-8">
+                        <div className="mx-auto h-6 w-6 border-2 border-t-orange-500 rounded-full animate-spin"></div>
+                        <p className="mt-2 text-gray-500">Loading categories...</p>
+                      </div>
+                    ) : accessoriesCategories.length === 0 ? (
+                      <div className="col-span-3 text-center py-8">
+                        <p className="text-gray-500">No categories found</p>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Display accessories categories */}
+                        <div className="col-span-3">
+                          <h3 className="font-semibold text-lg mb-2 border-b pb-1">Accessories Categories</h3>
+                          <div className="grid grid-cols-3 gap-x-4 gap-y-2">
+                            {accessoriesCategories.map((category) => (
+                              <Link 
+                                key={category._id} 
+                                href={`/category/${encodeURIComponent(category.mainCategory)}/${encodeURIComponent(category.title)}`}
+                                className="hover:text-orange-500 py-1"
+                              >
+                                {category.title}
+                              </Link>
                             ))}
-                          </ul>
+                          </div>
                         </div>
-                      ))}
-                    <div className="col-span-3 border-t border-gray-200 mt-2 pt-2">
+                      </>
+                    )}
+                    <div className="col-span-3 border-t border-gray-200 mt-4 pt-2">
                       <Link
-                        href="/accessories"
+                        href="/category/Accessories"
                         className="block px-4 py-2 hover:bg-gray-200 rounded-md text-center font-semibold"
                       >
                         Shop All Accessories
                       </Link>
                     </div>
                   </div>
-
+                  
                   {/* Right side image */}
                   <div className="pl-4 border-l border-gray-200 flex items-center justify-center">
-                    {dropdownData.accessories.rightImage && (
-                      <img
-                        src={dropdownData.accessories.rightImage}
-                        alt="Accessories Collection"
-                        className="max-h-[300px] w-auto rounded-md object-contain"
-                      />
-                    )}
+                    <img
+                      src="/p3.webp"
+                      alt="Accessories Collection"
+                      className="max-h-[300px] w-auto rounded-md object-contain"
+                    />
                   </div>
                 </div>
               )}
