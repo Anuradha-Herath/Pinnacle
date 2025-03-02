@@ -90,6 +90,7 @@ export async function PUT(
         title: body.title,
         description: body.description,
         priceRange: body.priceRange,
+        mainCategory: body.mainCategory, // Add mainCategory field
         ...(body.thumbnailImage && { thumbnailImage: body.thumbnailImage })
       },
       { new: true }

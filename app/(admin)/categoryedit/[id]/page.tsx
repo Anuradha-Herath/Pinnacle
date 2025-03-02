@@ -1,14 +1,25 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useRef } from "react";
+import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
-import Sidebar from "../../components/Sidebar";
-import TopBar from "../../components/TopBar";
+import Sidebar from "../../../components/Sidebar";
+import TopBar from "../../../components/TopBar";
 import { PhotoIcon } from "@heroicons/react/24/solid";
 
-export default function CategoryCreate() {
+interface Category {
+  _id: string;
+  title: string;
+  description: string;
+  priceRange: string;
+  thumbnailImage: string;
+  mainCategory: string;
+}
+
+export default function CategoryEdit() {
   const router = useRouter();
+  const params = useParams();
+  const id = params?.id as string;
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Form state
@@ -16,8 +27,45 @@ export default function CategoryCreate() {
   const [description, setDescription] = useState("");
   const [priceRange, setPriceRange] = useState("");
   const [thumbnailImage, setThumbnailImage] = useState<string | null>(null);
-  const [mainCategory, setMainCategory] = useState<string>(""); // New state for main category
+  const [originalThumbnailUrl, setOriginalThumbnailUrl] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [mainCategory, setMainCategory] = useState<string>("");
+
+  // Fetch category data
+  useEffect(() => {
+    const fetchCategory = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(`/api/categories/${id}`);
+        
+        if (!response.ok) {
+          throw new Error("Failed to fetch category");
+        }
+        
+        const data = await response.json();
+        const category = data.category;
+        
+        // Set form fields
+        setCategoryTitle(category.title);
+        setDescription(category.description || "");
+        setPriceRange(category.priceRange || "");
+        setMainCategory(category.mainCategory || "");
+        setOriginalThumbnailUrl(category.thumbnailImage || null);
+        
+      } catch (error) {
+        console.error("Error fetching category:", error);
+        setError(error instanceof Error ? error.message : "Failed to load category");
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    if (id) {
+      fetchCategory();
+    }
+  }, [id]);
 
   // Handle thumbnail image upload
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -31,8 +79,8 @@ export default function CategoryCreate() {
     }
   };
 
-  // Handle form submission with improved error handling
-  const handleCreateCategory = async () => {
+  // Handle form submission
+  const handleUpdateCategory = async () => {
     if (!categoryTitle.trim() || !mainCategory) {
       alert("Category title and main category are required!");
       return;
@@ -41,8 +89,8 @@ export default function CategoryCreate() {
     try {
       setIsSubmitting(true);
       
-      const response = await fetch('/api/categories', {
-        method: 'POST',
+      const response = await fetch(`/api/categories/${id}`, {
+        method: 'PUT',
         headers: {
           'Content-Type': 'application/json'
         },
@@ -50,38 +98,102 @@ export default function CategoryCreate() {
           title: categoryTitle,
           description,
           priceRange,
-          thumbnailImage,
-          mainCategory
+          thumbnailImage: thumbnailImage || originalThumbnailUrl,
+          mainCategory // Include main category
         })
       });
       
-      const data = await response.json();
-      
       if (!response.ok) {
-        // Check specifically for duplicate key error
-        if (response.status === 500 && data.error && data.error.includes('duplicate key error')) {
-          throw new Error(`A category with the title "${categoryTitle}" already exists. Please use a different title.`);
-        }
-        throw new Error(data.error || 'Failed to create category');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update category');
       }
       
       // Success - redirect to category list
-      alert('Category created successfully!');
+      alert('Category updated successfully!');
       router.push("/categorylist");
       
     } catch (error) {
-      console.error("Error creating category:", error);
-      alert(`${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error("Error updating category:", error);
+      alert(`Failed to update category: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  // Handle category deletion
+  const handleDeleteCategory = async () => {
+    if (!confirm("Are you sure you want to delete this category?")) {
+      return;
+    }
+    
+    try {
+      setIsSubmitting(true);
+      
+      const response = await fetch(`/api/categories/${id}`, {
+        method: 'DELETE'
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete category');
+      }
+      
+      // Success - redirect to category list
+      alert('Category deleted successfully!');
+      router.push("/categorylist");
+      
+    } catch (error) {
+      console.error("Error deleting category:", error);
+      alert(`Failed to delete category: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="flex">
+        <Sidebar />
+        <div className="min-h-screen bg-gray-50 flex-1">
+          <TopBar title="Edit Category" />
+          <div className="flex justify-center items-center h-[calc(100vh-64px)]">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="flex">
+        <Sidebar />
+        <div className="min-h-screen bg-gray-50 flex-1">
+          <TopBar title="Edit Category" />
+          <div className="p-6">
+            <div className="bg-red-100 text-red-700 p-4 rounded-md text-center">
+              <h2 className="text-lg font-semibold mb-2">Error</h2>
+              <p>{error}</p>
+              <button 
+                onClick={() => router.push('/categorylist')} 
+                className="mt-4 bg-gray-500 text-white py-2 px-4 rounded hover:bg-gray-600 transition-colors"
+              >
+                Back to Categories
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex">
       <Sidebar />
       <div className="min-h-screen bg-gray-50 flex-1">
-        <TopBar title="Create Category" />
+        <TopBar title="Edit Category" />
         
         <div className="p-6">
           {/* Breadcrumb Navigation */}
@@ -90,12 +202,12 @@ export default function CategoryCreate() {
               Categories
             </Link>{" "}
             &gt;{" "}
-            <span className="text-orange-500 font-medium">Create</span>
+            <span className="text-orange-500 font-medium">{categoryTitle}</span>
           </div>
 
-          {/* Add Thumbnail Photo Section */}
+          {/* Category Thumbnail Section */}
           <div className="bg-white p-6 rounded-lg shadow-md mb-6 max-w-3xl mx-auto">
-            <h2 className="text-lg font-semibold mb-4">Add Thumbnail Photo</h2>
+            <h2 className="text-lg font-semibold mb-4">Category Thumbnail</h2>
             <input
               type="file"
               ref={fileInputRef}
@@ -104,16 +216,24 @@ export default function CategoryCreate() {
               className="hidden"
             />
             
-            {thumbnailImage ? (
+            {thumbnailImage || originalThumbnailUrl ? (
               <div className="relative h-48 mb-3">
                 <img 
-                  src={thumbnailImage} 
+                  src={thumbnailImage || originalThumbnailUrl || '/placeholder.png'} 
                   alt="Category Thumbnail" 
                   className="h-full w-auto mx-auto object-contain" 
                 />
                 <button 
-                  onClick={() => setThumbnailImage(null)} 
+                  onClick={() => {
+                    setThumbnailImage(null);
+                    if (thumbnailImage) {
+                      // If we're showing an uploaded image, revert to original
+                      // Otherwise, clear everything
+                      setOriginalThumbnailUrl(null);
+                    }
+                  }} 
                   className="absolute top-2 right-2 bg-white rounded-full p-1 shadow"
+                  type="button"
                 >
                   ✕
                 </button>
@@ -130,11 +250,11 @@ export default function CategoryCreate() {
             )}
           </div>
 
-          {/* General Information Section */}
+          {/* Category Information Form */}
           <div className="bg-white p-6 rounded-lg shadow-md max-w-3xl mx-auto">
-            <h2 className="text-lg font-semibold mb-4">General Information</h2>
+            <h2 className="text-lg font-semibold mb-4">Category Information</h2>
             <div className="space-y-4">
-              {/* Main Category Selection - New Field */}
+              {/* Main Category Dropdown - New Field */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Main Category <span className="text-red-500">*</span>
@@ -151,7 +271,6 @@ export default function CategoryCreate() {
                   <option value="Accessories">Accessories</option>
                 </select>
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Category Title <span className="text-red-500">*</span>
@@ -193,20 +312,32 @@ export default function CategoryCreate() {
           </div>
 
           {/* Action Buttons */}
-          <div className="flex justify-end mt-6 max-w-3xl mx-auto">
+          <div className="flex justify-end mt-6 max-w-3xl mx-auto space-x-3">
+            <button
+              onClick={handleDeleteCategory}
+              className="bg-red-500 text-white px-6 py-2 rounded-md hover:bg-red-600 transition-colors"
+              disabled={isSubmitting}
+              type="button"
+            >
+              {isSubmitting ? 'PROCESSING...' : 'DELETE'}
+            </button>
+            
             <button
               onClick={() => router.push("/categorylist")}
-              className="bg-gray-300 text-gray-700 px-6 py-2 rounded-md hover:bg-gray-400 transition-colors mr-4"
+              className="bg-gray-300 text-gray-700 px-6 py-2 rounded-md hover:bg-gray-400 transition-colors"
               disabled={isSubmitting}
+              type="button"
             >
               CANCEL
             </button>
+            
             <button
-              onClick={handleCreateCategory}
+              onClick={handleUpdateCategory}
               className={`bg-orange-500 text-white px-6 py-2 rounded-md hover:bg-orange-600 transition-colors ${isSubmitting ? 'opacity-70 cursor-wait' : ''}`}
               disabled={isSubmitting}
+              type="button"
             >
-              {isSubmitting ? 'CREATING...' : 'CREATE CATEGORY'}
+              {isSubmitting ? 'UPDATING...' : 'UPDATE'}
             </button>
           </div>
         </div>

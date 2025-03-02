@@ -5,6 +5,7 @@ export interface ICategory extends Document {
   description: string;
   priceRange: string;
   thumbnailImage: string;
+  mainCategory: string; // New field for main category
   createdAt: Date;
   updatedAt: Date;
 }
@@ -28,6 +29,11 @@ const CategorySchema: Schema = new Schema(
     thumbnailImage: {
       type: String,
       default: '', // Empty string if no image is uploaded
+    },
+    mainCategory: {
+      type: String,
+      enum: ['Men', 'Women', 'Accessories'], // Limit to these three options
+      required: [true, 'Please select a main category'],
     },
   },
   {

@@ -12,6 +12,7 @@ interface Category {
   description?: string;
   priceRange?: string;
   thumbnailImage?: string;
+  mainCategory: string; // Add mainCategory to the interface
   createdAt: string;
 }
 
@@ -20,6 +21,7 @@ export default function CategoryList() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState<string>("All"); // Add filter state
 
   // Fetch categories on component mount
   useEffect(() => {
@@ -27,11 +29,11 @@ export default function CategoryList() {
       try {
         setLoading(true);
         const response = await fetch("/api/categories");
-        
+
         if (!response.ok) {
           throw new Error("Failed to fetch categories");
         }
-        
+
         const data = await response.json();
         setCategories(data.categories);
       } catch (error) {
@@ -59,7 +61,7 @@ export default function CategoryList() {
 
         // Remove the category from the list
         setCategories(categories.filter((category) => category._id !== id));
-        
+
         alert("Category deleted successfully");
       } catch (error) {
         console.error("Error deleting category:", error);
@@ -68,16 +70,38 @@ export default function CategoryList() {
     }
   };
 
+  // Get filtered categories
+  const filteredCategories = filter === "All"
+    ? categories
+    : categories.filter(category => category.mainCategory === filter);
+
   return (
     <div className="flex">
       <Sidebar />
       <div className="min-h-screen bg-gray-50 flex-1">
         <TopBar title="Category List" />
-        
+
         <div className="p-6">
-          {/* Header */}
+          {/* Header with Filter */}
           <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-bold">Categories</h1>
+            <div className="flex items-center space-x-4">
+              <h1 className="text-2xl font-bold">Categories</h1>
+
+              {/* Main Category Filter */}
+              <div className="ml-4">
+                <select
+                  value={filter}
+                  onChange={(e) => setFilter(e.target.value)}
+                  className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                >
+                  <option value="All">All Categories</option>
+                  <option value="Men">Men</option>
+                  <option value="Women">Women</option>
+                  <option value="Accessories">Accessories</option>
+                </select>
+              </div>
+            </div>
+
             <button
               onClick={() => router.push("/categorycreate")}
               className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors"
@@ -121,7 +145,7 @@ export default function CategoryList() {
           )}
 
           {/* Categories Table */}
-          {!loading && !error && categories.length > 0 && (
+          {!loading && !error && filteredCategories.length > 0 && (
             <div className="overflow-x-auto bg-white rounded-lg shadow">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
@@ -131,6 +155,9 @@ export default function CategoryList() {
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Title
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Main Category
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Description
@@ -144,7 +171,7 @@ export default function CategoryList() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {categories.map((category) => (
+                  {filteredCategories.map((category) => (
                     <tr key={category._id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="w-12 h-12 overflow-hidden rounded-md">
@@ -160,6 +187,18 @@ export default function CategoryList() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="font-medium">{category.title}</div>
+                      </td>
+                      {/* Add Main Category cell */}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`px-2 py-1 rounded-full text-xs ${
+                          category.mainCategory === 'Men' 
+                            ? 'bg-blue-100 text-blue-800' 
+                            : category.mainCategory === 'Women' 
+                            ? 'bg-pink-100 text-pink-800' 
+                            : 'bg-purple-100 text-purple-800'
+                        }`}>
+                          {category.mainCategory}
+                        </span>
                       </td>
                       <td className="px-6 py-4">
                         <div className="max-w-xs truncate">{category.description || "—"}</div>
@@ -178,12 +217,14 @@ export default function CategoryList() {
                           <button
                             onClick={() => router.push(`/categoryedit/${category._id}`)}
                             className="p-2 bg-orange-100 text-orange-600 rounded-full hover:bg-orange-200"
+                            aria-label={`Edit ${category.title}`}
                           >
                             <PencilIcon className="h-4 w-4" />
                           </button>
                           <button
                             onClick={() => handleDeleteCategory(category._id)}
                             className="p-2 bg-red-100 text-red-600 rounded-full hover:bg-red-200"
+                            aria-label={`Delete ${category.title}`}
                           >
                             <TrashIcon className="h-4 w-4" />
                           </button>

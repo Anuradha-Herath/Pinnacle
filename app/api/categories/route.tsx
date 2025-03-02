@@ -65,12 +65,13 @@ export async function POST(request: NextRequest) {
       thumbnailImage = await uploadToCloudinary(body.thumbnailImage);
     }
     
-    // Create category with image URL from Cloudinary
+    // Create category with image URL from Cloudinary and mainCategory
     const newCategory = new Category({
       title: body.title,
       description: body.description || '',
       priceRange: body.priceRange || '',
-      thumbnailImage
+      thumbnailImage,
+      mainCategory: body.mainCategory,
     });
     
     await newCategory.save();
@@ -81,6 +82,14 @@ export async function POST(request: NextRequest) {
     }, { status: 201 });
   } catch (error) {
     console.error("Error creating category:", error);
+    
+    // Specifically check for MongoDB duplicate key error
+    if (error instanceof Error && error.message.includes('E11000 duplicate key error')) {
+      return NextResponse.json({ 
+        error: `A category with this title already exists. Please use a different title.` 
+      }, { status: 409 }); // Use 409 Conflict for duplicate resources
+    }
+    
     return NextResponse.json({ 
       error: error instanceof Error ? error.message : "Failed to create category" 
     }, { status: 500 });
