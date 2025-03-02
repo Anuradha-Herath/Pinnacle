@@ -1,9 +1,9 @@
 "use client";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import TopBar from "../../components/TopBar";
 import Sidebar from "../../components/Sidebar";
 import ProductGallery from "@/app/components/ProductGallery";
-import { useRouter } from "next/navigation"; // Make sure this import is present
+import { useRouter } from "next/navigation";
 
 interface GalleryItem {
   src: string | ArrayBuffer | null;
@@ -11,17 +11,23 @@ interface GalleryItem {
   color: string;
 }
 
+interface Category {
+  _id: string;
+  title: string;
+  mainCategory: string;
+}
+
 export default function ProductCreate() {
-  const router = useRouter(); // Make sure this hook is defined
+  const router = useRouter();
   const [formData, setFormData] = useState<{
     productName: string;
     description: string;
-    category: string;
-    subCategory: string;
+    category: string; // This will now be the main category
+    subCategory: string; // This will be the category title from our category system
     regularPrice: string;
     tag: string;
     sizes: string[];
-    gallery: GalleryItem[]; // Add gallery to formData
+    gallery: GalleryItem[];
   }>({
     productName: "",
     description: "",
@@ -30,8 +36,54 @@ export default function ProductCreate() {
     regularPrice: "1000",
     tag: "",
     sizes: [],
-    gallery: [], // Initialize gallery in formData
+    gallery: [],
   });
+
+  // State for storing all categories fetched from the API
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // State to track which subcategories to show based on selected main category
+  const [filteredSubCategories, setFilteredSubCategories] = useState<Category[]>([]);
+
+  // Fetch all categories when component mounts
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch('/api/categories');
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch categories');
+        }
+        
+        const data = await response.json();
+        setCategories(data.categories || []);
+      } catch (err) {
+        console.error("Error fetching categories:", err);
+        setError(err instanceof Error ? err.message : 'An error occurred');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
+
+  // Update filtered subcategories when main category changes
+  useEffect(() => {
+    if (formData.category) {
+      const filtered = categories.filter(cat => cat.mainCategory === formData.category);
+      setFilteredSubCategories(filtered);
+      
+      // Reset subcategory selection when main category changes
+      setFormData(prev => ({
+        ...prev,
+        subCategory: ''
+      }));
+    }
+  }, [formData.category, categories]);
 
   const [mainProductImage, setMainProductImage] = useState<
     string | ArrayBuffer | null
@@ -54,17 +106,17 @@ export default function ProductCreate() {
   };
 
   const handleGalleryChange = (newGallery: GalleryItem[]) => {
-    setFormData((prev) => ({ ...prev, gallery: newGallery })); // Update gallery in formData
+    setFormData((prev) => ({ ...prev, gallery: newGallery }));
     if (newGallery.length > 0 && !mainProductImage) {
       setMainProductImage(newGallery[0].src);
     } else if (newGallery.length === 0) {
-      setMainProductImage(null); // Reset main image if gallery is empty
+      setMainProductImage(null);
     }
   };
 
   const handleMainImageRemove = (index: number) => {
     if (index === 0 && formData.gallery.length > 1) {
-      setMainProductImage(formData.gallery[1].src); // Set the next image as main
+      setMainProductImage(formData.gallery[1].src);
     } else if (formData.gallery.length <= 1) {
       setMainProductImage(null);
     }
@@ -152,30 +204,59 @@ export default function ProductCreate() {
                   className="w-full p-3 border rounded-md h-32 focus:ring-2 focus:ring-blue-500"
                 ></textarea>
               </div>
+              
+              {/* Main Category Dropdown */}
               <div>
                 <label className="block text-sm font-medium mb-2">
-                  Category <span className="text-red-500">*</span>
+                  Main Category <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
+                <select
                   name="category"
                   value={formData.category}
                   onChange={handleChange}
                   className="w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500"
-                />
+                >
+                  <option value="">Select Main Category</option>
+                  <option value="Men">Men</option>
+                  <option value="Women">Women</option>
+                  <option value="Accessories">Accessories</option>
+                </select>
               </div>
+              
+              {/* Sub Category Dropdown - populated from categories */}
               <div>
                 <label className="block text-sm font-medium mb-2">
                   Sub Category <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
+                <select
                   name="subCategory"
                   value={formData.subCategory}
                   onChange={handleChange}
                   className="w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500"
-                />
+                  disabled={!formData.category || filteredSubCategories.length === 0}
+                >
+                  <option value="">
+                    {loading 
+                      ? 'Loading subcategories...' 
+                      : !formData.category 
+                      ? 'Select main category first' 
+                      : filteredSubCategories.length === 0 
+                      ? 'No subcategories available' 
+                      : 'Select Sub Category'}
+                  </option>
+                  {filteredSubCategories.map((category) => (
+                    <option key={category._id} value={category.title}>
+                      {category.title}
+                    </option>
+                  ))}
+                </select>
+                {formData.category && filteredSubCategories.length === 0 && !loading && (
+                  <div className="text-sm text-orange-500 mt-1">
+                    No subcategories found for {formData.category}. <a href="/categorycreate" className="underline">Create one</a>
+                  </div>
+                )}
               </div>
+              
               <div>
                 <label className="block text-sm font-medium mb-2">
                   Regular Price ($) <span className="text-red-500">*</span>
@@ -200,6 +281,7 @@ export default function ProductCreate() {
               </div>
             </form>
             <div className="space-y-6">
+              {/* Rest of the component remains the same */}
               <div className="w-full h-64 bg-gray-200 rounded-md flex items-center justify-center">
                 {mainProductImage ? (
                   <img
@@ -224,8 +306,6 @@ export default function ProductCreate() {
                   Size <span className="text-red-500">*</span>
                 </label>
                 <div className="flex flex-wrap gap-2">
-                  {" "}
-                  {/* Reduced gap for closer spacing */}
                   {["NS", "XS", "S", "M", "L", "XL", "2XL", "3XL"].map(
                     (size) => (
                       <label key={size} className="flex items-center">
@@ -233,13 +313,13 @@ export default function ProductCreate() {
                           type="checkbox"
                           checked={formData.sizes.includes(size)}
                           onChange={() => handleSizeChange(size)}
-                          className="hidden" // Hide the default checkbox
+                          className="hidden"
                         />
                         <span
                           className={`inline-flex items-center justify-center px-4 py-3 text-sm font-medium rounded-md border border-gray-300 cursor-pointer ${
                             formData.sizes.includes(size)
-                              ? "bg-gray-500"
-                              : "bg-gray-300" // Highlight selected size
+                              ? "bg-gray-500 text-white"
+                              : "bg-gray-300"
                           }`}
                         >
                           {size}
@@ -254,6 +334,7 @@ export default function ProductCreate() {
           <div className="flex justify-end gap-4 mt-6">
             <button
               type="button"
+              onClick={() => router.push('/productlist')}
               className="px-20 py-2 border rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
               disabled={isSubmitting}
             >

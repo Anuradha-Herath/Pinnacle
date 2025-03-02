@@ -5,7 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import Sidebar from "../../../components/Sidebar";
 import TopBar from "../../../components/TopBar";
-import { PencilIcon } from "@heroicons/react/24/solid";
+import { PencilIcon, EyeIcon, TrashIcon } from "@heroicons/react/24/solid";
 
 interface Category {
   _id: string;
@@ -13,9 +13,19 @@ interface Category {
   description: string;
   priceRange: string;
   thumbnailImage: string;
-  mainCategory: string; // Add mainCategory field
+  mainCategory: string;
   createdAt: string;
   updatedAt: string;
+}
+
+interface Product {
+  _id: string;
+  productName: string;
+  description: string;
+  regularPrice: number;
+  category: string; // Main category
+  subCategory: string; // This matches with category.title
+  gallery: Array<{src: string}>;
 }
 
 export default function CategoryDetail() {
@@ -24,8 +34,11 @@ export default function CategoryDetail() {
   const id = params?.id as string;
   
   const [category, setCategory] = useState<Category | null>(null);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [productsLoading, setProductsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [productsError, setProductsError] = useState<string | null>(null);
 
   // Fetch category data
   useEffect(() => {
@@ -41,6 +54,9 @@ export default function CategoryDetail() {
         const data = await response.json();
         setCategory(data.category);
         
+        // After getting the category, fetch related products
+        fetchProductsByCategory(data.category);
+        
       } catch (error) {
         console.error("Error fetching category:", error);
         setError(error instanceof Error ? error.message : "Failed to load category");
@@ -53,8 +69,54 @@ export default function CategoryDetail() {
       fetchCategory();
     }
   }, [id]);
+  
+  // Fetch products by category
+  const fetchProductsByCategory = async (categoryData: Category) => {
+    try {
+      setProductsLoading(true);
+      // We'll use the category title as the subcategory in products
+      const response = await fetch(`/api/products?subCategory=${encodeURIComponent(categoryData.title)}`);
+      
+      if (!response.ok) {
+        throw new Error("Failed to fetch products");
+      }
+      
+      const data = await response.json();
+      setProducts(data.products || []);
+    } catch (error) {
+      console.error("Error fetching products:", error);
+      setProductsError(error instanceof Error ? error.message : "Failed to load products");
+    } finally {
+      setProductsLoading(false);
+    }
+  };
+  
+  // Handle product deletion
+  const handleDeleteProduct = async (productId: string) => {
+    if (!confirm("Are you sure you want to delete this product?")) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(`/api/products/${productId}`, {
+        method: 'DELETE'
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to delete product");
+      }
+      
+      // Remove the deleted product from the list
+      setProducts(products.filter(product => product._id !== productId));
+      
+      alert("Product deleted successfully");
+    } catch (error) {
+      console.error("Error deleting product:", error);
+      alert(error instanceof Error ? error.message : "Failed to delete product");
+    }
+  };
 
-  // Loading state
+  // Loading states
   if (loading) {
     return (
       <div className="flex">
@@ -121,7 +183,7 @@ export default function CategoryDetail() {
           </div>
 
           {/* Category Details */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             {/* Thumbnail */}
             <div className="bg-white p-6 rounded-lg shadow-md">
               <h2 className="text-lg font-semibold mb-4">Thumbnail</h2>
@@ -141,7 +203,7 @@ export default function CategoryDetail() {
             <div className="bg-white p-6 rounded-lg shadow-md col-span-2">
               <h2 className="text-lg font-semibold mb-4">Information</h2>
               <div className="space-y-4">
-                {/* Main Category - FIXED VERSION */}
+                {/* Main Category */}
                 <div>
                   <h3 className="text-sm font-medium text-gray-500">Main Category</h3>
                   <span className={`mt-1 inline-block px-2 py-1 rounded-full text-xs font-medium ${
@@ -189,8 +251,118 @@ export default function CategoryDetail() {
             </div>
           </div>
 
+          {/* Products Section */}
+          <div className="mt-10">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold">Products in this Category</h2>
+              <Link 
+                href={`/productcreate?category=${category.mainCategory}&subcategory=${category.title}`} 
+                className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors"
+              >
+                Add Product
+              </Link>
+            </div>
+
+            {/* Products Loading State */}
+            {productsLoading && (
+              <div className="flex justify-center items-center h-40">
+                <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-orange-500"></div>
+              </div>
+            )}
+
+            {/* Products Error State */}
+            {!productsLoading && productsError && (
+              <div className="bg-red-100 text-red-700 p-4 rounded-lg">
+                <p>{productsError}</p>
+              </div>
+            )}
+
+            {/* No Products State */}
+            {!productsLoading && !productsError && products.length === 0 && (
+              <div className="bg-white p-8 rounded-lg shadow text-center">
+                <p className="text-gray-500 mb-4">No products found in this category.</p>
+                <Link 
+                  href={`/productcreate?category=${category.mainCategory}&subcategory=${category.title}`} 
+                  className="inline-block bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors"
+                >
+                  Add First Product
+                </Link>
+              </div>
+            )}
+
+            {/* Products Grid */}
+            {!productsLoading && !productsError && products.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                {products.map((product) => (
+                  <div key={product._id} className="bg-white rounded-lg shadow-md overflow-hidden group hover:shadow-lg transition-shadow">
+                    {/* Product Image */}
+                    <div className="relative h-48 bg-gray-100 overflow-hidden">
+                      <img 
+                        src={product.gallery && product.gallery.length > 0 ? product.gallery[0].src : "/placeholder.png"}
+                        alt={product.productName}
+                        className="w-full h-full object-cover object-center"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = "/placeholder.png";
+                        }}
+                      />
+                      
+                      {/* Action buttons - only visible on hover */}
+                      <div className="absolute top-2 right-2 flex flex-col space-y-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => router.push(`/productdetail/${product._id}`)}
+                          className="p-2 bg-white bg-opacity-80 rounded-full hover:bg-opacity-100 transition-all"
+                          title="View product"
+                        >
+                          <EyeIcon className="h-4 w-4 text-gray-700" />
+                        </button>
+                        <button
+                          onClick={() => router.push(`/productedit/${product._id}`)}
+                          className="p-2 bg-white bg-opacity-80 rounded-full hover:bg-opacity-100 transition-all"
+                          title="Edit product"
+                        >
+                          <PencilIcon className="h-4 w-4 text-orange-600" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteProduct(product._id)}
+                          className="p-2 bg-white bg-opacity-80 rounded-full hover:bg-opacity-100 transition-all"
+                          title="Delete product"
+                        >
+                          <TrashIcon className="h-4 w-4 text-red-600" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Product Details */}
+                    <div className="p-4">
+                      <h3 className="font-medium text-gray-800 mb-1 truncate">{product.productName}</h3>
+                      <p className="text-gray-600">${product.regularPrice.toFixed(2)}</p>
+                      <div className="mt-2 flex justify-between items-center">
+                        <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                          product.category === 'Men' 
+                            ? 'bg-blue-100 text-blue-800' 
+                            : product.category === 'Women' 
+                            ? 'bg-pink-100 text-pink-800' 
+                            : 'bg-purple-100 text-purple-800'
+                        }`}>
+                          {product.category}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {/* Pagination - if needed */}
+            {products.length > 0 && (
+              <div className="mt-8 flex justify-center">
+                {/* Pagination controls can be added here if needed */}
+              </div>
+            )}
+          </div>
+
           {/* Back button */}
-          <div className="mt-6 flex justify-end">
+          <div className="mt-10 flex justify-end">
             <button
               onClick={() => router.push("/categorylist")}
               className="bg-gray-300 text-gray-700 px-6 py-2 rounded-md hover:bg-gray-400 transition-colors"
