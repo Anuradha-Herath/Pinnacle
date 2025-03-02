@@ -1,75 +1,97 @@
-// components/ProductImageGallery.tsx
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import Image from "next/image";
 
 interface ProductImageGalleryProps {
-  images: string[]; // Array of image URLs - Expecting 3 images in this layout
+  images: string[];
+  selectedImage?: number;
+  onImageSelect?: (index: number) => void;
 }
 
-const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
+const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({ 
   images,
+  selectedImage = 0, 
+  onImageSelect 
 }) => {
-  if (images.length !== 3) {
-    return <div>Product Image Gallery requires exactly 3 images.</div>; // Basic error handling
-  }
-  const [mainImage, setMainImage] = useState<string | null>(images[0] || null); // Default to the first image
+  const [internalSelectedImage, setInternalSelectedImage] = useState(selectedImage);
+  const placeholderImage = '/placeholder.png';
+  
+  // Update internal state when prop changes
+  useEffect(() => {
+    setInternalSelectedImage(selectedImage);
+  }, [selectedImage]);
 
-  const handleThumbnailClick = (imageSrc: string) => {
-    setMainImage(imageSrc);
+  // Helper function to validate image URLs
+  const isValidImageUrl = (url: string): boolean => {
+    if (!url) return false;
+    if (url.trim() === '') return false;
+    
+    try {
+      if (url.startsWith('/')) return true;
+      new URL(url);
+      return true;
+    } catch (e) {
+      return false;
+    }
   };
 
-  // **Increased imageContainerSize to 250px x 250px**
-  const imageContainerSize = "w-[250px] h-[250px]"; // Increased size
+  // Filter only valid image URLs
+  const validImages = images
+    .filter(isValidImageUrl)
+    .map(url => url.startsWith('data:') ? placeholderImage : url);
+
+  if (validImages.length === 0) {
+    return (
+      <div className="h-96 bg-gray-100 flex items-center justify-center rounded-lg">
+        <p className="text-gray-500">No images available</p>
+      </div>
+    );
+  }
+  
+  const handleThumbnailClick = (index: number) => {
+    setInternalSelectedImage(index);
+    if (onImageSelect) {
+      onImageSelect(index);
+    }
+  };
 
   return (
-    <div className="product-image-gallery flex flex-col">
-      {/* Top Two Images (Side-by-side) */}
-      <div className="top-images flex space-x-2 mb-2 justify-center">
-        {" "}
-        {/* Added justify-center */}
-        {/* Image 1 */}
-        <div
-          className={`rounded-lg overflow-hidden shadow-md ${imageContainerSize}`}
-        >
-          {" "}
-          {/* Apply fixed size here */}
-          <img
-            src={images[0]}
-            alt="Product Image 1"
-            className="w-full h-full object-cover cursor-pointer"
-            onClick={() => setMainImage(images[0])}
-          />
-        </div>
-        {/* Image 2 */}
-        <div
-          className={`rounded-lg overflow-hidden shadow-md ${imageContainerSize}`}
-        >
-          {" "}
-          {/* Apply fixed size here */}
-          <img
-            src={images[1]}
-            alt="Product Image 2"
-            className="w-full h-full object-cover cursor-pointer"
-            onClick={() => setMainImage(images[1])}
-          />
-        </div>
-      </div>
-
-      {/* Bottom Image (Full Width - but now with fixed size as well, and centered) */}
-      <div
-        className="bottom-image rounded-lg overflow-hidden shadow-md mx-auto  mb-2"
-        style={{ width: "250px", height: "250px" }}
-      >
-        {" "}
-        {/* Applied increased fixed size and mx-auto for centering */}
-        <img
-          src={images[2]}
-          alt="Product Image 3"
-          className="w-full h-full object-cover cursor-pointer"
-          onClick={() => setMainImage(images[2])}
+    <div className="space-y-4">
+      {/* Main Image */}
+      <div className="aspect-square bg-gray-100 rounded-lg overflow-hidden relative">
+        <Image
+          src={validImages[internalSelectedImage]}
+          alt={`Product image ${internalSelectedImage + 1}`}
+          fill
+          className="object-contain"
+          sizes="(max-width: 768px) 100vw, 50vw"
+          priority
         />
       </div>
+
+      {/* Thumbnails */}
+      {validImages.length > 1 && (
+        <div className="flex gap-2 overflow-x-auto pb-2">
+          {validImages.map((src, index) => (
+            <button
+              key={index}
+              className={`w-20 h-20 flex-shrink-0 rounded-md overflow-hidden border-2 transition ${
+                internalSelectedImage === index ? "border-black" : "border-transparent"
+              }`}
+              onClick={() => handleThumbnailClick(index)}
+            >
+              <Image
+                src={src}
+                alt={`Thumbnail ${index + 1}`}
+                width={80}
+                height={80}
+                className="object-cover w-full h-full"
+              />
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

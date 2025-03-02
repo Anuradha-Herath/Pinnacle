@@ -1,62 +1,149 @@
-import React, { useRef } from "react";
-import ProductCard from "./ProductCard";
+"use client";
+
+import React, { useState, useRef, useEffect } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import ProductCard from "./ProductCard";
 
 interface Product {
-  id: number;
+  id: string;
   name: string;
   price: number;
   image: string;
+  colors: string[];
+  sizes: string[];
 }
 
 interface ProductCarouselProps {
   title: string;
   products: Product[];
+  loading?: boolean;
 }
 
-const ProductCarousel: React.FC<ProductCarouselProps> = ({
-  title,
+const ProductCarousel: React.FC<ProductCarouselProps> = ({ 
+  title, 
   products,
+  loading = false 
 }) => {
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const carouselRef = useRef<HTMLDivElement>(null);
+  const [showLeftArrow, setShowLeftArrow] = useState(false);
+  const [showRightArrow, setShowRightArrow] = useState(true);
 
-  const scroll = (offset: number) => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollBy({ left: offset, behavior: "smooth" });
+  const scroll = (direction: "left" | "right") => {
+    if (carouselRef.current) {
+      const { current: container } = carouselRef;
+      const scrollAmount = direction === "left" ? -600 : 600;
+      container.scrollBy({ left: scrollAmount, behavior: "smooth" });
+
+      // Update arrow visibility after scrolling
+      setTimeout(() => {
+        if (container) {
+          setShowLeftArrow(container.scrollLeft > 0);
+          setShowRightArrow(
+            container.scrollLeft + container.clientWidth < container.scrollWidth
+          );
+        }
+      }, 300);
     }
   };
 
+  // Add console logging to debug
+  useEffect(() => {
+    if (products.length > 0) {
+      console.log("ProductCarousel received products:", products);
+    }
+  }, [products]);
+
+  // Improve title styling based on background
+  const titleClass = title === "RECENTLY VIEWED" || title === "YOU MIGHT ALSO LIKE" 
+    ? "text-2xl font-bold mb-4 text-black" 
+    : "text-2xl font-bold mb-4 text-white";
+
+  // More robust validation for products
+  const validProducts = products
+    .filter(product => product && typeof product === 'object') // Ensure it's a valid object
+    .map(product => ({
+      ...product,
+      image: product.image || '/placeholder.png',
+      colors: Array.isArray(product.colors) 
+        ? product.colors.filter(c => c && typeof c === 'string').slice(0, 3) 
+        : [],
+      sizes: Array.isArray(product.sizes) 
+        ? product.sizes.filter(s => s && typeof s === 'string')
+        : []
+    }));
+
   return (
-    <div className="relative w-full max-w-7xl mx-auto mt-6">
-      <h2 className="text-white text-xl font-semibold mb-3">{title}</h2>
+    <div className="my-8 px-4 md:px-8 lg:px-12">
+      <h2 className={titleClass}>{title}</h2>
+      <div className="relative">
+        {/* Left Arrow */}
+        {showLeftArrow && (
+          <button
+            onClick={() => scroll("left")}
+            className="absolute left-0 top-1/2 -translate-y-1/2 bg-white p-2 rounded-full shadow-md z-10"
+          >
+            <ChevronLeft size={24} />
+          </button>
+        )}
 
-      {/* Left Arrow */}
-      <button
-        className="absolute left-0 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 p-2 rounded-full z-10 hover:bg-opacity-80"
-        onClick={() => scroll(-300)}
-      >
-        <ChevronLeft className="text-white w-6 h-6" />
-      </button>
-
-      {/* Scrollable Product Row */}
-      <div className="relative w-full overflow-hidden">
+        {/* Products Container */}
         <div
-          className="flex space-x-4 overflow-x-scroll overflow-y-hidden scrollbar-hide scroll-smooth "
-          ref={scrollRef}
+          ref={carouselRef}
+          className="flex overflow-x-auto gap-4 pb-4 no-scrollbar"
+          onScroll={() => {
+            if (carouselRef.current) {
+              const { current: container } = carouselRef;
+              setShowLeftArrow(container.scrollLeft > 0);
+              setShowRightArrow(
+                container.scrollLeft + container.clientWidth <
+                  container.scrollWidth
+              );
+            }
+          }}
         >
-          {products.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
+          {loading ? (
+            // Loading skeleton placeholders
+            Array(4).fill(0).map((_, idx) => (
+              <div key={idx} className="w-[300px] min-w-[300px] bg-gray-700 shadow-md rounded-lg p-4 animate-pulse">
+                <div className="w-full h-60 bg-gray-600 rounded-md"></div>
+                <div className="h-5 bg-gray-600 rounded w-3/4 mt-2"></div>
+                <div className="h-4 bg-gray-600 rounded w-1/4 mt-2"></div>
+                <div className="flex gap-2 mt-2">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="w-10 h-10 bg-gray-600 rounded-md"></div>
+                  ))}
+                </div>
+                <div className="flex gap-2 mt-2">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="w-8 h-8 bg-gray-600 rounded"></div>
+                  ))}
+                </div>
+                <div className="h-10 bg-gray-600 rounded w-full mt-3"></div>
+              </div>
+            ))
+          ) : validProducts.length > 0 ? (
+            // Use validated products array
+            validProducts.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))
+          ) : (
+            // No products message
+            <div className="w-full py-10 flex justify-center items-center text-white">
+              <p>No products available for this category.</p>
+            </div>
+          )}
         </div>
-      </div>
 
-      {/* Right Arrow */}
-      <button
-        className="absolute right-0 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 p-2 rounded-full z-10 hover:bg-opacity-80"
-        onClick={() => scroll(300)}
-      >
-        <ChevronRight className="text-white w-6 h-6" />
-      </button>
+        {/* Right Arrow */}
+        {showRightArrow && (
+          <button
+            onClick={() => scroll("right")}
+            className="absolute right-0 top-1/2 -translate-y-1/2 bg-white p-2 rounded-full shadow-md z-10"
+          >
+            <ChevronRight size={24} />
+          </button>
+        )}
+      </div>
     </div>
   );
 };

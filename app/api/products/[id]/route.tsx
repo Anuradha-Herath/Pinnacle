@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import Product from "@/models/Product";
 import cloudinary from "@/lib/cloudinary";
@@ -38,12 +38,14 @@ const uploadToCloudinary = async (imageData: string) => {
 
 // GET a single product by ID
 export async function GET(
-  request: Request, 
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
     await connectDB();
-    const id = params.id;
+    
+    // Extract id directly from the destructured params
+    const { id } = params;
     
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json({ error: "Invalid product ID" }, { status: 400 });
@@ -66,12 +68,14 @@ export async function GET(
 
 // UPDATE a product by ID
 export async function PUT(
-  request: Request, 
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
     await connectDB();
-    const id = params.id;
+    
+    // Extract id directly from the destructured params
+    const { id } = params;
     
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json({ error: "Invalid product ID" }, { status: 400 });
@@ -136,12 +140,14 @@ export async function PUT(
 
 // DELETE a product by ID
 export async function DELETE(
-  request: Request, 
+  request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
     await connectDB();
-    const id = params.id;
+    
+    // Extract id directly from the destructured params
+    const { id } = params;
     
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json({ error: "Invalid product ID" }, { status: 400 });
