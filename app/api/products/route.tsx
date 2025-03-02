@@ -1,15 +1,13 @@
-import { NextResponse } from "next/server";
-import clientPromise from "@/lib/mongodb";
-import mongoose from "mongoose";
-import Product from "@/models/Product";
+import { NextRequest, NextResponse } from 'next/server';
+import mongoose from 'mongoose';
+import Product from '@/models/Product';
 import cloudinary from "@/lib/cloudinary"; // Uncomment this for image uploads
 
-// Connect to MongoDB using Mongoose
+// Connect to MongoDB
 const connectDB = async () => {
   try {
     if (mongoose.connection.readyState === 0) {
       await mongoose.connect(process.env.MONGODB_URI!);
-      console.log('Connected to MongoDB via Mongoose');
     }
   } catch (error) {
     console.error('MongoDB connection error:', error);
@@ -37,16 +35,40 @@ const uploadToCloudinary = async (imageData: string) => {
   }
 };
 
-// GET method to fetch all products
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    // Connect to the database
     await connectDB();
     
-    // Get all products from the database
-    const products = await Product.find({}).sort({ createdAt: -1 });
+    const searchParams = request.nextUrl.searchParams;
+    const category = searchParams.get('category');
+    const subCategory = searchParams.get('subCategory');
+    const limit = parseInt(searchParams.get('limit') || '20');
+    const page = parseInt(searchParams.get('page') || '1');
+    const skip = (page - 1) * limit;
     
-    return NextResponse.json({ products });
+    // Build filter based on query params
+    const filter: Record<string, any> = {};
+    if (category) filter.category = category;
+    if (subCategory) filter.subCategory = subCategory;
+    
+    // Count total products matching the filter
+    const total = await Product.countDocuments(filter);
+    
+    // Get products with pagination
+    const products = await Product.find(filter)
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+    
+    return NextResponse.json({ 
+      products,
+      pagination: {
+        total,
+        page,
+        pages: Math.ceil(total / limit),
+        limit
+      }
+    });
   } catch (error) {
     console.error("Error fetching products:", error);
     return NextResponse.json({ 
