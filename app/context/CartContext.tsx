@@ -8,13 +8,18 @@ export interface CartItem {
   price: number;
   image: string;
   quantity: number;
+  // Add new fields for variants
+  size?: string;
+  color?: string;
+  // Generate a unique key for each variant combination
+  variantKey?: string;
 }
 
 interface CartContextType {
   cartItems: CartItem[];
-  addToCart: (product: Omit<CartItem, 'quantity'>) => void;
-  removeFromCart: (id: string) => void;
-  updateQuantity: (id: string, quantity: number) => void;
+  addToCart: (product: Omit<CartItem, 'quantity' | 'variantKey'>) => void;
+  removeFromCart: (variantKey: string) => void;
+  updateQuantity: (variantKey: string, quantity: number) => void;
   clearCart: () => void;
   getCartTotal: () => number;
   getCartCount: () => number;
@@ -42,13 +47,21 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem('cart', JSON.stringify(cartItems));
   }, [cartItems]);
 
-  const addToCart = (product: Omit<CartItem, 'quantity'>) => {
+  // Helper function to generate a unique key for each variant
+  const generateVariantKey = (id: string, size?: string, color?: string): string => {
+    return `${id}_${size || 'default'}_${color || 'default'}`;
+  };
+
+  const addToCart = (product: Omit<CartItem, 'quantity' | 'variantKey'>) => {
     setCartItems(prevItems => {
-      // Check if item already exists in cart
-      const existingItemIndex = prevItems.findIndex(item => item.id === product.id);
+      // Generate a variant key for this product configuration
+      const variantKey = generateVariantKey(product.id, product.size, product.color);
+      
+      // Check if this specific variant already exists in cart
+      const existingItemIndex = prevItems.findIndex(item => item.variantKey === variantKey);
       
       if (existingItemIndex >= 0) {
-        // Item exists, increase quantity
+        // This exact variant exists, increase quantity
         const updatedItems = [...prevItems];
         updatedItems[existingItemIndex] = {
           ...updatedItems[existingItemIndex],
@@ -56,20 +69,20 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         };
         return updatedItems;
       } else {
-        // Item doesn't exist, add new item with quantity 1
-        return [...prevItems, { ...product, quantity: 1 }];
+        // This variant doesn't exist, add new item with quantity 1
+        return [...prevItems, { ...product, variantKey, quantity: 1 }];
       }
     });
   };
 
-  const removeFromCart = (id: string) => {
-    setCartItems(prevItems => prevItems.filter(item => item.id !== id));
+  const removeFromCart = (variantKey: string) => {
+    setCartItems(prevItems => prevItems.filter(item => item.variantKey !== variantKey));
   };
 
-  const updateQuantity = (id: string, quantity: number) => {
+  const updateQuantity = (variantKey: string, quantity: number) => {
     setCartItems(prevItems => 
       prevItems.map(item => 
-        item.id === id ? { ...item, quantity: Math.max(1, quantity) } : item
+        item.variantKey === variantKey ? { ...item, quantity: Math.max(1, quantity) } : item
       )
     );
   };

@@ -180,7 +180,7 @@ export default function EnhancedProductDetailPage() {
     setQuantity(Math.max(1, quantity + value));
   };
   
-  // Add to cart handler
+  // Add to cart handler with variant information
   const handleAddToCart = () => {
     if (!product) return;
     
@@ -189,12 +189,18 @@ export default function EnhancedProductDetailPage() {
       return;
     }
     
+    // Get the selected image to represent the color
+    const selectedImage = product.images && product.images.length > 0 
+      ? product.images[selectedImageIndex] 
+      : placeholderImage;
+    
     addToCart({
       id: product.id,
       name: product.name,
       price: product.price,
-      image: (product.images && product.images.length > 0) ? 
-        product.images[0] : placeholderImage // Ensure we never use an empty string
+      image: selectedImage,
+      size: selectedSize || undefined,
+      color: selectedImage, // Use the image URL as the color identifier
     });
     
     toast.success(`${product.name} added to cart!`);

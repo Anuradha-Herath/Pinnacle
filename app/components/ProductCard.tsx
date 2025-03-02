@@ -28,8 +28,10 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
   const { addToCart } = useCart();
   const isWishlisted = isInWishlist(product.id);
   
-  // Add state to track the currently displayed image
+  // Add state for currently displayed image & selected variants
   const [currentImage, setCurrentImage] = useState(product.image);
+  const [selectedSize, setSelectedSize] = useState<string | null>(null);
+  const [selectedColor, setSelectedColor] = useState<string | null>(null);
 
   // Ensure we have valid data with defaults
   const productWithDefaults = {
@@ -53,19 +55,25 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
     e.preventDefault();
     e.stopPropagation();
     
+    // Don't allow adding to cart without selecting a size if product has sizes
+    if (productWithDefaults.sizes.length > 0 && !selectedSize) {
+      toast.error("Please select a size");
+      return;
+    }
+    
+    // Determine which color image is selected (if any)
+    const colorImage = selectedColor || currentImage;
+    
     addToCart({
       id: product.id,
       name: product.name,
       price: product.price,
-      image: product.image
+      image: colorImage || product.image,
+      size: selectedSize || undefined,
+      color: selectedColor || undefined
     });
     
-    // Optional: show a toast notification
-    if (typeof toast !== 'undefined') {
-      toast.success(`${product.name} added to cart!`);
-    } else {
-      alert(`${product.name} added to cart!`);
-    }
+    toast.success(`${product.name} added to cart!`);
   };
   
   const navigateToProductDetail = () => {
@@ -111,11 +119,19 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
       .slice(0, 3) : 
     [];
 
-  // New handler for color image click
+  // New handler for color image click - stores both image and color info
   const handleColorImageClick = (e: React.MouseEvent, colorImg: string) => {
     e.preventDefault();
     e.stopPropagation();
     setCurrentImage(colorImg);
+    setSelectedColor(colorImg); // Store the image URL as the color identifier
+  };
+  
+  // New handler for size selection
+  const handleSizeSelect = (e: React.MouseEvent, size: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setSelectedSize(size);
   };
 
   return (
@@ -146,7 +162,7 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
       <h3 className="mt-2 font-semibold">{product.name}</h3>
       <p className="text-gray-600">${product.price.toFixed(2)}</p>
       
-      {/* Color images - only show if we have valid images */}
+      {/* Color images with selection indicator */}
       {validColorImages.length > 0 && (
         <div className="flex gap-2 mt-2">
           {validColorImages.map((colorImg, index) => (
@@ -172,16 +188,21 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
         </div>
       )}
       
-      {/* Sizes */}
+      {/* Sizes with selection indicator */}
       {productWithDefaults.sizes.length > 0 && (
         <div className="flex gap-2 mt-2">
           {productWithDefaults.sizes.slice(0, 5).map((size, index) => (
-            <span
+            <button
               key={index}
-              className="border px-3 py-1 rounded cursor-pointer hover:bg-gray-100"
+              onClick={(e) => handleSizeSelect(e, size)}
+              className={`border px-3 py-1 rounded cursor-pointer transition-colors ${
+                selectedSize === size 
+                  ? 'bg-black text-white border-black' 
+                  : 'border-gray-300 hover:bg-gray-100'
+              }`}
             >
               {size}
-            </span>
+            </button>
           ))}
         </div>
       )}

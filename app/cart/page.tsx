@@ -59,7 +59,7 @@ const CartPage = () => {
                   
                 return (
                   <div
-                    key={item.id}
+                    key={item.variantKey || item.id}
                     className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-white p-4 rounded-lg shadow-sm"
                   >
                     <div className="flex items-center space-x-4">
@@ -77,6 +77,26 @@ const CartPage = () => {
                       </div>
                       <div>
                         <h2 className="text-lg font-medium">{item.name}</h2>
+                        <div className="text-gray-500 text-sm">
+                          {/* Display variant information if available */}
+                          {item.size && <span className="mr-2">Size: {item.size}</span>}
+                          {item.color && 
+                            <span className="flex items-center">
+                              <span className="mr-1">Color:</span>
+                              <span className="relative w-4 h-4 rounded-full overflow-hidden inline-block align-middle">
+                                <Image 
+                                  src={item.color} 
+                                  alt="Color" 
+                                  fill 
+                                  className="object-cover"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).src = placeholderImage;
+                                  }}
+                                />
+                              </span>
+                            </span>
+                          }
+                        </div>
                         <p className="text-gray-600">${item.price.toFixed(2)}</p>
                       </div>
                     </div>
@@ -84,7 +104,7 @@ const CartPage = () => {
                     <div className="flex items-center space-x-6 mt-4 sm:mt-0 self-end sm:self-auto">
                       <div className="flex items-center border rounded-md">
                         <button
-                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                          onClick={() => updateQuantity(item.variantKey || item.id, item.quantity - 1)}
                           className="px-3 py-1 hover:bg-gray-100 rounded-l-md"
                           disabled={item.quantity <= 1}
                         >
@@ -92,14 +112,14 @@ const CartPage = () => {
                         </button>
                         <span className="px-3 py-1 border-x">{item.quantity}</span>
                         <button
-                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                          onClick={() => updateQuantity(item.variantKey || item.id, item.quantity + 1)}
                           className="px-3 py-1 hover:bg-gray-100 rounded-r-md"
                         >
                           <Plus size={16} />
                         </button>
                       </div>
                       <button
-                        onClick={() => removeFromCart(item.id)}
+                        onClick={() => removeFromCart(item.variantKey || item.id)}
                         className="text-red-500 hover:text-red-700"
                       >
                         <Trash size={20} />
