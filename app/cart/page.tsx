@@ -6,10 +6,10 @@ import Link from "next/link";
 import { useCart } from "../context/CartContext";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
-import { Trash, Plus, Minus, ShoppingBag } from "lucide-react";
+import { Trash, Plus, Minus, ShoppingBag, X } from "lucide-react";
 
 const CartPage = () => {
-  const { cartItems, removeFromCart, updateQuantity, getCartTotal } = useCart();
+  const { cartItems, removeFromCart, updateQuantity, getCartTotal, clearCart } = useCart();
   const total = getCartTotal();
   const placeholderImage = '/placeholder.png';
 
@@ -27,12 +27,38 @@ const CartPage = () => {
     }
   };
 
+  // Force remove an item by trying both the variantKey and id
+  const forceRemoveItem = (item: any) => {
+    if (item.variantKey) {
+      removeFromCart(item.variantKey);
+    } else {
+      removeFromCart(item.id);
+    }
+  };
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Header />
       
       <div className="max-w-7xl mx-auto px-4 py-8 flex-grow w-full">
-        <h1 className="text-2xl font-semibold mb-6">Your Shopping Cart</h1>
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-semibold">Your Shopping Cart</h1>
+          
+          {/* Add Reset Cart Button */}
+          {cartItems.length > 0 && (
+            <button 
+              onClick={() => {
+                if (window.confirm("Are you sure you want to clear your cart?")) {
+                  clearCart();
+                }
+              }}
+              className="flex items-center text-red-500 hover:text-red-700"
+            >
+              <X className="mr-1" size={16} />
+              Reset Cart
+            </button>
+          )}
+        </div>
         
         {cartItems.length === 0 ? (
           <div className="text-center py-16 bg-white rounded-lg shadow-sm">
@@ -51,15 +77,14 @@ const CartPage = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="md:col-span-2 space-y-4">
-              {cartItems.map((item) => {
+              {cartItems.map((item, index) => {
                 // Ensure image is valid
                 const itemImage = isValidImageUrl(item.image) ? 
                   (item.image.startsWith('data:') ? placeholderImage : item.image) : 
                   placeholderImage;
                   
-                // Generate unique key including variants
-                const itemKey = item.variantKey || 
-                  `${item.id}_${item.size || 'default'}_${item.color || 'default'}`;
+                // Use index as fallback key if no other identifiers are available
+                const itemKey = item.variantKey || item.id || `cart-item-${index}`;
                   
                 return (
                   <div
@@ -115,16 +140,18 @@ const CartPage = () => {
                         >
                           <Minus size={16} />
                         </button>
-                        <span className="px-3 py-1 border-x">{item.quantity}</span>
+                        <span className="px-3 py-1 border-x">{item.quantity || 1}</span>
                         <button
-                          onClick={() => updateQuantity(itemKey, item.quantity + 1)}
+                          onClick={() => updateQuantity(itemKey, (item.quantity || 1) + 1)}
                           className="px-3 py-1 hover:bg-gray-100 rounded-r-md"
                         >
                           <Plus size={16} />
                         </button>
                       </div>
+                      
+                      {/* Use our force remove function */}
                       <button
-                        onClick={() => removeFromCart(itemKey)}
+                        onClick={() => forceRemoveItem(item)}
                         className="text-red-500 hover:text-red-700"
                       >
                         <Trash size={20} />

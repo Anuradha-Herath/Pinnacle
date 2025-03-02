@@ -38,14 +38,31 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
 
-  // Load cart from localStorage on initial render
+  // Load cart from localStorage on initial render with migration for old format
   useEffect(() => {
     const savedCart = localStorage.getItem('cart');
     if (savedCart) {
       try {
-        setCartItems(JSON.parse(savedCart));
+        // Parse the saved cart
+        const parsedCart = JSON.parse(savedCart);
+        
+        // Check if items have the variantKey property - if not, add it
+        const migratedCart = parsedCart.map((item: CartItem) => {
+          if (!item.variantKey) {
+            return {
+              ...item,
+              quantity: item.quantity || 1,
+              variantKey: generateVariantKey(item.id, item.size, item.color)
+            };
+          }
+          return item;
+        });
+        
+        setCartItems(migratedCart);
       } catch (error) {
         console.error('Error parsing cart from localStorage:', error);
+        // If error, clear localStorage to fix corrupt data
+        localStorage.removeItem('cart');
       }
     }
   }, []);
@@ -95,8 +112,20 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
-  const removeFromCart = (variantKey: string) => {
-    setCartItems(prevItems => prevItems.filter(item => item.variantKey !== variantKey));
+  // Enhanced removeFromCart to handle both variantKey and id
+  const removeFromCart = (key: string) => {
+    setCartItems(prevItems => {
+      // Try to remove by variantKey first
+      const filteredByVariantKey = prevItems.filter(item => item.variantKey !== key);
+      
+      // If we removed something, return the filtered array
+      if (filteredByVariantKey.length !== prevItems.length) {
+        return filteredByVariantKey;
+      }
+      
+      // Otherwise try to remove by ID
+      return prevItems.filter(item => item.id !== key);
+    });
   };
 
   const updateQuantity = (variantKey: string, quantity: number) => {
@@ -107,8 +136,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     );
   };
 
+  // Add a method to forcefully clear the cart and localStorage
   const clearCart = () => {
     setCartItems([]);
+    localStorage.removeItem('cart');
   };
 
   const getCartTotal = () => {
