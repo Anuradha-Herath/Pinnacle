@@ -15,6 +15,7 @@ interface Product {
   category: string; // Main category
   subCategory: string; // Subcategory
   gallery: Array<{src: string, color: string, name: string}>;
+  sizes: string[]; // Add the sizes field explicitly
 }
 
 export default function CategoryPage() {
@@ -54,14 +55,26 @@ export default function CategoryPage() {
   }, [encodedMainCategory]);
   
   // Format products for ProductCard component
-  const formattedProducts = products.map(product => ({
-    id: product._id,
-    name: product.productName,
-    price: product.regularPrice,
-    image: product.gallery && product.gallery.length > 0 ? product.gallery[0].src : "/placeholder.png",
-    colors: product.gallery?.map(item => item.color) || [],
-    sizes: [], // Assuming sizes are not directly on the product
-  }));
+  const formattedProducts = products.map(product => {
+    // Extract unique colors from gallery
+    const colors = product.gallery?.reduce((colorSet, item) => {
+      if (item.src && item.src.trim() !== '') {
+        colorSet.add(item.src);  // Use image source as color identifier
+      }
+      return colorSet;
+    }, new Set<string>());
+    
+    return {
+      id: product._id,
+      name: product.productName,
+      price: product.regularPrice,
+      image: product.gallery && product.gallery.length > 0 ? product.gallery[0].src : "/placeholder.png",
+      // Convert Set to Array for colors
+      colors: Array.from(colors || []),
+      // Use actual product sizes instead of empty array
+      sizes: product.sizes || [],
+    };
+  });
 
   return (
     <div className="min-h-screen flex flex-col">
