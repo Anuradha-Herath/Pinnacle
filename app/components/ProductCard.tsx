@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { Heart } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -27,6 +27,9 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
   const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist();
   const { addToCart } = useCart();
   const isWishlisted = isInWishlist(product.id);
+  
+  // Add state to track the currently displayed image
+  const [currentImage, setCurrentImage] = useState(product.image);
 
   // Ensure we have valid data with defaults
   const productWithDefaults = {
@@ -98,7 +101,8 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
   const placeholderImage = '/placeholder.png'; 
   
   // Ensure image is valid with improved validation
-  const productImage = isValidImageUrl(product.image) ? product.image : placeholderImage;
+  const productImage = isValidImageUrl(currentImage || product.image) ? 
+    (currentImage || product.image) : placeholderImage;
 
   // Filter valid color images with improved validation
   const validColorImages = Array.isArray(productWithDefaults.colors) ? 
@@ -106,6 +110,13 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
       .filter(isValidImageUrl)
       .slice(0, 3) : 
     [];
+
+  // New handler for color image click
+  const handleColorImageClick = (e: React.MouseEvent, colorImg: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setCurrentImage(colorImg);
+  };
 
   return (
     <div 
@@ -139,17 +150,24 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
       {validColorImages.length > 0 && (
         <div className="flex gap-2 mt-2">
           {validColorImages.map((colorImg, index) => (
-            <Image
+            <button
               key={index}
-              src={colorImg}
-              alt={`Color ${index + 1}`}
-              width={40}
-              height={40}
-              className="w-10 h-10 object-contain rounded-md border cursor-pointer hover:border-black"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = placeholderImage;
-              }}
-            />
+              onClick={(e) => handleColorImageClick(e, colorImg)}
+              className={`w-10 h-10 border rounded-md overflow-hidden ${
+                currentImage === colorImg ? 'border-2 border-black' : 'border-gray-300'
+              }`}
+            >
+              <Image
+                src={colorImg}
+                alt={`Color ${index + 1}`}
+                width={40}
+                height={40}
+                className="w-full h-full object-contain"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = placeholderImage;
+                }}
+              />
+            </button>
           ))}
         </div>
       )}
