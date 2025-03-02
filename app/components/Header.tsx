@@ -163,7 +163,7 @@ const Header = () => {
         ],
         image: "/images/womens-accessories.jpg",
       },
-      rightImage: "/images/womens-right-image.jpg", // Large right image for Womens dropdown
+      rightImage: "/p2.webp", // Large right image for Womens dropdown
     },
     accessories: {
       Accessories: {
@@ -179,7 +179,7 @@ const Header = () => {
         ],
         image: "/images/accessories-main.jpg",
       },
-      rightImage: "/images/accessories-right-image.jpg", // Large right image for Accessories dropdown
+      rightImage: "/p3.webp", // Large right image for Accessories dropdown
     },
   };
 
@@ -193,7 +193,21 @@ const Header = () => {
 
   useEffect(() => {
     const handleDocumentClick = (event: MouseEvent) => {
-      // ... existing document click handler ...
+      if (
+        openDropdown && 
+        dropdownRef.current &&
+        !(dropdownRef.current as HTMLElement).contains(event.target as Node)
+      ) {
+        // Check if the clicked element is a dropdown toggle button
+        const isToggleButton = (event.target as Element).closest('button')?.textContent?.includes('Mens') ||
+          (event.target as Element).closest('button')?.textContent?.includes('Womens') ||
+          (event.target as Element).closest('button')?.textContent?.includes('Accessories');
+
+        // Only close dropdown if click was not on a toggle button
+        if (!isToggleButton) {
+          setOpenDropdown(null);
+        }
+      }
     };
 
     document.addEventListener("mousedown", handleDocumentClick);
@@ -203,7 +217,7 @@ const Header = () => {
   }, [openDropdown]);
 
   return (
-    <header className="bg-black text-white">
+    <header className="bg-black text-white relative z-50">
       {/* Top Bar */}
       <div className="max-w-7xl mx-auto px-4 py-3">
         <div className="flex items-center justify-between">
@@ -328,10 +342,11 @@ const Header = () => {
                 Mens
                 <ChevronDown className="ml-1 h-4 w-4" />
               </button>
+              
               {openDropdown === "mens" && (
                 <div
                   ref={dropdownRef}
-                  className="absolute left-0 mt-2 bg-white text-black shadow-lg rounded-lg p-4 w-screen max-h-[70vh] overflow-y-auto grid grid-cols-2"
+                  className="absolute left-0 mt-2 bg-white text-black shadow-lg rounded-lg p-4 w-screen max-h-[70vh] overflow-y-auto grid grid-cols-2 z-50"
                   style={{ left: 0, width: "100vw" }}
                   onMouseEnter={() => clearTimeout(timeout)}
                   onMouseLeave={handleMouseLeave}
@@ -341,8 +356,21 @@ const Header = () => {
                     {Object.entries(dropdownData.mens)
                       .filter(([key]) => key !== "rightImage")
                       .map(([category, categoryData]) => (
-                        <div key={category}>
-                          {/* Category content */}
+                        <div key={category} className="mb-6">
+                          <h3 className="font-semibold text-lg mb-2 border-b pb-1">{category}</h3>
+                          <ul className="space-y-2">
+                            {/* @ts-ignore - We know categoryData has items property */}
+                            {categoryData.items && categoryData.items.map((item: string) => (
+                              <li key={item}>
+                                <Link 
+                                  href={`/mens/${category.toLowerCase()}/${item.toLowerCase()}`} 
+                                  className="hover:text-orange-500 block py-1"
+                                >
+                                  {item}
+                                </Link>
+                              </li>
+                            ))}
+                          </ul>
                         </div>
                       ))}
                     <div className="col-span-3 border-t border-gray-200 mt-2 pt-2">
@@ -379,10 +407,11 @@ const Header = () => {
                 Womens
                 <ChevronDown className="ml-1 h-4 w-4" />
               </button>
+              
               {openDropdown === "womens" && (
                 <div
                   ref={dropdownRef}
-                  className="absolute left-0 mt-2 bg-white text-black shadow-lg rounded-lg p-4 w-screen max-h-[70vh] overflow-y-auto grid grid-cols-2"
+                  className="absolute left-0 mt-2 bg-white text-black shadow-lg rounded-lg p-4 w-screen max-h-[70vh] overflow-y-auto grid grid-cols-2 z-50"
                   style={{ left: 0, width: "100vw" }}
                   onMouseEnter={() => clearTimeout(timeout)}
                   onMouseLeave={handleMouseLeave}
@@ -392,8 +421,21 @@ const Header = () => {
                     {Object.entries(dropdownData.womens)
                       .filter(([key]) => key !== "rightImage")
                       .map(([category, categoryData]) => (
-                        <div key={category}>
-                          {/* Category content */}
+                        <div key={category} className="mb-6">
+                          <h3 className="font-semibold text-lg mb-2 border-b pb-1">{category}</h3>
+                          <ul className="space-y-2">
+                            {/* @ts-ignore - We know categoryData has items property */}
+                            {categoryData.items && categoryData.items.map((item: string) => (
+                              <li key={item}>
+                                <Link 
+                                  href={`/womens/${category.toLowerCase()}/${item.toLowerCase()}`} 
+                                  className="hover:text-orange-500 block py-1"
+                                >
+                                  {item}
+                                </Link>
+                              </li>
+                            ))}
+                          </ul>
                         </div>
                       ))}
                     <div className="col-span-3 border-t border-gray-200 mt-2 pt-2">
@@ -430,24 +472,38 @@ const Header = () => {
                 Accessories
                 <ChevronDown className="ml-1 h-4 w-4" />
               </button>
+              
               {openDropdown === "accessories" && (
                 <div
                   ref={dropdownRef}
-                  className="absolute left-0 mt-2 bg-white text-black shadow-lg rounded-lg p-4 w-screen max-h-[70vh] overflow-y-auto grid grid-cols-2"
+                  className="absolute left-0 mt-2 bg-white text-black shadow-lg rounded-lg p-4 w-screen max-h-[70vh] overflow-y-auto grid grid-cols-2 z-50"
                   style={{ left: 0, width: "100vw" }}
                   onMouseEnter={() => clearTimeout(timeout)}
                   onMouseLeave={handleMouseLeave}
                 >
                   {/* Left side - Categories and Items */}
-                  <div className="grid grid-cols-1 gap-x-4">
+                  <div className="grid grid-cols-3 gap-x-4">
                     {Object.entries(dropdownData.accessories)
                       .filter(([key]) => key !== "rightImage")
                       .map(([category, categoryData]) => (
-                        <div key={category}>
-                          {/* Category content */}
+                        <div key={category} className="mb-6">
+                          <h3 className="font-semibold text-lg mb-2 border-b pb-1">{category}</h3>
+                          <ul className="space-y-2">
+                            {/* @ts-ignore - We know categoryData has items property */}
+                            {categoryData.items && categoryData.items.map((item: string) => (
+                              <li key={item}>
+                                <Link 
+                                  href={`/accessories/${category.toLowerCase()}/${item.toLowerCase()}`} 
+                                  className="hover:text-orange-500 block py-1"
+                                >
+                                  {item}
+                                </Link>
+                              </li>
+                            ))}
+                          </ul>
                         </div>
                       ))}
-                    <div className="border-t border-gray-200 mt-2 pt-2">
+                    <div className="col-span-3 border-t border-gray-200 mt-2 pt-2">
                       <Link
                         href="/accessories"
                         className="block px-4 py-2 hover:bg-gray-200 rounded-md text-center font-semibold"

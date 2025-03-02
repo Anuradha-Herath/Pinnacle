@@ -276,7 +276,7 @@ export default function EnhancedProductDetailPage() {
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
           {/* Left Column - Product Gallery */}
-          <div className="mb-8">
+          <div className="product-container relative z-10">
             <ProductImageGallery 
               images={product.images} 
               selectedImage={selectedImageIndex}
