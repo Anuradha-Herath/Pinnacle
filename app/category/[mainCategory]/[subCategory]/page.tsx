@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { useParams } from "next/navigation";
+import { Filter } from "lucide-react";
 import Header from "@/app/components/Header";
 import Footer from "@/app/components/Footer";
 import ProductCard from "@/app/components/ProductCard";
+import FilterSidebar, { FilterOptions } from "@/app/components/FilterSidebar";
 
 // Define types
 interface Product {
@@ -12,28 +14,37 @@ interface Product {
   productName: string;
   description: string;
   regularPrice: number;
-  category: string; // Main category
-  subCategory: string; // Subcategory
+  category: string;
+  subCategory: string;
   gallery: Array<{src: string, color: string, name: string}>;
-  sizes: string[]; // Add the sizes field explicitly
+  sizes: string[];
+  createdAt?: string;
 }
 
 export default function SubCategoryPage() {
   const { mainCategory: encodedMainCategory, subCategory: encodedSubCategory } = useParams();
-  
-  // Decode URL parameters for display
   const mainCategory = typeof encodedMainCategory === 'string' ? decodeURIComponent(encodedMainCategory) : '';
   const subCategory = typeof encodedSubCategory === 'string' ? decodeURIComponent(encodedSubCategory) : '';
   
   const [products, setProducts] = useState<Product[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [availableSizes, setAvailableSizes] = useState<string[]>([]);
+  const [priceRange, setPriceRange] = useState({ min: 0, max: 5000 });
+  const [activeFilters, setActiveFilters] = useState<FilterOptions>({
+    priceRange: [0, 5000],
+    sizes: [],
+    sortBy: "newest",
+    onSale: false,
+  });
   
+  // Fetch products
   useEffect(() => {
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        // Use the original encoded values for the API request
         const response = await fetch(`/api/products?category=${encodedMainCategory}&subCategory=${encodedSubCategory}`);
         
         if (!response.ok) {
@@ -41,7 +52,33 @@ export default function SubCategoryPage() {
         }
         
         const data = await response.json();
-        setProducts(data.products || []);
+        const fetchedProducts = data.products || [];
+        setProducts(fetchedProducts);
+        
+        // Extract available sizes and price range from products
+        const allSizes = new Set<string>();
+        let minPrice = Number.MAX_VALUE;
+        let maxPrice = 0;
+        
+        fetchedProducts.forEach((product: Product) => {
+          product.sizes?.forEach(size => allSizes.add(size));
+          
+          if (product.regularPrice < minPrice) minPrice = product.regularPrice;
+          if (product.regularPrice > maxPrice) maxPrice = product.regularPrice;
+        });
+        
+        setAvailableSizes(Array.from(allSizes));
+        setPriceRange({ 
+          min: minPrice !== Number.MAX_VALUE ? minPrice : 0,
+          max: maxPrice !== 0 ? maxPrice : 5000 
+        });
+        
+        // Initialize with default price range
+        setActiveFilters(prev => ({
+          ...prev,
+          priceRange: [minPrice !== Number.MAX_VALUE ? minPrice : 0, maxPrice !== 0 ? maxPrice : 5000]
+        }));
+        
       } catch (error) {
         console.error('Error fetching products:', error);
         setError(error instanceof Error ? error.message : 'Failed to load products');
@@ -55,12 +92,52 @@ export default function SubCategoryPage() {
     }
   }, [encodedMainCategory, encodedSubCategory]);
   
-  // Fixed formatter to properly include colors and sizes
-  const formattedProducts = products.map(product => {
+  // Apply filters when products or filters change
+  useEffect(() => {
+    if (products.length === 0) return;
+    
+    let result = [...products];
+    
+    // Filter by price range
+    result = result.filter(product => 
+      product.regularPrice >= activeFilters.priceRange[0] && 
+      product.regularPrice <= activeFilters.priceRange[1]
+    );
+    
+    // Filter by sizes (if any selected)
+    if (activeFilters.sizes.length > 0) {
+      result = result.filter(product => 
+        activeFilters.sizes.some(size => product.sizes?.includes(size))
+      );
+    }
+    
+    // Sort products
+    switch (activeFilters.sortBy) {
+      case "price-low":
+        result.sort((a, b) => a.regularPrice - b.regularPrice);
+        break;
+      case "price-high":
+        result.sort((a, b) => b.regularPrice - a.regularPrice);
+        break;
+      case "newest":
+        result.sort((a, b) => {
+          if (!a.createdAt || !b.createdAt) return 0;
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        });
+        break;
+      // Add more sorting options as needed
+    }
+    
+    setFilteredProducts(result);
+    
+  }, [products, activeFilters]);
+  
+  // Format products for ProductCard component
+  const formattedProducts = filteredProducts.map(product => {
     // Extract unique colors from gallery
     const colors = product.gallery?.reduce((colorSet, item) => {
       if (item.src && item.src.trim() !== '') {
-        colorSet.add(item.src);  // Use image source as color identifier
+        colorSet.add(item.src);
       }
       return colorSet;
     }, new Set<string>());
@@ -70,12 +147,14 @@ export default function SubCategoryPage() {
       name: product.productName,
       price: product.regularPrice,
       image: product.gallery && product.gallery.length > 0 ? product.gallery[0].src : "/placeholder.png",
-      // Convert Set to Array for colors
       colors: Array.from(colors || []),
-      // Use actual product sizes instead of empty array
       sizes: product.sizes || [],
     };
   });
+
+  const handleFilterChange = (newFilters: FilterOptions) => {
+    setActiveFilters(newFilters);
+  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -91,42 +170,85 @@ export default function SubCategoryPage() {
           </p>
         </div>
         
-        {/* Loading State */}
-        {loading && (
-          <div className="flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500"></div>
+        {/* Mobile Filter Toggle Button */}
+        <button 
+          className="md:hidden flex items-center justify-center w-full py-2 bg-gray-900 text-white rounded-md mb-4"
+          onClick={() => setShowMobileFilters(true)}
+        >
+          <Filter size={18} className="mr-2" />
+          Filter & Sort
+        </button>
+        
+        {/* Mobile Filter Sidebar - Overlay */}
+        {showMobileFilters && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-40 flex md:hidden">
+            <div className="w-80 bg-white h-full ml-auto overflow-auto z-50 animate-slide-in-right">
+              <FilterSidebar 
+                onFilterChange={handleFilterChange}
+                initialFilters={activeFilters}
+                availableSizes={availableSizes}
+                priceRange={priceRange}
+                isMobile={true}
+                onMobileClose={() => setShowMobileFilters(false)}
+              />
+            </div>
           </div>
         )}
         
-        {/* Error State */}
-        {!loading && error && (
-          <div className="bg-red-100 text-red-700 p-4 rounded-lg text-center">
-            <p>{error}</p>
-            <button 
-              onClick={() => window.location.reload()} 
-              className="mt-4 px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
-            >
-              Try Again
-            </button>
+        {/* Content Area - Desktop Layout with Sidebar */}
+        <div className="flex flex-col md:flex-row gap-6">
+          {/* Filter Sidebar - Desktop */}
+          <div className="hidden md:block w-64 flex-shrink-0">
+            <div className="sticky top-8">
+              <FilterSidebar 
+                onFilterChange={handleFilterChange}
+                initialFilters={activeFilters}
+                availableSizes={availableSizes}
+                priceRange={priceRange}
+              />
+            </div>
           </div>
-        )}
-        
-        {/* No Products State */}
-        {!loading && !error && formattedProducts.length === 0 && (
-          <div className="text-center py-16">
-            <h2 className="text-2xl font-medium mb-4">No products found</h2>
-            <p className="text-gray-500">We couldn't find any products in this subcategory.</p>
+          
+          {/* Product Grid */}
+          <div className="flex-1">
+            {/* Loading State */}
+            {loading && (
+              <div className="flex justify-center items-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500"></div>
+              </div>
+            )}
+            
+            {/* Error State */}
+            {!loading && error && (
+              <div className="bg-red-100 text-red-700 p-4 rounded-lg text-center">
+                <p>{error}</p>
+                <button 
+                  onClick={() => window.location.reload()} 
+                  className="mt-4 px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+                >
+                  Try Again
+                </button>
+              </div>
+            )}
+            
+            {/* No Products State */}
+            {!loading && !error && formattedProducts.length === 0 && (
+              <div className="text-center py-16">
+                <h2 className="text-2xl font-medium mb-4">No products found</h2>
+                <p className="text-gray-500">Try adjusting your filters or check back later.</p>
+              </div>
+            )}
+            
+            {/* Products Grid */}
+            {!loading && !error && formattedProducts.length > 0 && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {formattedProducts.map((product) => (
+                  <ProductCard key={product.id} product={product} />
+                ))}
+              </div>
+            )}
           </div>
-        )}
-        
-        {/* Products Grid */}
-        {!loading && !error && formattedProducts.length > 0 && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {formattedProducts.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
-          </div>
-        )}
+        </div>
       </main>
       
       <Footer />
