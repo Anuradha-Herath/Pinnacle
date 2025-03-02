@@ -18,7 +18,11 @@ interface Product {
 }
 
 export default function CategoryPage() {
-  const { mainCategory } = useParams();
+  const { mainCategory: encodedMainCategory } = useParams();
+  
+  // Decode URL parameter for display
+  const mainCategory = typeof encodedMainCategory === 'string' ? decodeURIComponent(encodedMainCategory) : '';
+  
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -27,8 +31,8 @@ export default function CategoryPage() {
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        // Fetch all products in this main category
-        const response = await fetch(`/api/products?category=${encodeURIComponent(mainCategory as string)}`);
+        // Use the original encoded value for the API request
+        const response = await fetch(`/api/products?category=${encodedMainCategory}`);
         
         if (!response.ok) {
           throw new Error('Failed to fetch products');
@@ -44,10 +48,10 @@ export default function CategoryPage() {
       }
     };
     
-    if (mainCategory) {
+    if (encodedMainCategory) {
       fetchProducts();
     }
-  }, [mainCategory]);
+  }, [encodedMainCategory]);
   
   // Format products for ProductCard component
   const formattedProducts = products.map(product => ({

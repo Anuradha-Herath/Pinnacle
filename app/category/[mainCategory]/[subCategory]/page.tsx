@@ -18,7 +18,12 @@ interface Product {
 }
 
 export default function SubCategoryPage() {
-  const { mainCategory, subCategory } = useParams();
+  const { mainCategory: encodedMainCategory, subCategory: encodedSubCategory } = useParams();
+  
+  // Decode URL parameters for display
+  const mainCategory = typeof encodedMainCategory === 'string' ? decodeURIComponent(encodedMainCategory) : '';
+  const subCategory = typeof encodedSubCategory === 'string' ? decodeURIComponent(encodedSubCategory) : '';
+  
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -27,8 +32,8 @@ export default function SubCategoryPage() {
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        // Fetch products matching both main category and subcategory
-        const response = await fetch(`/api/products?category=${encodeURIComponent(mainCategory as string)}&subCategory=${encodeURIComponent(subCategory as string)}`);
+        // Use the original encoded values for the API request
+        const response = await fetch(`/api/products?category=${encodedMainCategory}&subCategory=${encodedSubCategory}`);
         
         if (!response.ok) {
           throw new Error('Failed to fetch products');
@@ -44,10 +49,10 @@ export default function SubCategoryPage() {
       }
     };
     
-    if (mainCategory && subCategory) {
+    if (encodedMainCategory && encodedSubCategory) {
       fetchProducts();
     }
-  }, [mainCategory, subCategory]);
+  }, [encodedMainCategory, encodedSubCategory]);
   
   // Format products for ProductCard component
   const formattedProducts = products.map(product => ({

@@ -327,9 +327,10 @@ const Header = () => {
                             {menCategories.map((category) => (
                               <Link 
                                 key={category._id} 
-                                href={`/category/${encodeURIComponent(category.mainCategory)}/${encodeURIComponent(category.title)}`}
+                                href={`/category/Men/${encodeURIComponent(category.title)}`}
                                 className="hover:text-orange-500 py-1"
                               >
+                                {/* Display the original title (not encoded) */}
                                 {category.title}
                               </Link>
                             ))}
@@ -398,9 +399,10 @@ const Header = () => {
                             {womenCategories.map((category) => (
                               <Link 
                                 key={category._id} 
-                                href={`/category/${encodeURIComponent(category.mainCategory)}/${encodeURIComponent(category.title)}`}
+                                href={`/category/Women/${encodeURIComponent(category.title)}`}
                                 className="hover:text-orange-500 py-1"
                               >
+                                {/* Display the original title (not encoded) */}
                                 {category.title}
                               </Link>
                             ))}
@@ -469,9 +471,10 @@ const Header = () => {
                             {accessoriesCategories.map((category) => (
                               <Link 
                                 key={category._id} 
-                                href={`/category/${encodeURIComponent(category.mainCategory)}/${encodeURIComponent(category.title)}`}
+                                href={`/category/Accessories/${encodeURIComponent(category.title)}`}
                                 className="hover:text-orange-500 py-1"
                               >
+                                {/* Display the original title (not encoded) */}
                                 {category.title}
                               </Link>
                             ))}
