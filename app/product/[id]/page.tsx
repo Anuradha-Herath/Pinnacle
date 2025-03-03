@@ -13,6 +13,16 @@ import { useCart } from "@/app/context/CartContext";
 import { useWishlist } from "@/app/context/WishlistContext";
 import { toast } from "react-hot-toast";
 import { Heart, ShoppingBag } from "lucide-react";
+import { cartNotifications, wishlistNotifications } from "@/lib/notificationService";
+
+// Add debounce utility
+const debounce = (func: Function, delay: number) => {
+  let timeoutId: NodeJS.Timeout;
+  return function(...args: any[]) {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => func.apply(this, args), delay);
+  };
+};
 
 export default function EnhancedProductDetailPage() {
   const params = useParams();
@@ -180,6 +190,34 @@ export default function EnhancedProductDetailPage() {
     setQuantity(Math.max(1, quantity + value));
   };
   
+  // Use debounce for cart and wishlist actions
+  const debouncedAddToCart = debounce((productData: any) => {
+    addToCart({
+      id: productData.id,
+      name: productData.name,
+      price: productData.price,
+      image: selectedImage || (product?.gallery && product.gallery.length > 0 ? product.gallery[0].src : ''),
+      quantity: quantity,
+      size: selectedSize,
+      color: selectedColor
+    }, false); // Pass false to prevent duplicate notification
+    
+    // Use notification service
+    cartNotifications.itemAdded(productData.name);
+  }, 300);
+
+  const debouncedToggleWishlist = debounce((productId: string, isInWishlist: boolean) => {
+    if (isInWishlist) {
+      removeFromWishlist(productId);
+      // Use notification service
+      wishlistNotifications.itemRemoved();
+    } else {
+      addToWishlist(productId);
+      // Use notification service
+      wishlistNotifications.itemAdded();
+    }
+  }, 300);
+  
   // Add to cart handler with quantity support
   const handleAddToCart = () => {
     if (!product) return;
@@ -194,30 +232,17 @@ export default function EnhancedProductDetailPage() {
       ? product.images[selectedImageIndex] 
       : placeholderImage;
     
-    addToCart({
-      id: product.id,
-      name: product.name,
-      price: product.price,
-      image: selectedImage,
-      size: selectedSize || undefined,
-      color: selectedImage, // Use the image URL as the color identifier
-      quantity: quantity // Pass the selected quantity
+    debouncedAddToCart({
+      id: product._id,
+      name: product.productName,
+      price: product.regularPrice,
     });
-    
-    toast.success(`${quantity} ${product.name} added to cart!`);
   };
   
   // Toggle wishlist handler
   const toggleWishlist = () => {
     if (!product) return;
-    
-    if (isProductInWishlist) {
-      removeFromWishlist(product.id);
-      toast.success('Removed from wishlist');
-    } else {
-      addToWishlist(product.id);
-      toast.success('Added to wishlist');
-    }
+    debouncedToggleWishlist(product._id, isProductInWishlist);
   };
   
   // Sync the selectedImageIndex state with ProductInformation and ProductImageGallery

@@ -1,194 +1,235 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
+import { Trash2, Plus, Minus, ShoppingBag } from "lucide-react";
 import { useCart } from "../context/CartContext";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
-import { Trash, Plus, Minus, ShoppingBag, X } from "lucide-react";
 
 const CartPage = () => {
-  const { cartItems, removeFromCart, updateQuantity, getCartTotal, clearCart } = useCart();
-  const total = getCartTotal();
-  const placeholderImage = '/placeholder.png';
+  const { cart, removeFromCart, updateQuantity, getCartTotal } = useCart();
+  const [isClient, setIsClient] = useState(false);
+  const router = useRouter();
 
-  // Helper function to validate image URLs
-  const isValidImageUrl = (url: string): boolean => {
-    if (!url) return false;
-    if (url.trim() === '') return false;
-    
-    try {
-      if (url.startsWith('/')) return true;
-      new URL(url);
-      return true;
-    } catch (e) {
-      return false;
+  // Fix for hydration issues - only render cart after component mounts
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  // If the component hasn't mounted yet, return a loading state or empty div
+  if (!isClient) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <div className="flex-grow flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  // Safe check for cart items
+  const cartItems = cart || [];
+  const cartTotal = getCartTotal();
+
+  const handleQuantityChange = (id: string, newQuantity: number, size?: string, color?: string) => {
+    if (newQuantity >= 1) {
+      updateQuantity(id, newQuantity, size, color);
     }
   };
 
-  // Force remove an item by trying both the variantKey and id
-  const forceRemoveItem = (item: any) => {
-    if (item.variantKey) {
-      removeFromCart(item.variantKey);
-    } else {
-      removeFromCart(item.id);
-    }
+  const handleRemoveItem = (id: string, size?: string, color?: string) => {
+    removeFromCart(id, size, color);
+  };
+
+  const handleCheckout = () => {
+    router.push("/checkout");
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-50">
+    <div className="min-h-screen flex flex-col">
       <Header />
-      
-      <div className="max-w-7xl mx-auto px-4 py-8 flex-grow w-full">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-semibold">Your Shopping Cart</h1>
-          
-          {/* Add Reset Cart Button */}
-          {cartItems.length > 0 && (
-            <button 
-              onClick={() => {
-                if (window.confirm("Are you sure you want to clear your cart?")) {
-                  clearCart();
-                }
-              }}
-              className="flex items-center text-red-500 hover:text-red-700"
-            >
-              <X className="mr-1" size={16} />
-              Reset Cart
-            </button>
-          )}
-        </div>
-        
+
+      <main className="flex-grow container mx-auto px-4 py-8">
+        <h1 className="text-3xl font-bold mb-6">Shopping Cart</h1>
+
         {cartItems.length === 0 ? (
-          <div className="text-center py-16 bg-white rounded-lg shadow-sm">
-            <div className="mx-auto w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-              <ShoppingBag className="h-12 w-12 text-gray-400" />
-            </div>
-            <h2 className="text-xl font-medium mb-2">Your cart is empty</h2>
-            <p className="text-gray-600 mb-6">Looks like you haven't added any items to your cart yet.</p>
-            <Link 
+          <div className="text-center py-16">
+            <ShoppingBag className="mx-auto h-16 w-16 text-gray-400 mb-4" />
+            <h2 className="text-2xl font-medium mb-4">Your cart is empty</h2>
+            <p className="text-gray-500 mb-6">
+              Looks like you haven't added anything to your cart yet.
+            </p>
+            <Link
               href="/"
-              className="bg-black text-white px-6 py-2 rounded-md hover:bg-gray-800 inline-block"
+              className="px-6 py-3 bg-black text-white font-medium rounded-md hover:bg-gray-900 transition"
             >
               Continue Shopping
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="md:col-span-2 space-y-4">
-              {cartItems.map((item, index) => {
-                // Ensure image is valid
-                const itemImage = isValidImageUrl(item.image) ? 
-                  (item.image.startsWith('data:') ? placeholderImage : item.image) : 
-                  placeholderImage;
-                  
-                // Use index as fallback key if no other identifiers are available
-                const itemKey = item.variantKey || item.id || `cart-item-${index}`;
-                  
-                return (
-                  <div
-                    key={itemKey}
-                    className="flex flex-col sm:flex-row items-start sm:items-center justify-between bg-white p-4 rounded-lg shadow-sm"
-                  >
-                    <div className="flex items-center space-x-4">
-                      <div className="relative w-20 h-20">
-                        <Image
-                          src={itemImage}
-                          alt={item.name}
-                          fill
-                          className="object-contain rounded"
-                          sizes="80px"
-                          onError={(e) => {
-                            (e.target as HTMLImageElement).src = placeholderImage;
-                          }}
-                        />
-                      </div>
-                      <div>
-                        <h2 className="text-lg font-medium">{item.name}</h2>
-                        <div className="text-gray-500 text-sm space-y-1">
-                          {/* Display variant information if available */}
-                          {item.size && <p>Size: {item.size}</p>}
-                          {item.color && item.color !== item.image && (
-                            <div className="flex items-center">
-                              <span className="mr-1">Color:</span>
-                              <span className="relative w-4 h-4 rounded-full overflow-hidden inline-block align-middle">
-                                <Image 
-                                  src={item.color} 
-                                  alt="Color" 
-                                  width={16}
-                                  height={16}
-                                  className="object-cover"
-                                  onError={(e) => {
-                                    (e.target as HTMLImageElement).src = placeholderImage;
-                                  }}
-                                />
-                              </span>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Cart Items */}
+            <div className="lg:col-span-2">
+              <div className="bg-white rounded-lg shadow overflow-hidden">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Product
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Price
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Quantity
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Total
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <span className="sr-only">Actions</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-200">
+                    {cartItems.map((item) => (
+                      <tr key={`${item.id}-${item.size}-${item.color}`}>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center">
+                            <div className="h-16 w-16 relative flex-shrink-0">
+                              <Image
+                                src={item.image || "/placeholder.png"}
+                                alt={item.name}
+                                fill
+                                className="object-cover"
+                                sizes="64px"
+                              />
                             </div>
-                          )}
-                        </div>
-                        <p className="text-gray-600 mt-1">${item.price.toFixed(2)}</p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-center space-x-6 mt-4 sm:mt-0 self-end sm:self-auto">
-                      <div className="flex items-center border rounded-md">
-                        <button
-                          onClick={() => updateQuantity(itemKey, item.quantity - 1)}
-                          className="px-3 py-1 hover:bg-gray-100 rounded-l-md"
-                          disabled={item.quantity <= 1}
-                        >
-                          <Minus size={16} />
-                        </button>
-                        <span className="px-3 py-1 border-x">{item.quantity || 1}</span>
-                        <button
-                          onClick={() => updateQuantity(itemKey, (item.quantity || 1) + 1)}
-                          className="px-3 py-1 hover:bg-gray-100 rounded-r-md"
-                        >
-                          <Plus size={16} />
-                        </button>
-                      </div>
-                      
-                      {/* Use our force remove function */}
-                      <button
-                        onClick={() => forceRemoveItem(item)}
-                        className="text-red-500 hover:text-red-700"
-                      >
-                        <Trash size={20} />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
+                            <div className="ml-4">
+                              <div className="text-sm font-medium text-gray-900">
+                                {item.name}
+                              </div>
+                              {item.size && (
+                                <div className="text-sm text-gray-500">
+                                  Size: {item.size}
+                                </div>
+                              )}
+                              {item.color && (
+                                <div className="text-sm text-gray-500">
+                                  Color: {item.color}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">
+                            ${item.price.toFixed(2)}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-center border rounded-md">
+                            <button
+                              className="px-2 py-1"
+                              onClick={() =>
+                                handleQuantityChange(
+                                  item.id,
+                                  item.quantity - 1,
+                                  item.size,
+                                  item.color
+                                )
+                              }
+                            >
+                              <Minus className="h-4 w-4" />
+                            </button>
+                            <span className="px-4 py-1">{item.quantity}</span>
+                            <button
+                              className="px-2 py-1"
+                              onClick={() =>
+                                handleQuantityChange(
+                                  item.id,
+                                  item.quantity + 1,
+                                  item.size,
+                                  item.color
+                                )
+                              }
+                            >
+                              <Plus className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">
+                            ${(item.price * item.quantity).toFixed(2)}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                          <button
+                            onClick={() =>
+                              handleRemoveItem(item.id, item.size, item.color)
+                            }
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            <Trash2 className="h-5 w-5" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-            
+
             {/* Order Summary */}
-            <div className="bg-white p-6 rounded-lg shadow-sm h-fit">
-              <h2 className="text-xl font-semibold mb-4">Order Summary</h2>
-              <div className="space-y-2 border-b pb-4">
-                <div className="flex justify-between">
-                  <span>Subtotal</span>
-                  <span>${total.toFixed(2)}</span>
+            <div>
+              <div className="bg-white rounded-lg shadow p-6">
+                <h2 className="text-lg font-medium mb-6">Order Summary</h2>
+                
+                <div className="space-y-4">
+                  <div className="flex justify-between">
+                    <span>Subtotal</span>
+                    <span>${cartTotal.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Shipping</span>
+                    <span>Calculated at checkout</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span>Tax</span>
+                    <span>Calculated at checkout</span>
+                  </div>
+                  <div className="border-t pt-4 flex justify-between font-medium">
+                    <span>Total</span>
+                    <span>${cartTotal.toFixed(2)}</span>
+                  </div>
                 </div>
-                <div className="flex justify-between">
-                  <span>Shipping</span>
-                  <span>Free</span>
-                </div>
-              </div>
-              <div className="flex justify-between font-semibold text-lg mt-4">
-                <span>Total</span>
-                <span>${total.toFixed(2)}</span>
-              </div>
-              <Link href="/checkout" passHref>
-                <button className="mt-6 w-full bg-black text-white py-3 rounded-md hover:bg-gray-800 transition-colors">
-                  Proceed to Checkout
+                
+                <button
+                  onClick={handleCheckout}
+                  className="w-full mt-6 py-3 bg-black text-white font-medium rounded-md hover:bg-gray-900 transition"
+                >
+                  Checkout
                 </button>
-              </Link>
+                
+                <div className="mt-4 text-center">
+                  <Link
+                    href="/"
+                    className="text-sm text-gray-600 hover:underline"
+                  >
+                    or Continue Shopping
+                  </Link>
+                </div>
+              </div>
             </div>
           </div>
         )}
-      </div>
-      
+      </main>
+
       <Footer />
     </div>
   );

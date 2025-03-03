@@ -8,6 +8,8 @@ import { Search, User, Heart, ShoppingBag, ChevronDown, X } from "lucide-react";
 import { useWishlist } from "../context/WishlistContext";
 import { useCart } from "../context/CartContext";
 import { useOnClickOutside } from "../hooks/useOnClickOutside";
+import { useAuth } from "../context/AuthContext";
+import { authNotifications } from "@/lib/notificationService";
 
 // Define types for suggestions
 interface Suggestion {
@@ -42,6 +44,9 @@ const Header = () => {
   const [womenCategories, setWomenCategories] = useState<Category[]>([]);
   const [accessoriesCategories, setAccessoriesCategories] = useState<Category[]>([]);
   const [categoriesLoading, setCategoriesLoading] = useState(false);
+  const { user, logout } = useAuth();
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  let userDropdownTimeout: NodeJS.Timeout;
   
   // Refs for click outside detection
   const searchRef = useRef<HTMLDivElement>(null);
@@ -172,6 +177,23 @@ const Header = () => {
     };
   }, [openDropdown]);
 
+  const handleUserMouseEnter = () => {
+    clearTimeout(userDropdownTimeout);
+    setShowUserDropdown(true);
+  };
+
+  const handleUserMouseLeave = () => {
+    userDropdownTimeout = setTimeout(() => {
+      setShowUserDropdown(false);
+    }, 300); // 300ms delay to allow mouse movement to dropdown
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    // Use notification service instead of direct toast call
+    authNotifications.logoutSuccess();
+  };
+
   return (
     <header className="bg-black text-white relative z-50">
       {/* Top Bar */}
@@ -260,10 +282,46 @@ const Header = () => {
 
           {/* Right Icons */}
           <div className="flex items-center space-x-6">
-            <div className="flex items-center cursor-pointer hover:text-gray-300">
-              <User className="h-6 w-6" />
-              <span className="ml-2">Sign in</span>
-            </div>
+            {user ? (
+              <div className="relative" 
+                   onMouseEnter={handleUserMouseEnter} 
+                   onMouseLeave={handleUserMouseLeave}>
+                <div className="flex items-center cursor-pointer hover:text-gray-300">
+                  <User className="h-6 w-6" />
+                  <span className="ml-2">Hi, {user.firstName}</span>
+                  <ChevronDown className="ml-1 h-4 w-4" />
+                </div>
+                
+                {/* User Dropdown Menu - Now controlled by state instead of CSS hover */}
+                {showUserDropdown && (
+                  <div className="absolute right-0 mt-2 w-48 bg-white text-black shadow-lg rounded-md overflow-hidden z-50">
+                    <Link href="/profile" className="block px-4 py-2 hover:bg-gray-100">
+                      Profile
+                    </Link>
+                    <Link href="/orders" className="block px-4 py-2 hover:bg-gray-100">
+                      Orders
+                    </Link>
+                    {user.role === 'admin' && (
+                      <Link href="/dashboard" className="block px-4 py-2 hover:bg-gray-100">
+                        Dashboard
+                      </Link>
+                    )}
+                    <button 
+                      onClick={handleLogout}
+                      className="w-full text-left px-4 py-2 hover:bg-gray-100 border-t border-gray-200"
+                    >
+                      Sign out
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Link href="/login" className="flex items-center cursor-pointer hover:text-gray-300">
+                <User className="h-6 w-6" />
+                <span className="ml-2">Sign in</span>
+              </Link>
+            )}
+            
             <Link href="/wishlist" className="hover:text-gray-300 relative">
               <Heart className="h-6 w-6" />
               {wishlist.length > 0 && (
