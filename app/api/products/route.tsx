@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import Product from '@/models/Product';
+import Inventory from '@/models/Inventory';
 import cloudinary from "@/lib/cloudinary"; // Uncomment this for image uploads
 
 // Connect to MongoDB
@@ -120,9 +121,20 @@ export async function POST(request: Request) {
     });
     
     await newProduct.save();
+    
+    // Create inventory entry with 0 quantity and "newly created" tag
+    const newInventory = new Inventory({
+      productId: newProduct._id,
+      quantity: 0,
+      tags: ['newly created']
+    });
+    
+    await newInventory.save();
+    
     return NextResponse.json({ 
-      message: "Product created with images uploaded to Cloudinary", 
-      product: newProduct 
+      message: "Product created and added to inventory", 
+      product: newProduct,
+      inventory: newInventory
     }, { status: 201 });
   } catch (error) {
     console.error("Server error:", error);
