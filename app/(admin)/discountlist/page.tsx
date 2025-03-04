@@ -15,6 +15,11 @@ export default function DiscountList() {
     { id: "D003", product: "Men", type: "Category", percentage: "25%", startDate: "12 May 2023", endDate: "12 Jun 2023", status: "Active" },
   ]);
 
+  // Function to view discount details
+  const handleViewDiscount = (discountId: string) => {
+    router.push(`/discountview?id=${discountId}`);
+  };
+
   return (
     <div className="flex">
       <Sidebar />
@@ -91,7 +96,12 @@ export default function DiscountList() {
                     </span>
                   </td>
                   <td className="p-3 flex gap-2 justify-end">
-                    <button className="p-2 bg-orange-400 text-white rounded-md hover:bg-orange-600"><EyeIcon className="h-5 w-5" /></button>
+                    <button 
+                      onClick={() => handleViewDiscount(discount.id)}
+                      className="p-2 bg-orange-400 text-white rounded-md hover:bg-orange-600"
+                    >
+                      <EyeIcon className="h-5 w-5" />
+                    </button>
                     <button className="p-2 bg-orange-400 text-white rounded-md hover:bg-orange-600"><PencilIcon className="h-5 w-5" /></button>
                     <button className="p-2 bg-orange-400 text-white rounded-md hover:bg-orange-600"><TrashIcon className="h-5 w-5" /></button>
                   </td>
