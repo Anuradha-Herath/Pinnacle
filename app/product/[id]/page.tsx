@@ -58,6 +58,13 @@ export default function EnhancedProductDetailPage() {
       return false;
     }
   };
+
+  // Helper function to get the currently selected image
+  const getSelectedImage = () => {
+    return product?.images && product.images.length > 0
+      ? product.images[selectedImageIndex]
+      : placeholderImage;
+  };
   
   // Fetch product data
   useEffect(() => {
@@ -196,7 +203,7 @@ export default function EnhancedProductDetailPage() {
       id: productData.id,
       name: productData.name,
       price: productData.price,
-      image: selectedImage || (product?.gallery && product.gallery.length > 0 ? product.gallery[0].src : ''),
+      image: getSelectedImage(), // Use the helper function here
       quantity: quantity,
       size: selectedSize,
       color: selectedColor
@@ -227,15 +234,11 @@ export default function EnhancedProductDetailPage() {
       return;
     }
     
-    // Get the selected image to represent the color
-    const selectedImage = product.images && product.images.length > 0 
-      ? product.images[selectedImageIndex] 
-      : placeholderImage;
-    
+    // No need to define selectedImage here anymore, using helper function instead
     debouncedAddToCart({
-      id: product._id,
-      name: product.productName,
-      price: product.regularPrice,
+      id: product.id,
+      name: product.name,
+      price: product.price,
     });
   };
   
