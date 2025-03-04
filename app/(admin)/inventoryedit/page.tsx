@@ -1,4 +1,4 @@
-// InventoryDetailsPage.tsx
+// InventoryEditPage.tsx
 "use client";
 
 import { useRouter } from "next/navigation";
@@ -24,11 +24,12 @@ interface Product {
     colorStock: { [key: string]: number };
 }
 
-export default function InventoryDetailsPage() {
+
+export default function InventoryEditPage() {
     const router = useRouter();
 
-    // Dummy product details
-    const initialProduct: Product = {
+    // Dummy product details - you'll likely fetch this based on productId in a real app
+    const [product, setProduct] = useState<Product>({
         name: "Classic Seamless Henly Polo Tee",
         id: "#12456",
         selectedSize: "M",
@@ -55,20 +56,13 @@ export default function InventoryDetailsPage() {
             Green: 199,
             Black: 257,
         },
-    };
+    });
 
-    const [product, setProduct] = useState<Product>(initialProduct);
-    const [selectedSize, setSelectedSize] = useState<string>(initialProduct.selectedSize);
-    const [selectedColor, setSelectedColor] = useState<string>(initialProduct.selectedColor);
+    const [addStockQty, setAddStockQty] = useState<string>('');
+    const [stockLimitQty, setStockLimitQty] = useState<string>('');
+    const [selectedSize, setSelectedSize] = useState<string>(product.selectedSize);
+    const [selectedColor, setSelectedColor] = useState<string>(product.selectedColor);
 
-
-    const handleEditStock = () => {
-        router.push('./inventoryedit'); // Navigate to InventoryEditPage
-    };
-
-    const handleEditStockUnit = () => {
-        router.push('./inventoryedit'); // Navigate to InventoryEditPage - same page for both buttons for now
-    };
 
     const handleSizeSelect = (size: string) => {
         setSelectedSize(size);
@@ -78,14 +72,46 @@ export default function InventoryDetailsPage() {
         setSelectedColor(colorName);
     };
 
-    // Function to get stock based on selected size and color (you might need to adjust logic based on your actual data)
-    const getCurrentStock = () => {
-        // In this dummy data, we are just returning stock based on selected size for simplicity.
-        // In a real scenario, you might have a more complex logic to fetch combined stock
-        return product.sizeStock[selectedSize] || 0; // Default to 0 if size stock is not found
+    const handleAddStockChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setAddStockQty(e.target.value);
     };
 
-    const currentStock = getCurrentStock();
+    const handleStockLimitChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setStockLimitQty(e.target.value);
+    };
+
+    const handleSaveStock = () => {
+        // In a real application, you would send this data to your backend API
+        alert(`Stock added: ${addStockQty} for Size: ${selectedSize}, Color: ${selectedColor}`);
+
+        // Update dummy product data - adjust stock as needed in real app logic
+        setProduct(prevProduct => {
+            const updatedSizeStock = { ...prevProduct.sizeStock };
+            updatedSizeStock[selectedSize] = (parseInt(updatedSizeStock[selectedSize]) || 0) + parseInt(addStockQty || 0);
+
+            const updatedColorStock = { ...prevProduct.colorStock };
+            updatedColorStock[selectedColor] = (parseInt(updatedColorStock[selectedColor]) || 0) + parseInt(addStockQty || 0);
+
+
+            return {
+                ...prevProduct,
+                sizeStock: updatedSizeStock,
+                colorStock: updatedColorStock,
+                stock: prevProduct.stock + parseInt(addStockQty || 0) // Update total stock as well if needed
+            };
+        });
+        setAddStockQty(''); // Clear input after save
+    };
+
+    const handleSaveStockLimit = () => {
+        // In a real application, you would send this data to your backend API
+        alert(`Stock Limit updated: ${stockLimitQty} for Size: ${selectedSize}, Color: ${selectedColor}`);
+        setProduct(prevProduct => ({
+            ...prevProduct,
+            stockLimit: parseInt(stockLimitQty || 0) // Update stock limit - might need size/color specific limit in real app
+        }));
+        setStockLimitQty(''); // Clear input after save
+    };
 
 
     return (
@@ -94,7 +120,7 @@ export default function InventoryDetailsPage() {
             <div className="min-h-screen bg-gray-50 p-6 flex-1">
                 {/* Top Bar */}
                 <div className="flex justify-between items-center mb-6">
-                    <h1 className="text-2xl font-semibold">Inventory Details</h1>
+                    <h1 className="text-2xl font-semibold">Inventory Edit</h1>
                     <div className="flex items-center gap-2">
                         <button className="p-2 hover:bg-gray-200 rounded-lg">
                             <BellIcon className="h-6 w-6 text-gray-600" />
@@ -119,18 +145,11 @@ export default function InventoryDetailsPage() {
                     </div>
                 </div>
 
-                {/* Top Images */}
-                <div className="grid grid-cols-2 m-8">
-                    <div>
-                        <img src="/p3.webp" className="w-3/5 rounded-lg shadow-lg" alt="Main Product" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <img src="/p1.webp" className="w-3/5 rounded-lg shadow-lg" alt="Product Variant 1" />
-                        <img src="/p3.webp" className="w-3/5 rounded-lg shadow-lg" alt="Product Variant 2" />
-                        <img src="/p5.webp" className="w-3/5 rounded-lg shadow-lg" alt="Product Variant 3" />
-                        <img src="/p4.webp" className="w-3/5 rounded-lg shadow-lg" alt="Product Variant 4" />
-                    </div>
+                {/* Breadcrumb */}
+                <div className="mb-4">
+                    <p className="text-gray-500">Home > Inventory > Edit Stock</p>
                 </div>
+
 
                 {/* Main Content */}
                 <div className="flex gap-6">
@@ -160,21 +179,15 @@ export default function InventoryDetailsPage() {
                                 </div>
                             </div>
 
-                            {/* Stock Status - Dynamic based on selection */}
-                            <div className="mt-4">
-                                <p className="font-semibold">Stock - {currentStock}</p>
-                                <p className="text-green-500">In Stock</p> {/* You can make "In Stock" dynamic as well based on currentStock */}
-                            </div>
-
-                            {/* Color Selection */}
-                            <div className="mt-4">
+                             {/* Color Selection */}
+                             <div className="mt-4">
                                 <p className="font-semibold">Colors {'>'} {selectedColor}</p>
                                 <div className="grid grid-cols-4 gap-2 mt-2">
                                     {product.colors.map((color) => (
                                         <div
                                             key={color.name}
                                             onClick={() => handleColorSelect(color.name)}
-                                            className={`p-2 border rounded-md text-center ${
+                                            className={`p-2 border rounded-md text-center cursor-pointer ${
                                                 color.name === selectedColor
                                                     ? "border-orange-500"
                                                     : "border-gray-200"
@@ -192,20 +205,27 @@ export default function InventoryDetailsPage() {
                                 </div>
                             </div>
 
-                            {/* Stock Limit */}
+
+                            {/* Add Stock Input */}
                             <div className="mt-4">
-                                <p className="font-semibold">Stock Limit: {product.stockLimit}</p>
+                                <p className="font-semibold">Add Stock > {selectedSize} {selectedColor}</p>
+                                <div className="mt-2 flex gap-2">
+                                    <input
+                                        type="number"
+                                        className="p-2 border rounded-md w-full"
+                                        placeholder="Enter quantity to add"
+                                        value={addStockQty}
+                                        onChange={handleAddStockChange}
+                                    />
+                                    <button
+                                        onClick={handleSaveStock}
+                                        className="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600"
+                                    >
+                                        SAVE
+                                    </button>
+                                </div>
                             </div>
 
-                            {/* Edit Buttons */}
-                            <div className="mt-4 flex gap-4">
-                                <button
-                                    onClick={handleEditStock}
-                                    className="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600"
-                                >
-                                    Edit Stock
-                                </button>
-                            </div>
                         </div>
                     </div>
 
@@ -275,10 +295,10 @@ export default function InventoryDetailsPage() {
                 {/* Back Button */}
                 <div className="mt-6 flex justify-end">
                     <button
-                        onClick={() => router.push("../inventory")}
+                        onClick={() => router.back()} // Go back to the previous page (Inventory Details in this case if navigated from there)
                         className="px-6 py-2 bg-gray-300 text-black rounded-md hover:bg-gray-400 w-28"
                     >
-                        Back
+                        BACK
                     </button>
                 </div>
             </div>
