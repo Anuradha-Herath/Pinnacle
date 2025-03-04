@@ -52,6 +52,36 @@ export default function DiscountList() {
     router.push(`/discountedit?id=${discountId}`);
   };
 
+  // Function to handle discount deletion
+  const handleDeleteDiscount = async (discountId: string) => {
+    // Show confirmation dialog
+    if (!window.confirm("Are you sure you want to delete this discount?")) {
+      return;
+    }
+    
+    try {
+      const response = await fetch(`/api/discounts/${discountId}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to delete discount');
+      }
+      
+      // Remove the deleted discount from state to update UI
+      setDiscounts(prevDiscounts => 
+        prevDiscounts.filter(discount => discount._id !== discountId)
+      );
+      
+      // Show success message (optional)
+      alert("Discount deleted successfully");
+      
+    } catch (err) {
+      console.error("Error deleting discount:", err);
+      alert("Failed to delete discount. Please try again.");
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex">
@@ -152,7 +182,10 @@ export default function DiscountList() {
                       >
                         <PencilIcon className="h-5 w-5" />
                       </button>
-                      <button className="p-2 bg-orange-400 text-white rounded-md hover:bg-orange-600">
+                      <button 
+                        onClick={() => handleDeleteDiscount(discount._id)}
+                        className="p-2 bg-orange-400 text-white rounded-md hover:bg-orange-600"
+                      >
                         <TrashIcon className="h-5 w-5" />
                       </button>
                     </td>
