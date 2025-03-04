@@ -1,19 +1,46 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { EyeIcon, PencilIcon, TrashIcon, BellIcon, Cog6ToothIcon, ClockIcon, PlusIcon } from "@heroicons/react/24/solid";
 import Sidebar from "../../components/Sidebar";
 
 export default function DiscountList() {
   const router = useRouter();
+  interface Discount {
+    _id: string;
+    product: string;
+    type: string;
+    percentage: number;
+    startDate: string;
+    endDate: string;
+    status: string;
+  }
 
-  // Dummy discount data
-  const [discounts] = useState([
-    { id: "D001", product: "Men's T-Shirt", type: "Sub-Category", percentage: "50%", startDate: "12 May 2023", endDate: "12 Jun 2023", status: "Active" },
-    { id: "D002", product: "Black Men T-Shirt", type: "Product", percentage: "25%", startDate: "12 May 2023", endDate: "12 Jun 2023", status: "Active" },
-    { id: "D003", product: "Men", type: "Category", percentage: "25%", startDate: "12 May 2023", endDate: "12 Jun 2023", status: "Active" },
-  ]);
+  const [discounts, setDiscounts] = useState<Discount[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    // Fetch discounts from API
+    const fetchDiscounts = async () => {
+      try {
+        const response = await fetch('/api/discounts');
+        if (!response.ok) {
+          throw new Error('Failed to fetch discounts');
+        }
+        const data = await response.json();
+        setDiscounts(data.discounts || []);
+      } catch (err) {
+        setError("Failed to load discounts");
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDiscounts();
+  }, []);
 
   // Function to view discount details
   const handleViewDiscount = (discountId: string) => {
@@ -24,6 +51,17 @@ export default function DiscountList() {
   const handleEditDiscount = (discountId: string) => {
     router.push(`/discountedit?id=${discountId}`);
   };
+
+  if (loading) {
+    return (
+      <div className="flex">
+        <Sidebar />
+        <div className="min-h-screen bg-gray-50 p-6 flex-1 flex justify-center items-center">
+          <p>Loading discounts...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex">
@@ -88,37 +126,49 @@ export default function DiscountList() {
               </tr>
             </thead>
             <tbody>
-              {discounts.map((discount, index) => (
-                <tr key={index} className="border-t">
-                  <td className="p-3">{discount.product}</td>
-                  <td className="p-3">{discount.type}</td>
-                  <td className="p-3">{discount.percentage}</td>
-                  <td className="p-3">{discount.startDate}</td>
-                  <td className="p-3">{discount.endDate}</td>
-                  <td className="p-3">
-                    <span className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${discount.status === "Active" ? "bg-green-300 text-green-800" : "bg-orange-300 text-orange-800"}`}>
-                      {discount.status}
-                    </span>
-                  </td>
-                  <td className="p-3 flex gap-2 justify-end">
-                    <button 
-                      onClick={() => handleViewDiscount(discount.id)}
-                      className="p-2 bg-orange-400 text-white rounded-md hover:bg-orange-600"
-                    >
-                      <EyeIcon className="h-5 w-5" />
-                    </button>
-                    <button 
-                      onClick={() => handleEditDiscount(discount.id)}
-                      className="p-2 bg-orange-400 text-white rounded-md hover:bg-orange-600"
-                    >
-                      <PencilIcon className="h-5 w-5" />
-                    </button>
-                    <button className="p-2 bg-orange-400 text-white rounded-md hover:bg-orange-600">
-                      <TrashIcon className="h-5 w-5" />
-                    </button>
+              {discounts.length > 0 ? (
+                discounts.map((discount) => (
+                  <tr key={discount._id} className="border-t">
+                    <td className="p-3">{discount.product}</td>
+                    <td className="p-3">{discount.type}</td>
+                    <td className="p-3">{discount.percentage}</td>
+                    <td className="p-3">{discount.startDate}</td>
+                    <td className="p-3">{discount.endDate}</td>
+                    <td className="p-3">
+                      <span className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${discount.status === "Active" ? "bg-green-300 text-green-800" : "bg-orange-300 text-orange-800"}`}>
+                        {discount.status}
+                      </span>
+                    </td>
+                    <td className="p-3 flex gap-2 justify-end">
+                      <button 
+                        onClick={() => handleViewDiscount(discount._id)}
+                        className="p-2 bg-orange-400 text-white rounded-md hover:bg-orange-600"
+                      >
+                        <EyeIcon className="h-5 w-5" />
+                      </button>
+                      <button 
+                        onClick={() => handleEditDiscount(discount._id)}
+                        className="p-2 bg-orange-400 text-white rounded-md hover:bg-orange-600"
+                      >
+                        <PencilIcon className="h-5 w-5" />
+                      </button>
+                      <button className="p-2 bg-orange-400 text-white rounded-md hover:bg-orange-600">
+                        <TrashIcon className="h-5 w-5" />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={7} className="p-3 text-center">
+                    {error ? (
+                      <p className="text-red-500">{error}</p>
+                    ) : (
+                      <p>No discounts found. Create your first discount!</p>
+                    )}
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
           <div className="flex justify-end mt-6 pr-4">
