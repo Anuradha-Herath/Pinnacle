@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { checkConnection } from "@/lib/mongodb";
+import checkConnection from "@/lib/mongodb";
 
 export async function GET() {
   try {
-    const isConnected = await checkConnection();
+    const client = await checkConnection;
     
-    if (isConnected) {
+    if (client) {
       return NextResponse.json({ 
         status: "connected", 
         message: "Database connection successful" 

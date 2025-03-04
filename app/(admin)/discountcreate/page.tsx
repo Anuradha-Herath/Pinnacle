@@ -3,21 +3,51 @@
 import { useState } from "react";
 import { BellIcon, Cog6ToothIcon, ClockIcon } from "@heroicons/react/24/solid";
 import Sidebar from "../../components/Sidebar";
+import { useRouter } from "next/navigation";
 
 export default function DiscountCreate() {
+  const router = useRouter();
   const [formData, setFormData] = useState({
     discountStatus: "active",
     startDate: "",
     endDate: "",
     discountType: "category",
-    discountId: "",
-    discountPercentage: ""
+    productId: "",
+    discountPercentage: "",
+    description: ""
   });
-
-  const handleSubmit = (e :React.FormEvent) => {
+  
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Discount Data:", formData);
-    // API integration logic
+    setLoading(true);
+    setError("");
+    
+    try {
+      const response = await fetch('/api/discounts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+      
+      const data = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create discount');
+      }
+      
+      // Success! Redirect to discount list
+      router.push('/discountlist');
+    } catch (err) {
+      console.error("Error creating discount:", err);
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -47,6 +77,12 @@ export default function DiscountCreate() {
             <h1 className="text-xl font-semibold">Discounts Create</h1>
             <p className="text-sm text-gray-500">Home &gt; Discounts &gt; Create</p>
           </div>
+          
+          {error && (
+            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+              {error}
+            </div>
+          )}
 
           <form onSubmit={handleSubmit}>
             <div className="grid grid-cols-5 gap-6">
@@ -71,9 +107,21 @@ export default function DiscountCreate() {
                 <div className="bg-white p-4 rounded-lg shadow-md">
                   <h2 className="text-md font-medium mb-4">Date Schedule</h2>
                   <label className="block text-sm mb-1">Start Date</label>
-                  <input type="text" placeholder="DD - MM - YYYY" className="w-full border p-2 rounded-xl" value={formData.startDate} onChange={(e) => setFormData({ ...formData, startDate: e.target.value })} />
+                  <input 
+                    type="date" 
+                    className="w-full border p-2 rounded-xl" 
+                    value={formData.startDate} 
+                    onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                    required 
+                  />
                   <label className="block text-sm mt-4 mb-1">End Date</label>
-                  <input type="text" placeholder="DD - MM - YYYY" className="w-full border p-2 rounded-xl" value={formData.endDate} onChange={(e) => setFormData({ ...formData, endDate: e.target.value })} />
+                  <input 
+                    type="date" 
+                    className="w-full border p-2 rounded-xl" 
+                    value={formData.endDate} 
+                    onChange={(e) => setFormData({ ...formData, endDate: e.target.value })} 
+                    required
+                  />
                 </div>
               </div>
 
@@ -95,17 +143,53 @@ export default function DiscountCreate() {
                   </div>
 
                   <label className="block text-sm mb-1">Category/Sub-Category/Product ID</label>
-                  <input type="text" placeholder="Enter ID" className="w-full border p-2 rounded-xl" value={formData.discountId} onChange={(e) => setFormData({ ...formData, discountId: e.target.value })} />
+                  <input 
+                    type="text" 
+                    placeholder="Enter ID" 
+                    className="w-full border p-2 rounded-xl" 
+                    value={formData.productId} 
+                    onChange={(e) => setFormData({ ...formData, productId: e.target.value })} 
+                    required
+                  />
                   
                   <label className="block text-sm mt-4 mb-1">Discount Percentage</label>
-                  <input type="text" placeholder="Discount %" className="w-full border p-2 rounded-xl" value={formData.discountPercentage} onChange={(e) => setFormData({ ...formData, discountPercentage: e.target.value })} />
+                  <input 
+                    type="number" 
+                    placeholder="Discount %" 
+                    className="w-full border p-2 rounded-xl" 
+                    value={formData.discountPercentage} 
+                    onChange={(e) => setFormData({ ...formData, discountPercentage: e.target.value })} 
+                    required
+                  />
+                  
+                  <label className="block text-sm mt-4 mb-1">Description (optional)</label>
+                  <textarea 
+                    placeholder="Add description" 
+                    className="w-full border p-2 rounded-xl" 
+                    value={formData.description} 
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })} 
+                    rows={3}
+                  />
                 </div>
               </div>
             </div>
 
             <div className="flex justify-end gap-2 mt-6">
-              <button type="submit" className="bg-red-500 text-white px-8 py-2 rounded">CREATE</button>
-              <button type="button" className="bg-gray-200 px-8 py-2 rounded">CANCEL</button>
+              <button 
+                type="submit" 
+                className="bg-red-500 text-white px-8 py-2 rounded"
+                disabled={loading}
+              >
+                {loading ? 'CREATING...' : 'CREATE'}
+              </button>
+              <button 
+                type="button" 
+                className="bg-gray-200 px-8 py-2 rounded"
+                onClick={() => router.push('/discountlist')}
+                disabled={loading}
+              >
+                CANCEL
+              </button>
             </div>
           </form>
         </div>
