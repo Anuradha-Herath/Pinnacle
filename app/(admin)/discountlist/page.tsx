@@ -20,6 +20,11 @@ export default function DiscountList() {
     router.push(`/discountview?id=${discountId}`);
   };
 
+  // Function to edit discount 
+  const handleEditDiscount = (discountId: string) => {
+    router.push(`/discountedit?id=${discountId}`);
+  };
+
   return (
     <div className="flex">
       <Sidebar />
@@ -102,8 +107,15 @@ export default function DiscountList() {
                     >
                       <EyeIcon className="h-5 w-5" />
                     </button>
-                    <button className="p-2 bg-orange-400 text-white rounded-md hover:bg-orange-600"><PencilIcon className="h-5 w-5" /></button>
-                    <button className="p-2 bg-orange-400 text-white rounded-md hover:bg-orange-600"><TrashIcon className="h-5 w-5" /></button>
+                    <button 
+                      onClick={() => handleEditDiscount(discount.id)}
+                      className="p-2 bg-orange-400 text-white rounded-md hover:bg-orange-600"
+                    >
+                      <PencilIcon className="h-5 w-5" />
+                    </button>
+                    <button className="p-2 bg-orange-400 text-white rounded-md hover:bg-orange-600">
+                      <TrashIcon className="h-5 w-5" />
+                    </button>
                   </td>
                 </tr>
               ))}
