@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useAuth } from "./AuthContext";
+import { toast } from "react-hot-toast";
 
 // Define types
 export interface CartItem {
@@ -22,6 +23,7 @@ export interface CartContextType {
   updateQuantity: (id: string, quantity: number, size?: string, color?: string) => void;
   getCartTotal: () => number;
   getCartCount: () => number;
+  isLoading: boolean;
 }
 
 const CartContext = createContext<CartContextType>({
@@ -32,6 +34,7 @@ const CartContext = createContext<CartContextType>({
   updateQuantity: () => {},
   getCartTotal: () => 0,
   getCartCount: () => 0,
+  isLoading: false,
 });
 
 export const useCart = () => useContext(CartContext);
@@ -39,12 +42,14 @@ export const useCart = () => useContext(CartContext);
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [initialized, setInitialized] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const { user } = useAuth();
   
   // Load cart from localStorage or API when component mounts or user changes
   useEffect(() => {
     const loadCart = async () => {
       try {
+        setIsLoading(true);
         if (user) {
           // User is logged in, fetch cart from API
           const response = await fetch('/api/user/cart');
@@ -76,7 +81,6 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
           }
         }
-        setInitialized(true);
       } catch (error) {
         console.error('Error loading cart:', error);
         // Fallback to localStorage in case of API error
@@ -88,7 +92,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setCart([]);
           }
         }
+      } finally {
         setInitialized(true);
+        setIsLoading(false);
       }
     };
 
@@ -133,11 +139,47 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [cart, user, initialized]);
 
+  // Helper function to generate a unique key for cart items
+  const getItemKey = (id: string, size?: string, color?: string): string => {
+    return `${id}${size ? `-${size}` : ''}${color ? `-${color}` : ''}`;
+  };
+
+  // Improved helper function for debugging
+  const logCartOperation = (operation: string, details: any) => {
+    console.log(`Cart operation: ${operation}`, details);
+  };
+
+  // Improved function to get a better color representation
+  const getDisplayColor = (color: string | undefined): string | undefined => {
+    if (!color) return undefined;
+    
+    // If color is a URL (likely when the color is stored as an image path)
+    if (color.startsWith('http') || color.startsWith('/')) {
+      // Extract just the filename for simplicity
+      const parts = color.split('/');
+      return parts[parts.length - 1].split('.')[0];
+    }
+    
+    return color;
+  };
+
   // Cart operations
   const addToCart = (item: Omit<CartItem, 'quantity'> & { quantity?: number }, showNotification: boolean = true) => {
+    const itemQuantity = item.quantity || 1;
+    
+    // Extract a display-friendly color if it's a URL
+    const displayColor = getDisplayColor(item.color);
+    
+    logCartOperation('addToCart', {
+      id: item.id, 
+      color: item.color,
+      displayColor,
+      size: item.size,
+      quantity: itemQuantity
+    });
+    
     setCart(prevCart => {
       // Check if item already exists in cart with same ID, size, and color
-      const itemQuantity = item.quantity || 1;
       const existingItemIndex = prevCart.findIndex(
         cartItem => 
           cartItem.id === item.id && 
@@ -151,22 +193,51 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         updatedCart[existingItemIndex].quantity += itemQuantity;
         return updatedCart;
       } else {
-        // Item doesn't exist, add new item
-        return [...prevCart, { ...item, quantity: itemQuantity }];
+        // Item doesn't exist, add new item with valid image
+        const newItem = {
+          ...item,
+          image: item.image || "/placeholder.png",
+          colorDisplay: displayColor, // Add a display-friendly color name
+          quantity: itemQuantity
+        };
+        return [...prevCart, newItem];
       }
     });
     
-    // Don't show toast from here - let components handle this
-    // This prevents duplicate toast notifications
+    // Toast is handled by the component
   };
 
   const removeFromCart = (id: string, size?: string, color?: string) => {
-    setCart(prevCart => 
-      prevCart.filter(item => 
-        !(item.id === id && item.size === size && item.color === color)
-      )
-    );
-    // Don't show toast from here
+    logCartOperation('removeFromCart', {id, size, color});
+    
+    setCart(prevCart => {
+      // Log current cart before removal
+      console.log("Current cart before removal:", JSON.stringify(prevCart.map(i => ({
+        id: i.id, 
+        size: i.size, 
+        color: i.color,
+        name: i.name
+      }))));
+      
+      // Find exact match for deletion
+      const updatedCart = prevCart.filter(item => {
+        const itemMatches = 
+          item.id === id && 
+          item.size === size && 
+          item.color === color;
+        
+        // Log each comparison for debugging
+        if (item.id === id) {
+          console.log(`Comparing item: ${item.name}, id matches, size: ${item.size}=${size}, color: ${item.color}=${color}, match=${!itemMatches}`);
+        }
+        
+        return !itemMatches;
+      });
+      
+      console.log(`Previous cart length: ${prevCart.length}, Updated cart length: ${updatedCart.length}`);
+      
+      return updatedCart;
+    });
   };
 
   const clearCart = () => {
@@ -174,19 +245,24 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const updateQuantity = (id: string, quantity: number, size?: string, color?: string) => {
+    logCartOperation('updateQuantity', {id, quantity, size, color});
+    
     if (quantity <= 0) {
       // Remove item if quantity is 0 or negative
       removeFromCart(id, size, color);
       return;
     }
     
-    setCart(prevCart => 
-      prevCart.map(item => 
-        item.id === id && item.size === size && item.color === color
-          ? { ...item, quantity }
-          : item
-      )
-    );
+    setCart(prevCart => {
+      const updatedCart = prevCart.map(item => {
+        // Check for exact match
+        if (item.id === id && item.size === size && item.color === color) {
+          return { ...item, quantity };
+        }
+        return item;
+      });
+      return updatedCart;
+    });
   };
 
   const getCartTotal = () => {
@@ -205,6 +281,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     updateQuantity,
     getCartTotal,
     getCartCount,
+    isLoading,
   };
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

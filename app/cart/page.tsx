@@ -8,9 +8,11 @@ import { Trash2, Plus, Minus, ShoppingBag } from "lucide-react";
 import { useCart } from "../context/CartContext";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import { cartNotifications } from "@/lib/notificationService";
+import { getValidImageUrl, handleImageError } from "@/lib/imageUtils";
 
 const CartPage = () => {
-  const { cart, removeFromCart, updateQuantity, getCartTotal } = useCart();
+  const { cart, removeFromCart, updateQuantity, getCartTotal, isLoading } = useCart();
   const [isClient, setIsClient] = useState(false);
   const router = useRouter();
 
@@ -19,7 +21,7 @@ const CartPage = () => {
     setIsClient(true);
   }, []);
 
-  // If the component hasn't mounted yet, return a loading state or empty div
+  // If the component hasn't mounted yet, return a loading state
   if (!isClient) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -32,22 +34,57 @@ const CartPage = () => {
     );
   }
 
+  // If cart is loading from the server
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <div className="flex-grow flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900 mx-auto mb-4"></div>
+            <p>Loading your cart...</p>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
   // Safe check for cart items
   const cartItems = cart || [];
   const cartTotal = getCartTotal();
 
   const handleQuantityChange = (id: string, newQuantity: number, size?: string, color?: string) => {
+    console.log(`Changing quantity: ${id}, new qty: ${newQuantity}, size: ${size}, color: ${color}`);
     if (newQuantity >= 1) {
       updateQuantity(id, newQuantity, size, color);
     }
   };
 
-  const handleRemoveItem = (id: string, size?: string, color?: string) => {
+  const handleRemoveItem = (id: string, name: string, size?: string, color?: string) => {
+    console.log(`Removing item: ${id}, ${name}, size: ${size}, color: ${color}`);
     removeFromCart(id, size, color);
+    cartNotifications.itemRemoved();
   };
 
   const handleCheckout = () => {
     router.push("/checkout");
+  };
+
+  // Function to get a nice display name for a color that might be a URL
+  const getDisplayColorName = (color?: string): string => {
+    if (!color) return "Default";
+    
+    // If color is a URL (likely when the color is stored as an image path)
+    if (color.startsWith('http') || color.startsWith('/')) {
+      // Extract just the filename for simplicity
+      const parts = color.split('/');
+      const fileName = parts[parts.length - 1];
+      // Return filename without extension
+      return fileName.split('.')[0].replace(/-|_/g, ' ');
+    }
+    
+    return color;
   };
 
   return (
@@ -97,89 +134,94 @@ const CartPage = () => {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-200">
-                    {cartItems.map((item) => (
-                      <tr key={`${item.id}-${item.size}-${item.color}`}>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
-                            <div className="h-16 w-16 relative flex-shrink-0">
-                              <Image
-                                src={item.image || "/placeholder.png"}
-                                alt={item.name}
-                                fill
-                                className="object-cover"
-                                sizes="64px"
-                              />
-                            </div>
-                            <div className="ml-4">
-                              <div className="text-sm font-medium text-gray-900">
-                                {item.name}
+                    {cartItems.map((item, index) => {
+                      const displayColorName = getDisplayColorName(item.color);
+                      return (
+                        <tr key={`${item.id}-${item.size}-${item.color}-${index}`}>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center">
+                              <div className="h-16 w-16 relative flex-shrink-0 bg-gray-100 rounded overflow-hidden">
+                                <img
+                                  src={getValidImageUrl(item.image)}
+                                  alt={item.name}
+                                  className="h-full w-full object-contain"
+                                  onError={handleImageError}
+                                />
                               </div>
-                              {item.size && (
-                                <div className="text-sm text-gray-500">
-                                  Size: {item.size}
+                              <div className="ml-4">
+                                <div className="text-sm font-medium text-gray-900">
+                                  {item.name || "Product"}
                                 </div>
-                              )}
-                              {item.color && (
-                                <div className="text-sm text-gray-500">
-                                  Color: {item.color}
-                                </div>
-                              )}
+                                {item.size && (
+                                  <div className="text-sm text-gray-500">
+                                    Size: {item.size}
+                                  </div>
+                                )}
+                                {item.color && (
+                                  <div className="text-sm text-gray-500">
+                                    Color: {displayColorName}
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
-                            ${item.price.toFixed(2)}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center border rounded-md">
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-900">
+                              ${item.price.toFixed(2)}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="flex items-center border rounded-md">
+                              <button
+                                className="px-2 py-1"
+                                onClick={() =>
+                                  handleQuantityChange(
+                                    item.id,
+                                    Math.max(1, item.quantity - 1),
+                                    item.size,
+                                    item.color
+                                  )
+                                }
+                                aria-label="Decrease quantity"
+                              >
+                                <Minus className="h-4 w-4" />
+                              </button>
+                              <span className="px-4 py-1">{item.quantity}</span>
+                              <button
+                                className="px-2 py-1"
+                                onClick={() =>
+                                  handleQuantityChange(
+                                    item.id,
+                                    item.quantity + 1,
+                                    item.size,
+                                    item.color
+                                  )
+                                }
+                                aria-label="Increase quantity"
+                              >
+                                <Plus className="h-4 w-4" />
+                              </button>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-900">
+                              ${(item.price * item.quantity).toFixed(2)}
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <button
-                              className="px-2 py-1"
                               onClick={() =>
-                                handleQuantityChange(
-                                  item.id,
-                                  item.quantity - 1,
-                                  item.size,
-                                  item.color
-                                )
+                                handleRemoveItem(item.id, item.name, item.size, item.color)
                               }
+                              className="text-red-600 hover:text-red-800"
+                              aria-label={`Remove ${item.name} from cart`}
                             >
-                              <Minus className="h-4 w-4" />
+                              <Trash2 className="h-5 w-5" />
                             </button>
-                            <span className="px-4 py-1">{item.quantity}</span>
-                            <button
-                              className="px-2 py-1"
-                              onClick={() =>
-                                handleQuantityChange(
-                                  item.id,
-                                  item.quantity + 1,
-                                  item.size,
-                                  item.color
-                                )
-                              }
-                            >
-                              <Plus className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">
-                            ${(item.price * item.quantity).toFixed(2)}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <button
-                            onClick={() =>
-                              handleRemoveItem(item.id, item.size, item.color)
-                            }
-                            className="text-red-600 hover:text-red-800"
-                          >
-                            <Trash2 className="h-5 w-5" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -212,6 +254,7 @@ const CartPage = () => {
                 <button
                   onClick={handleCheckout}
                   className="w-full mt-6 py-3 bg-black text-white font-medium rounded-md hover:bg-gray-900 transition"
+                  disabled={cartItems.length === 0}
                 >
                   Checkout
                 </button>

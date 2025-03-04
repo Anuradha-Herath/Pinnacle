@@ -38,6 +38,7 @@ export default function EnhancedProductDetailPage() {
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [recentlyViewed, setRecentlyViewed] = useState([]);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [selectedColor, setSelectedColor] = useState<string | null>(null);
   
   // Context hooks
   const { addToCart } = useCart();
@@ -64,6 +65,21 @@ export default function EnhancedProductDetailPage() {
     return product?.images && product.images.length > 0
       ? product.images[selectedImageIndex]
       : placeholderImage;
+  };
+
+  // Helper function to get color name from color object or URL
+  const getColorName = (color: string | null): string | null => {
+    if (!color) return null;
+    
+    // If it's a URL, extract a simple name
+    if (color.startsWith('http') || color.startsWith('/')) {
+      // Get just the filename without extension
+      const parts = color.split('/');
+      const fileName = parts[parts.length - 1];
+      return fileName.split('.')[0];
+    }
+    
+    return color;
   };
   
   // Fetch product data
@@ -199,14 +215,24 @@ export default function EnhancedProductDetailPage() {
   
   // Use debounce for cart and wishlist actions
   const debouncedAddToCart = debounce((productData: any) => {
+    const selectedImg = getSelectedImage();
+    const colorName = getColorName(selectedColor);
+    
+    console.log("Adding to cart with:", {
+      selectedSize,
+      selectedColor,
+      colorName,
+      selectedImage: selectedImg
+    });
+    
     addToCart({
       id: productData.id,
       name: productData.name,
       price: productData.price,
-      image: getSelectedImage(), // Use the helper function here
+      image: selectedImg,
       quantity: quantity,
       size: selectedSize,
-      color: selectedColor
+      color: selectedColor // Store the original color identifier
     }, false); // Pass false to prevent duplicate notification
     
     // Use notification service
@@ -251,6 +277,10 @@ export default function EnhancedProductDetailPage() {
   // Sync the selectedImageIndex state with ProductInformation and ProductImageGallery
   const handleImageSelect = (index: number) => {
     setSelectedImageIndex(index);
+    // Also update selected color based on the selected image
+    if (product?.colors && product.colors[index]) {
+      setSelectedColor(product.images[index]);
+    }
   };
   
   // Loading state
