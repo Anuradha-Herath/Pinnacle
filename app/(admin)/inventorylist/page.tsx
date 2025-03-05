@@ -1,60 +1,102 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   EyeIcon,
   BellIcon,
   Cog6ToothIcon,
   ClockIcon,
-  CheckCircleIcon,
-  TruckIcon,
-  CubeIcon,
-  ShieldCheckIcon,
-  CheckIcon,
   PencilIcon,
   TrashIcon,
 } from "@heroicons/react/24/solid";
 import Sidebar from "../../components/Sidebar";
-import { CogIcon, ShoppingCartIcon } from "lucide-react";
 import Image from "next/image";
 
-export default function OrdersPage() {
+interface InventoryItem {
+  _id: string;
+  productId: string;
+  productName: string;
+  stock: number;
+  status: string;
+  image: string;
+}
+
+export default function InventoryListPage() {
   const router = useRouter();
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  
+  const [stats, setStats] = useState({
+    total: 0,
+    inStock: 0,
+    outOfStock: 0,
+    newlyAdded: 0
+  });
 
-  // State for filtering orders by status
-  const [filterStatus, setFilterStatus] = useState("");
+  useEffect(() => {
+    const fetchInventory = async () => {
+      try {
+        const response = await fetch('/api/inventory');
+        if (!response.ok) {
+          throw new Error('Failed to fetch inventory');
+        }
+        
+        const data = await response.json();
+        setInventory(data.inventory || []);
+        
+        // Calculate stats
+        const inventoryItems = data.inventory || [];
+        setStats({
+          total: inventoryItems.length,
+          inStock: inventoryItems.filter((item: InventoryItem) => item.status === 'In Stock').length,
+          outOfStock: inventoryItems.filter((item: InventoryItem) => item.status === 'Out Of Stock').length,
+          newlyAdded: inventoryItems.filter((item: InventoryItem) => item.status === 'Newly Added').length
+        });
+      } catch (err) {
+        console.error("Error loading inventory:", err);
+        setError("Failed to load inventory data");
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  // Sample data for customers
-  const product = [
-    {
-      id: 1,
-      name: "Classic Oversized Tshirt",
-      color: "Black",
-      size: "L",
-      stock: "432",
-      status: "Newly Added",
-      image: "/p2.webp",
-    },
-    {
-      id: 2,
-      name: "Classic Seamless Henly Polo Tshirt",
-      color: "Jet Black",
-      size: "M",
-      status: "In Stock",
-      stock: "132",
-      image: "/p4.webp",
-    },
-    {
-      id: 3,
-      name: "relax Frock",
-      color: "orange",
-      size: "S",
-      stock: "233",
-      status: "Out Of Stock",
-      image: "/p8.webp",
-    },
-  ];
+    fetchInventory();
+  }, []);
+
+  const handleSearch = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`/api/inventory?search=${encodeURIComponent(searchQuery)}`);
+      if (!response.ok) {
+        throw new Error('Failed to search inventory');
+      }
+      
+      const data = await response.json();
+      setInventory(data.inventory || []);
+    } catch (err) {
+      setError("Search failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleViewItem = (id: string) => {
+    router.push(`/inventorydetails?id=${id}`);
+  };
+
+  const handleEditItem = (id: string) => {
+    router.push(`/inventoryedit?id=${id}`);
+  };
+
+  const handleDeleteItem = async (id: string) => {
+    if (confirm("Are you sure you want to delete this inventory item?")) {
+      // Implement delete functionality
+      console.log("Delete item", id);
+    }
+  };
 
   return (
     <div className="flex">
@@ -105,12 +147,13 @@ export default function OrdersPage() {
             </button>
           </div>
         </div>
+        
         {/* Orders Summary Cards */}
         <div className="grid grid-cols-3 gap-10 mb-8 text-gray-600">
           <div className="bg-white p-4 rounded-lg shadow-md flex items-center gap-4">
             <div className="flex-1">
               <h2 className="text-lg font-semibold">Total Product items</h2>
-              <p className="text-2xl font-bold inline">1360</p>
+              <p className="text-2xl font-bold inline">{stats.total}</p>
               <span className="mx-2"></span>
               <p className="inline">(items)</p>
             </div>
@@ -133,7 +176,7 @@ export default function OrdersPage() {
           <div className="bg-white p-4 rounded-lg shadow-md flex items-center gap-4">
             <div>
               <h2 className="text-lg font-semibold">Instock Products</h2>
-              <p className="text-2xl font-bold inline">1360</p>
+              <p className="text-2xl font-bold inline">{stats.inStock}</p>
               <span className="mx-2"></span>
               <p className="inline">(items)</p>
             </div>
@@ -156,7 +199,7 @@ export default function OrdersPage() {
           <div className="bg-white p-4 rounded-lg shadow-md flex items-center gap-4">
             <div>
               <h2 className="text-lg font-semibold">Out Of Stock Products</h2>
-              <p className="text-2xl font-bold inline">1360</p>
+              <p className="text-2xl font-bold inline">{stats.outOfStock}</p>
               <span className="mx-2"></span>
               <p className="inline">(items)</p>
             </div>
@@ -177,12 +220,13 @@ export default function OrdersPage() {
             </div>
           </div>
         </div>
+        
         {/* Products Summary Cards */}
         <div className="grid grid-cols-3 gap-10 mb-8 text-gray-600">
           <div className="bg-white p-4 rounded-lg shadow-md flex items-center gap-4">
             <div>
               <h2 className="text-lg font-semibold">Newly added products</h2>
-              <p className="text-2xl font-bold inline">1360</p>
+              <p className="text-2xl font-bold inline">{stats.newlyAdded}</p>
               <span className="mx-2"></span>
               <p className="inline">(items)</p>
             </div>
@@ -203,98 +247,129 @@ export default function OrdersPage() {
             </div>
           </div>
         </div>
-        {/* Customer List Table */}
+        
+        {/* Inventory List Table */}
         <div className="bg-white p-6 rounded-lg shadow-lg mt-6 ">
           <div className="flex justify-between items-center mb-4 ">
             <h2 className="text-lg font-semibold text-grey-600">
               All Inventory List
             </h2>
             <div className="flex items-center gap-2">
-              <input
-                type="text"
-                placeholder="🔍 Search"
-                className="border px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-              />
-              <button className="px-4 py-2 border rounded-lg text-gray-600">
-                This Month ▼
-              </button>
+              <div className="flex items-center">
+                <input
+                  type="text"
+                  placeholder="🔍 Search"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                  className="border px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+                <button 
+                  onClick={handleSearch}
+                  className="ml-2 px-4 py-2 bg-orange-500 text-white rounded-md"
+                >
+                  Search
+                </button>
+              </div>
             </div>
           </div>
-          <table className="w-full border-collapse text-grey-600">
-            <thead>
-              <tr className="bg-gray-100 text-left">
-                <th className="p-3">All Products</th>
-                <th className="p-3">Stock</th>
-                <th className="p-3">Order Status</th>
-                <th className="p-3 text-right pr-12">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {product.map((product, index) => (
-                <tr key={index} className="border-t">
-                  <td className="p-3 flex items-center gap-3">
-                    <Image
-                      src={product.image}
-                      alt={product.name}
-                      width={25}
-                      height={25}
-                    />
-                    {product.name}
-                  </td>
-                  <td className="p-3">{product.stock}</td>
-                  <td className="p-3">
-                    <span
-                      className={`inline-block px-3 py-1 rounded-full text-sm font-semibold text-center mx-auto ${
-                        product.status === "In Stock"
-                          ? "bg-green-300 text-green-800"
-                          : product.status === "Out Of Stock"
-                          ? "bg-orange-300 text-orange-800"
-                          : product.status === "Newly Added"
-                          ? "bg-yellow-300 text-yellow-800"
-                          : "bg-gray-100 text-gray-800"
-                      }`}
-                    >
-                      {product.status}
-                    </span>
-                  </td>
-                  <td className="p-3 flex gap-2 justify-end">
-                    <button className="p-2 bg-orange-400 text-white rounded-md hover:bg-orange-600">
-                      <EyeIcon className="h-4 w-4" />
-                    </button>
-                    <button className="p-2 bg-orange-400 text-white rounded-md hover:bg-orange-600">
-                      <PencilIcon className="h-4 w-4" />
-                    </button>
-                    <button className="p-2 bg-orange-400 text-white rounded-md hover:bg-orange-600">
-                      <TrashIcon className="h-4 w-4" />
-                    </button>
-                  </td>
+          
+          {loading ? (
+            <div className="text-center py-10">
+              <p>Loading inventory...</p>
+            </div>
+          ) : error ? (
+            <div className="text-center py-10 text-red-500">
+              <p>{error}</p>
+            </div>
+          ) : (
+            <table className="w-full border-collapse text-grey-600">
+              <thead>
+                <tr className="bg-gray-100 text-left">
+                  <th className="p-3">All Products</th>
+                  <th className="p-3">Stock</th>
+                  <th className="p-3">Order Status</th>
+                  <th className="p-3 text-right pr-12">Action</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {/* Additional Information Section */}
-        <div>
-          <div className="flex justify-end mt-6 pr-4">
-            <div className="flex items-center space-x-0">
-              <a href="/previouspage">
-                <button className="px-4 py-2 border-r bg-white hover:bg-gray-200">
-                  Previous
-                </button>
-              </a>
-              <button className="px-4 py-2 bg-orange-500 text-white font-semibold">
-                1
-              </button>
-              <button className="px-4 py-2 border-l bg-white hover:bg-gray-200">
-                2
-              </button>
-              <a href="/nextpage">
-                <button className="px-4 py-2 border-l bg-white hover:bg-gray-200">
-                  Next
-                </button>
-              </a>
+              </thead>
+              <tbody>
+                {inventory.length > 0 ? (
+                  inventory.map((item) => (
+                    <tr key={item._id} className="border-t">
+                      <td className="p-3 flex items-center gap-3">
+                        {item.image ? (
+                          <Image
+                            src={item.image}
+                            alt={item.productName}
+                            width={40}
+                            height={40}
+                            className="rounded object-cover"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 bg-gray-200 rounded"></div>
+                        )}
+                        {item.productName}
+                      </td>
+                      <td className="p-3">{item.stock}</td>
+                      <td className="p-3">
+                        <span
+                          className={`inline-block px-3 py-1 rounded-full text-sm font-semibold text-center ${
+                            item.status === "In Stock"
+                              ? "bg-green-300 text-green-800"
+                              : item.status === "Out Of Stock"
+                              ? "bg-orange-300 text-orange-800"
+                              : item.status === "Newly Added"
+                              ? "bg-yellow-300 text-yellow-800"
+                              : "bg-gray-100 text-gray-800"
+                          }`}
+                        >
+                          {item.status}
+                        </span>
+                      </td>
+                      <td className="p-3 flex gap-2 justify-end">
+                        <button 
+                          onClick={() => handleViewItem(item._id)}
+                          className="p-2 bg-orange-400 text-white rounded-md hover:bg-orange-600"
+                        >
+                          <EyeIcon className="h-4 w-4" />
+                        </button>
+                        <button 
+                          onClick={() => handleEditItem(item._id)}
+                          className="p-2 bg-orange-400 text-white rounded-md hover:bg-orange-600"
+                        >
+                          <PencilIcon className="h-4 w-4" />
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteItem(item._id)}
+                          className="p-2 bg-orange-400 text-white rounded-md hover:bg-orange-600"
+                        >
+                          <TrashIcon className="h-4 w-4" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={4} className="p-6 text-center">
+                      No inventory items found.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          )}
+          
+          {/* Pagination */}
+          {inventory.length > 0 && (
+            <div className="flex justify-end mt-6 pr-4">
+              <div className="flex items-center border rounded-md overflow-hidden shadow-md">
+                <button className="px-4 py-2 border-r bg-white hover:bg-gray-200">Previous</button>
+                <button className="px-4 py-2 bg-orange-500 text-white font-semibold">1</button>
+                <button className="px-4 py-2 border-l bg-white hover:bg-gray-200">2</button>
+                <button className="px-4 py-2 border-l bg-white hover:bg-gray-200">Next</button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
