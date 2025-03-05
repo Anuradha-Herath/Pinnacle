@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import Product from '@/models/Product';
+import Inventory from '@/models/Inventory';
 import cloudinary from "@/lib/cloudinary"; // Uncomment this for image uploads
 
 // Connect to MongoDB
@@ -120,9 +121,35 @@ export async function POST(request: Request) {
     });
     
     await newProduct.save();
+    
+    // Create inventory record for this product
+    const inventoryEntry = new Inventory({
+      productId: newProduct._id,
+      productName: newProduct.productName,
+      stock: 0, // Initialize with 0 stock
+      status: 'Newly Added',
+      image: newProduct.gallery && newProduct.gallery.length > 0 ? 
+        newProduct.gallery[0].src : '',
+      // Initialize sizeStock for each size with 0
+      sizeStock: body.sizes.reduce((acc: any, size: string) => {
+        acc[size] = 0;
+        return acc;
+      }, {}),
+      // Initialize colorStock for each color with 0
+      colorStock: processedGallery.reduce((acc: any, item: any) => {
+        if (item.color && !acc[item.color]) {
+          acc[item.color] = 0;
+        }
+        return acc;
+      }, {})
+    });
+    
+    await inventoryEntry.save();
+    
     return NextResponse.json({ 
-      message: "Product created with images uploaded to Cloudinary", 
-      product: newProduct 
+      message: "Product created with images uploaded to Cloudinary and added to inventory", 
+      product: newProduct,
+      inventory: inventoryEntry
     }, { status: 201 });
   } catch (error) {
     console.error("Server error:", error);
