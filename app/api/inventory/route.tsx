@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import Inventory from '@/models/Inventory';
-import Product from '@/models/Product';
 
 // Connect to MongoDB using Mongoose
 const connectDB = async () => {
@@ -16,6 +15,7 @@ const connectDB = async () => {
   }
 };
 
+// GET all inventory items
 export async function GET(request: NextRequest) {
   try {
     await connectDB();
@@ -31,12 +31,28 @@ export async function GET(request: NextRequest) {
       filter.productName = { $regex: search, $options: 'i' };
     }
     
-    // Get inventory items
-    const inventory = await Inventory.find(filter)
-      .sort({ createdAt: -1 })
-      .populate('productId'); // Populate product details if needed
+    console.log("Fetching inventory with filter:", filter);
     
-    return NextResponse.json({ inventory });
+    // Get inventory items
+    const inventory = await Inventory.find(filter).sort({ createdAt: -1 });
+    
+    console.log(`Found ${inventory.length} inventory items`);
+    
+    // Get counts for different statuses
+    const totalCount = await Inventory.countDocuments({});
+    const inStockCount = await Inventory.countDocuments({ status: 'In Stock' });
+    const outOfStockCount = await Inventory.countDocuments({ status: 'Out Of Stock' });
+    const newlyAddedCount = await Inventory.countDocuments({ status: 'Newly Added' });
+    
+    return NextResponse.json({ 
+      inventory,
+      counts: {
+        total: totalCount,
+        inStock: inStockCount,
+        outOfStock: outOfStockCount,
+        newlyAdded: newlyAddedCount
+      }
+    });
   } catch (error) {
     console.error("Error fetching inventory:", error);
     return NextResponse.json({ 
@@ -45,34 +61,54 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// Update inventory item
+// Update inventory
 export async function PUT(request: NextRequest) {
   try {
     await connectDB();
     
     const body = await request.json();
     
-    if (!body.id) {
+    if (!body._id) {
       return NextResponse.json({ error: "Inventory ID is required" }, { status: 400 });
     }
     
+    // Find the current inventory item
+    const currentInventory = await Inventory.findById(body._id);
+    if (!currentInventory) {
+      return NextResponse.json({ error: "Inventory not found" }, { status: 404 });
+    }
+    
+    // Determine the new status based on stock
+    let newStatus = currentInventory.status;
+    
+    // If adding stock and was previously Out of Stock or Newly Added, change to In Stock
+    if (body.stock > 0) {
+      if (currentInventory.status === 'Out Of Stock' || currentInventory.status === 'Newly Added') {
+        newStatus = 'In Stock';
+      }
+    } else if (body.stock === 0) {
+      // If stock is 0, set to Out Of Stock
+      newStatus = 'Out Of Stock';
+    }
+    
+    // Update the inventory
+    const updateFields: { stock: any; status: any; sizeStock?: any } = {
+      stock: body.stock,
+      status: newStatus,
+    };
+    
+    // Only update sizeStock if provided
+    if (body.sizeStock) {
+      updateFields.sizeStock = body.sizeStock;
+    }
+    
     const updatedInventory = await Inventory.findByIdAndUpdate(
-      body.id,
-      {
-        $set: {
-          stock: body.stock,
-          status: body.status || (body.stock > 0 ? 'In Stock' : 'Out Of Stock'),
-          stockLimit: body.stockLimit,
-          sizeStock: body.sizeStock,
-          colorStock: body.colorStock,
-        }
-      },
+      body._id,
+      { $set: updateFields },
       { new: true }
     );
     
-    if (!updatedInventory) {
-      return NextResponse.json({ error: "Inventory not found" }, { status: 404 });
-    }
+    console.log("Updated inventory:", updatedInventory);
     
     return NextResponse.json({ 
       message: "Inventory updated successfully", 
