@@ -92,7 +92,7 @@ export async function PUT(request: NextRequest) {
     }
     
     // Update the inventory
-    const updateFields = {
+    const updateFields: { stock: any; status: any; sizeStock?: any } = {
       stock: body.stock,
       status: newStatus,
     };

@@ -174,7 +174,7 @@ export default function InventoryEditPage() {
 
         {/* Breadcrumb */}
         <div className="mb-4">
-          <p className="text-gray-500">Home > Inventory > Edit Stock</p>
+          <p className="text-gray-500">Home &gt; Inventory &gt; Edit Stock</p>
         </div>
 
         {/* Status Badge */}
