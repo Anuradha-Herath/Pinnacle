@@ -14,6 +14,8 @@
     "@heroicons/react": "^2.2.0",
     "@mui/icons-material": "^6.3.1",
     "@mui/material": "^6.3.1",
+    "@stripe/react-stripe-js": "^3.3.0",
+    "@stripe/stripe-js": "^5.9.2",
     "chart.js": "^4.4.8",
     "cloudinary": "^1.41.3",
     "lucide-react": "^0.469.0",
@@ -25,7 +27,8 @@
     "react-dom": "^19.0.0",
     "react-feather": "^2.0.10",
     "react-hot-toast": "^2.5.2",
-    "react-icons": "^5.4.0"
+    "react-icons": "^5.4.0",
+    "stripe": "^17.7.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
