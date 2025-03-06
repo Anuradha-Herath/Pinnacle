@@ -180,7 +180,9 @@ function Checkout() {
           <label className="flex items-center gap-2">
             <input type="checkbox" /> Use shipping address as billing address
           </label>
+          <Link href="/payment">
           <button className="w-full mt-6 p-3 bg-black text-white rounded">Pay now</button>
+          </Link>
         </div>
       </div>
 
