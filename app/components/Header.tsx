@@ -49,7 +49,7 @@ const Header = () => {
   let userDropdownTimeout: NodeJS.Timeout;
   
   // Refs for click outside detection
-  const searchRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLDivElement>(null!);
   const dropdownRef = useRef(null);
   
   let timeout: NodeJS.Timeout;
@@ -192,6 +192,7 @@ const Header = () => {
     await logout();
     // Use notification service instead of direct toast call
     authNotifications.logoutSuccess();
+    router.push('/login');
   };
 
   return (
