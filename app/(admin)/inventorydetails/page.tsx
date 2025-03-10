@@ -1,287 +1,374 @@
-// InventoryDetailsPage.tsx
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Sidebar from "../../components/Sidebar";
 import { BellIcon, Cog6ToothIcon, ClockIcon } from "@heroicons/react/24/solid";
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import Image from "next/image";
 
 interface Color {
-    name: string;
-    image: string;
+  name: string;
+  src: string;
 }
 
-interface Product {
-    name: string;
-    id: string;
-    selectedSize: string;
-    selectedColor: string;
-    stock: number;
-    stockLimit: number;
-    sizes: string[];
-    colors: Color[];
-    sizeStock: { [key: string]: number };
-    colorStock: { [key: string]: number };
+interface InventoryItem {
+  _id: string;
+  productId: string;
+  productName: string;
+  stock: number;
+  stockLimit?: number;
+  status: string;
+  image: string;
+  sizeStock?: { [key: string]: number };
+  colorStock?: { [key: string]: number };
+  colorSizeStock?: { [color: string]: { [size: string]: number } };
 }
 
 export default function InventoryDetailsPage() {
-    const router = useRouter();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const inventoryId = searchParams?.get("id");
 
-    // Dummy product details
-    const initialProduct: Product = {
-        name: "Classic Seamless Henly Polo Tee",
-        id: "#12456",
-        selectedSize: "M",
-        selectedColor: "Red",
-        stock: 101,
-        stockLimit: 100,
-        sizes: ["S", "M", "L", "XL", "2XL"],
-        colors: [
-            { name: "Red", image: "/p3.webp" },
-            { name: "Blue", image: "/p4.webp" },
-            { name: "Green", image: "/p1.webp" },
-            { name: "Black", image: "/p5.webp" },
-        ],
-        sizeStock: {
-            S: 197,
-            M: 263,
-            L: 281,
-            XL: 314,
-            "2XL": 203,
-        },
-        colorStock: {
-            Red: 313,
-            Blue: 500,
-            Green: 199,
-            Black: 257,
-        },
+  // State for the inventory item
+  const [inventory, setInventory] = useState<InventoryItem | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // State for UI selections
+  const [selectedSize, setSelectedSize] = useState<string>("");
+  const [selectedColor, setSelectedColor] = useState<string>("");
+  const [productColors, setProductColors] = useState<Color[]>([]);
+
+  // Fetch inventory data when component mounts
+  useEffect(() => {
+    if (!inventoryId) {
+      setError("No inventory ID provided");
+      setLoading(false);
+      return;
+    }
+
+    const fetchInventoryItem = async () => {
+      try {
+        setLoading(true);
+        
+        // Fetch inventory data from API
+        const response = await fetch(`/api/inventory/${inventoryId}`);
+        
+        if (!response.ok) {
+          throw new Error(`Error ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        const inventoryData = data.item;
+        
+        // Fetch associated product to get color images
+        if (inventoryData.productId) {
+          const productResponse = await fetch(`/api/products/${inventoryData.productId}`);
+          
+          if (productResponse.ok) {
+            const productData = await productResponse.json();
+            
+            // Extract colors from product gallery
+            const colors = productData.product.gallery?.map((item: any) => ({
+              name: item.color || 'Default',
+              src: item.src
+            })) || [];
+            
+            setProductColors(colors);
+            
+            // Set default color and size if available
+            if (colors.length > 0) {
+              setSelectedColor(colors[0].name);
+            }
+            
+            if (inventoryData.sizeStock && Object.keys(inventoryData.sizeStock).length > 0) {
+              setSelectedSize(Object.keys(inventoryData.sizeStock)[0]);
+            }
+          }
+        }
+        
+        setInventory(inventoryData);
+        
+      } catch (err) {
+        console.error("Failed to fetch inventory:", err);
+        setError("Failed to load inventory data");
+      } finally {
+        setLoading(false);
+      }
     };
+    
+    fetchInventoryItem();
+  }, [inventoryId]);
 
-    const [product, setProduct] = useState<Product>(initialProduct);
-    const [selectedSize, setSelectedSize] = useState<string>(initialProduct.selectedSize);
-    const [selectedColor, setSelectedColor] = useState<string>(initialProduct.selectedColor);
+  const handleSizeSelect = (size: string) => {
+    setSelectedSize(size);
+  };
 
+  const handleColorSelect = (colorName: string) => {
+    setSelectedColor(colorName);
+  };
 
-    const handleEditStock = () => {
-        router.push('./inventoryedit'); // Navigate to InventoryEditPage
-    };
+  const handleEditStock = () => {
+    if (inventory) {
+      router.push(`/inventoryedit?id=${inventory._id}`);
+    }
+  };
 
-    const handleEditStockUnit = () => {
-        router.push('./inventoryedit'); // Navigate to InventoryEditPage - same page for both buttons for now
-    };
+  // Function to get stock based on selected size and color
+  const getCurrentStock = () => {
+    if (!inventory) return 0;
+    
+    if (selectedColor && selectedSize && 
+        inventory.colorSizeStock && 
+        inventory.colorSizeStock[selectedColor] && 
+        inventory.colorSizeStock[selectedColor][selectedSize] !== undefined) {
+      return inventory.colorSizeStock[selectedColor][selectedSize];
+    } else if (selectedSize && inventory.sizeStock && inventory.sizeStock[selectedSize] !== undefined) {
+      return inventory.sizeStock[selectedSize];
+    } else if (selectedColor && inventory.colorStock && inventory.colorStock[selectedColor] !== undefined) {
+      return inventory.colorStock[selectedColor];
+    }
+    
+    return inventory.stock;
+  };
 
-    const handleSizeSelect = (size: string) => {
-        setSelectedSize(size);
-    };
-
-    const handleColorSelect = (colorName: string) => {
-        setSelectedColor(colorName);
-    };
-
-    // Function to get stock based on selected size and color (you might need to adjust logic based on your actual data)
-    const getCurrentStock = () => {
-        // In this dummy data, we are just returning stock based on selected size for simplicity.
-        // In a real scenario, you might have a more complex logic to fetch combined stock
-        return product.sizeStock[selectedSize] || 0; // Default to 0 if size stock is not found
-    };
-
-    const currentStock = getCurrentStock();
-
-
+  // Loading state
+  if (loading) {
     return (
-        <div className="flex">
-            <Sidebar />
-            <div className="min-h-screen bg-gray-50 p-6 flex-1">
-                {/* Top Bar */}
-                <div className="flex justify-between items-center mb-6">
-                    <h1 className="text-2xl font-semibold">Inventory Details</h1>
-                    <div className="flex items-center gap-2">
-                        <button className="p-2 hover:bg-gray-200 rounded-lg">
-                            <BellIcon className="h-6 w-6 text-gray-600" />
-                        </button>
-                        <button className="p-2 hover:bg-gray-200 rounded-lg">
-                            <Cog6ToothIcon className="h-6 w-6 text-gray-600" />
-                        </button>
-                        <button className="p-2 hover:bg-gray-200 rounded-lg">
-                            <ClockIcon className="h-6 w-6 text-gray-600" />
-                        </button>
-                        {/* Profile */}
-                        <button
-                            onClick={() => router.push("../../profilepage")}
-                            className="p-1 rounded-full border-2 border-gray-300"
-                        >
-                            <img
-                                src="/p9.webp"
-                                alt="Profile"
-                                className="h-8 w-8 rounded-full object-cover"
-                            />
-                        </button>
-                    </div>
-                </div>
-
-                {/* Top Images */}
-                <div className="grid grid-cols-2 m-8">
-                    <div>
-                        <img src="/p3.webp" className="w-3/5 rounded-lg shadow-lg" alt="Main Product" />
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <img src="/p1.webp" className="w-3/5 rounded-lg shadow-lg" alt="Product Variant 1" />
-                        <img src="/p3.webp" className="w-3/5 rounded-lg shadow-lg" alt="Product Variant 2" />
-                        <img src="/p5.webp" className="w-3/5 rounded-lg shadow-lg" alt="Product Variant 3" />
-                        <img src="/p4.webp" className="w-3/5 rounded-lg shadow-lg" alt="Product Variant 4" />
-                    </div>
-                </div>
-
-                {/* Main Content */}
-                <div className="flex gap-6">
-                    {/* Left Column */}
-                    <div className="w-3/5">
-                        <div className="bg-white p-6 rounded-lg shadow-lg">
-                            <h2 className="text-lg font-semibold">{product.name}</h2>
-                            <p className="text-gray-600">Product ID: {product.id}</p>
-
-                            {/* Size Selection */}
-                            <div className="mt-4">
-                                <p className="font-semibold">Size {'>'} {selectedSize}</p>
-                                <div className="grid grid-cols-3 gap-2 mt-2">
-                                    {product.sizes.map((size) => (
-                                        <button
-                                            key={size}
-                                            onClick={() => handleSizeSelect(size)}
-                                            className={`p-2 border rounded-md text-center ${
-                                                size === selectedSize
-                                                    ? "bg-orange-500 text-white"
-                                                    : "bg-gray-100 hover:bg-gray-200"
-                                            }`}
-                                        >
-                                            {size}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Stock Status - Dynamic based on selection */}
-                            <div className="mt-4">
-                                <p className="font-semibold">Stock - {currentStock}</p>
-                                <p className="text-green-500">In Stock</p> {/* You can make "In Stock" dynamic as well based on currentStock */}
-                            </div>
-
-                            {/* Color Selection */}
-                            <div className="mt-4">
-                                <p className="font-semibold">Colors {'>'} {selectedColor}</p>
-                                <div className="grid grid-cols-4 gap-2 mt-2">
-                                    {product.colors.map((color) => (
-                                        <div
-                                            key={color.name}
-                                            onClick={() => handleColorSelect(color.name)}
-                                            className={`p-2 border rounded-md text-center ${
-                                                color.name === selectedColor
-                                                    ? "border-orange-500"
-                                                    : "border-gray-200"
-                                            }`}
-                                        >
-                                            {/* Display the color image */}
-                                            <img
-                                                src={color.image}
-                                                alt={color.name}
-                                                className="w-20 h-20 mx-auto rounded-lg object-cover"
-                                            />
-                                            <p className="mt-1 text-sm">{color.name}</p>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Stock Limit */}
-                            <div className="mt-4">
-                                <p className="font-semibold">Stock Limit: {product.stockLimit}</p>
-                            </div>
-
-                            {/* Edit Buttons */}
-                            <div className="mt-4 flex gap-4">
-                                <button
-                                    onClick={handleEditStock}
-                                    className="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600"
-                                >
-                                    Edit Stock
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Right Column */}
-                    <div className="w-2/5">
-                        {/* Size-wise Stock Table */}
-                        <div className="bg-white p-6 rounded-lg shadow-lg mb-6">
-                            <h2 className="text-lg font-semibold mb-4">Size-wise Stock</h2>
-                            <table className="w-full border-collapse">
-                                <thead>
-                                    <tr className="bg-gray-100">
-                                        <th className="p-3">Size</th>
-                                        <th className="p-3">Quantity</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {product.sizes.map((size) => (
-                                        <tr key={size} className="border-t">
-                                            <td className="p-3">{size}</td>
-                                            <td className="p-3">
-                                                {product.sizeStock[size as keyof typeof product.sizeStock]}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-
-                        {/* Color-wise Stock Table */}
-                        <div className="bg-white p-4 rounded-lg shadow-lg">
-                            <h2 className="text-lg font-semibold mb-4">Color-wise Stock</h2>
-                            <table className="w-full border-collapse">
-                                <thead>
-                                    <tr className="bg-gray-100">
-                                        <th className="py-2 pr-16">Color</th>
-                                        <th className="py-2 pr-8 ">Quantity</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {Object.keys(product.colorStock).map((color) => {
-                                        const colorData = product.colors.find((c) => c.name === color);
-                                        return (
-                                            <tr key={color} className="border-t">
-                                                <td className="p-3 pl-8 flex items-center gap-2">
-                                                    {colorData && (
-                                                        <img
-                                                            src={colorData.image}
-                                                            alt={color}
-                                                            className="w-8 h-8 rounded-lg object-cover shadow-lg"
-                                                        />
-                                                    )}
-                                                    <span>{color}</span>
-                                                </td>
-                                                <td className="p-3 pl-12">
-                                                    {product.colorStock[color as keyof typeof product.colorStock]}
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
-                        </div>
-
-                    </div>
-                </div>
-
-                {/* Back Button */}
-                <div className="mt-6 flex justify-end">
-                    <button
-                        onClick={() => router.push("../inventory")}
-                        className="px-6 py-2 bg-gray-300 text-black rounded-md hover:bg-gray-400 w-28"
-                    >
-                        Back
-                    </button>
-                </div>
-            </div>
+      <div className="flex">
+        <Sidebar />
+        <div className="min-h-screen bg-gray-50 p-6 flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-orange-500 border-r-transparent"></div>
+            <p className="mt-2">Loading inventory data...</p>
+          </div>
         </div>
+      </div>
     );
+  }
+
+  // Error state
+  if (error || !inventory) {
+    return (
+      <div className="flex">
+        <Sidebar />
+        <div className="min-h-screen bg-gray-50 p-6 flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-red-500">{error || "Inventory not found"}</p>
+            <button 
+              onClick={() => router.push('/inventorylist')}
+              className="mt-4 px-4 py-2 bg-orange-500 text-white rounded-md"
+            >
+              Back to Inventory List
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex">
+      <Sidebar />
+      <div className="min-h-screen bg-gray-50 p-6 flex-1">
+        {/* Top Bar */}
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-semibold">Inventory Details</h1>
+          {/* ...existing code for right side icons... */}
+        </div>
+
+        {/* Top Images */}
+        <div className="grid grid-cols-2 m-8">
+          <div>
+            <img 
+              src={productColors.length > 0 ? productColors[0].src : inventory.image || "/placeholder.png"} 
+              className="w-3/5 rounded-lg shadow-lg" 
+              alt="Main Product" 
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            {productColors.slice(0, 4).map((color, index) => (
+              <img 
+                key={index}
+                src={color.src} 
+                className="w-3/5 rounded-lg shadow-lg" 
+                alt={`${color.name} variant`}
+              />
+            ))}
+            {/* Add placeholders if we don't have 4 color images */}
+            {[...Array(Math.max(0, 4 - productColors.length))].map((_, index) => (
+              <div 
+                key={`placeholder-${index}`}
+                className="w-3/5 rounded-lg shadow-lg bg-gray-200"
+              ></div>
+            ))}
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="flex gap-6">
+          {/* Left Column */}
+          <div className="w-3/5">
+            <div className="bg-white p-6 rounded-lg shadow-lg">
+              <h2 className="text-lg font-semibold">{inventory.productName}</h2>
+              <p className="text-gray-600">Product ID: {inventory.productId}</p>
+
+              {/* Size Selection */}
+              {inventory.sizeStock && Object.keys(inventory.sizeStock).length > 0 && (
+                <div className="mt-4">
+                  <p className="font-semibold">Size {'>'} {selectedSize}</p>
+                  <div className="grid grid-cols-3 gap-2 mt-2">
+                    {Object.keys(inventory.sizeStock).map((size) => (
+                      <button
+                        key={size}
+                        onClick={() => handleSizeSelect(size)}
+                        className={`p-2 border rounded-md text-center ${
+                            size === selectedSize
+                                ? "bg-orange-500 text-white"
+                                : "bg-gray-100 hover:bg-gray-200"
+                        }`}
+                      >
+                        {size}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Stock Status */}
+              <div className="mt-4">
+                <p className="font-semibold">Stock - {getCurrentStock()}</p>
+                <p className={`
+                  ${inventory.status === "In Stock" ? "text-green-500" : 
+                    inventory.status === "Out Of Stock" ? "text-red-500" : 
+                    "text-yellow-500"}
+                `}>
+                  {inventory.status}
+                </p>
+              </div>
+
+              {/* Color Selection */}
+              {productColors.length > 0 && (
+                <div className="mt-4">
+                  <p className="font-semibold">Colors {'>'} {selectedColor}</p>
+                  <div className="grid grid-cols-4 gap-2 mt-2">
+                    {productColors.map((color) => (
+                      <div
+                        key={color.name}
+                        onClick={() => handleColorSelect(color.name)}
+                        className={`p-2 border rounded-md text-center ${
+                            color.name === selectedColor
+                                ? "border-orange-500"
+                                : "border-gray-200"
+                        } cursor-pointer`}
+                      >
+                        <div className="aspect-square w-20 h-20 mx-auto relative rounded-lg overflow-hidden">
+                          <Image
+                            src={color.src}
+                            alt={color.name}
+                            fill
+                            className="object-cover"
+                          />
+                        </div>
+                        <p className="mt-1 text-sm">{color.name}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Stock Limit */}
+              <div className="mt-4">
+                <p className="font-semibold">Stock Limit: {inventory.stockLimit || 100}</p>
+              </div>
+
+              {/* Edit Buttons */}
+              <div className="mt-4 flex gap-4">
+                <button
+                  onClick={handleEditStock}
+                  className="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600"
+                >
+                  Edit Stock
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column */}
+          <div className="w-2/5">
+            {/* Size-wise Stock Table */}
+            {inventory.sizeStock && Object.keys(inventory.sizeStock).length > 0 && (
+              <div className="bg-white p-6 rounded-lg shadow-lg mb-6">
+                <h2 className="text-lg font-semibold mb-4">Size-wise Stock</h2>
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th className="p-3">Size</th>
+                      <th className="p-3">Quantity</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(inventory.sizeStock).map(([size, quantity]) => (
+                      <tr key={size} className="border-t">
+                        <td className="p-3">{size}</td>
+                        <td className="p-3">{quantity}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Color-wise Stock Table */}
+            {inventory.colorStock && Object.keys(inventory.colorStock).length > 0 && (
+              <div className="bg-white p-4 rounded-lg shadow-lg">
+                <h2 className="text-lg font-semibold mb-4">Color-wise Stock</h2>
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th className="py-2 pr-16">Color</th>
+                      <th className="py-2 pr-8">Quantity</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(inventory.colorStock).map(([color, quantity]) => {
+                      const colorData = productColors.find((c) => c.name === color);
+                      return (
+                        <tr key={color} className="border-t">
+                          <td className="p-3 pl-8 flex items-center gap-2">
+                            {colorData && (
+                              <div className="w-8 h-8 relative rounded overflow-hidden">
+                                <Image
+                                  src={colorData.src || "/placeholder.png"}
+                                  alt={color}
+                                  fill
+                                  className="object-cover"
+                                />
+                              </div>
+                            )}
+                            <span>{color}</span>
+                          </td>
+                          <td className="p-3 pl-12">{quantity}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Back Button */}
+        <div className="mt-6 flex justify-end">
+          <button
+            onClick={() => router.push("/inventorylist")}
+            className="px-6 py-2 bg-gray-300 text-black rounded-md hover:bg-gray-400 w-28"
+          >
+            Back
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 }
