@@ -30,6 +30,10 @@ export async function GET(
       return NextResponse.json({ error: "Inventory item not found" }, { status: 404 });
     }
     
+    // Log to see if colorSizeStock is included in the response
+    console.log("Fetched inventory item with colorSizeStock:", 
+      JSON.stringify(inventoryItem.colorSizeStock || {}, null, 2));
+    
     return NextResponse.json({ item: inventoryItem });
   } catch (error) {
     console.error("Error fetching inventory item:", error);

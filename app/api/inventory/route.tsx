@@ -91,22 +91,37 @@ export async function PUT(request: NextRequest) {
       newStatus = 'Out Of Stock';
     }
     
-    // Update the inventory
-    const updateFields: { stock: any; status: any; sizeStock?: any } = {
+    // Create a complete update object with all fields
+    const updatePayload = {
       stock: body.stock,
       status: newStatus,
     };
     
-    // Only update sizeStock if provided
-    if (body.sizeStock) {
-      updateFields.sizeStock = body.sizeStock;
+    // Always include these fields if they're in the request body
+    if (body.sizeStock) updatePayload.sizeStock = body.sizeStock;
+    if (body.colorStock) updatePayload.colorStock = body.colorStock;
+    
+    // Ensure colorSizeStock is always properly updated
+    if (body.colorSizeStock) {
+      updatePayload.colorSizeStock = body.colorSizeStock;
+      console.log("Updating colorSizeStock in DB:", JSON.stringify(body.colorSizeStock, null, 2));
     }
     
+    console.log("Saving to database with colorSizeStock:", JSON.stringify(body.colorSizeStock, null, 2));
+    
+    // Use $set to ensure fields are properly updated
     const updatedInventory = await Inventory.findByIdAndUpdate(
       body._id,
-      { $set: updateFields },
-      { new: true }
+      { $set: updatePayload },
+      { new: true, runValidators: true }
     );
+    
+    // Log the result after update to confirm
+    console.log("Updated inventory result from DB:", updatedInventory);
+    
+    if (!updatedInventory) {
+      return NextResponse.json({ error: "Failed to update inventory" }, { status: 500 });
+    }
     
     console.log("Updated inventory:", updatedInventory);
     
