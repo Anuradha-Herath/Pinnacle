@@ -28,8 +28,9 @@ export default function InventoryEditPage() {
 
   // Form states
   const [selectedSize, setSelectedSize] = useState<string>("");
-  const [addStockQty, setAddStockQty] = useState<string>("");
+  const [stockChangeQty, setStockChangeQty] = useState<string>(""); // Renamed from addStockQty
   const [submitting, setSubmitting] = useState(false);
+  const [isAddingStock, setIsAddingStock] = useState(true); // Track if adding or reducing
   
   // Fetch inventory data
   useEffect(() => {
@@ -70,26 +71,47 @@ export default function InventoryEditPage() {
     setSelectedSize(size);
   };
 
-  const handleAddStockChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Only allow positive numbers
+  const handleStockChangeInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Allow positive numbers only (will handle negative conversion based on mode)
     const value = e.target.value.replace(/[^0-9]/g, '');
-    setAddStockQty(value);
+    setStockChangeQty(value);
+  };
+  
+  const toggleMode = () => {
+    setIsAddingStock(!isAddingStock);
   };
 
   const handleSaveStock = async () => {
-    if (!inventory || !addStockQty) return;
+    if (!inventory || !stockChangeQty) return;
     
     try {
       setSubmitting(true);
       
+      // Convert input to number and apply sign based on mode
+      const quantityChange = parseInt(stockChangeQty) * (isAddingStock ? 1 : -1);
+      
       // Calculate the new total stock
-      const newStock = inventory.stock + parseInt(addStockQty);
+      const newStock = inventory.stock + quantityChange;
+      
+      // Validate that stock won't go negative
+      if (newStock < 0) {
+        alert("Stock cannot be reduced below zero!");
+        return;
+      }
       
       // Update size stock if selected
       const updatedSizeStock = { ...(inventory.sizeStock || {}) };
       if (selectedSize) {
         const currentSizeStock = updatedSizeStock[selectedSize] || 0;
-        updatedSizeStock[selectedSize] = currentSizeStock + parseInt(addStockQty);
+        const newSizeStock = currentSizeStock + quantityChange;
+        
+        // Validate that size stock won't go negative
+        if (newSizeStock < 0) {
+          alert(`Size ${selectedSize} stock cannot be reduced below zero!`);
+          return;
+        }
+        
+        updatedSizeStock[selectedSize] = newSizeStock;
       }
       
       // Prepare payload
@@ -97,7 +119,7 @@ export default function InventoryEditPage() {
         _id: inventory._id,
         stock: newStock,
         sizeStock: updatedSizeStock,
-        // Status will be set to In Stock automatically in the API
+        // Status will be determined by the API based on stock level
       };
       
       const response = await fetch('/api/inventory', {
@@ -116,10 +138,10 @@ export default function InventoryEditPage() {
       
       // Update the local state with the new data
       setInventory(result.inventory);
-      setAddStockQty(''); // Clear input
+      setStockChangeQty(''); // Clear input
       
       // Show success message
-      alert("Stock updated successfully!");
+      alert(`Stock ${isAddingStock ? 'increased' : 'decreased'} successfully!`);
       
     } catch (err) {
       console.error("Error updating stock:", err);
@@ -239,32 +261,56 @@ export default function InventoryEditPage() {
                 </div>
               )}
 
-              {/* Add Stock Input */}
+              {/* Add/Reduce Stock Toggle and Input */}
               <div className="mt-6">
-                <p className="font-semibold mb-2">Add Stock{selectedSize ? ` for Size ${selectedSize}` : ''}</p>
+                <div className="flex justify-between items-center mb-2">
+                  <p className="font-semibold">
+                    {isAddingStock ? 'Add Stock' : 'Reduce Stock'}
+                    {selectedSize ? ` for Size ${selectedSize}` : ''}
+                  </p>
+                  
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-600">Reduce</span>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        className="sr-only peer" 
+                        checked={isAddingStock}
+                        onChange={toggleMode}
+                      />
+                      <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500"></div>
+                    </label>
+                    <span className="text-sm text-gray-600">Add</span>
+                  </div>
+                </div>
+                
                 <div className="mt-2 flex gap-2">
                   <input
                     type="number"
                     className="p-2 border rounded-md w-full"
-                    placeholder="Enter quantity to add"
-                    value={addStockQty}
-                    onChange={handleAddStockChange}
+                    placeholder={`Enter quantity to ${isAddingStock ? 'add' : 'reduce'}`}
+                    value={stockChangeQty}
+                    onChange={handleStockChangeInput}
                     min="1"
                   />
                   <button
                     onClick={handleSaveStock}
-                    disabled={submitting || !addStockQty}
+                    disabled={submitting || !stockChangeQty}
                     className={`px-4 py-2 rounded-md ${
-                      submitting || !addStockQty 
+                      submitting || !stockChangeQty 
                         ? "bg-gray-400 text-white cursor-not-allowed" 
-                        : "bg-orange-500 text-white hover:bg-orange-600"
+                        : isAddingStock
+                        ? "bg-orange-500 text-white hover:bg-orange-600"
+                        : "bg-red-500 text-white hover:bg-red-600"
                     }`}
                   >
-                    {submitting ? "SAVING..." : "SAVE"}
+                    {submitting ? "SAVING..." : isAddingStock ? "ADD" : "REDUCE"}
                   </button>
                 </div>
                 <p className="text-sm text-gray-500 mt-1">
-                  Adding stock will change status to "In Stock" automatically
+                  {isAddingStock 
+                    ? "Adding stock will change status to \"In Stock\" automatically"
+                    : "Reducing stock to zero will change status to \"Out Of Stock\" automatically"}
                 </p>
               </div>
             </div>

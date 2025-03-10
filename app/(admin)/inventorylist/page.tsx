@@ -9,6 +9,7 @@ import {
   ClockIcon,
   PencilIcon,
   TrashIcon,
+  PlusCircleIcon, // Add this import for the plus icon
 } from "@heroicons/react/24/solid";
 import Sidebar from "../../components/Sidebar";
 import Image from "next/image";
@@ -143,6 +144,11 @@ export default function InventoryList() {
         alert('An error occurred while deleting');
       }
     }
+  };
+
+  // Handle add stock (redirects to inventory edit page)
+  const handleAddStock = (id: string) => {
+    router.push(`/inventoryedit?id=${id}`);
   };
 
   return (
@@ -401,6 +407,13 @@ export default function InventoryList() {
                         </span>
                       </td>
                       <td className="p-3 flex gap-2 justify-end">
+                        <button 
+                          onClick={() => handleAddStock(item._id)}
+                          className="p-2 bg-green-500 text-white rounded-md hover:bg-green-600"
+                          title="Add Stock"
+                        >
+                          <PlusCircleIcon className="h-4 w-4" />
+                        </button>
                         <button 
                           onClick={() => handleViewItem(item._id)}
                           className="p-2 bg-orange-400 text-white rounded-md hover:bg-orange-600"
