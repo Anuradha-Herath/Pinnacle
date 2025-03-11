@@ -1,43 +1,58 @@
-// ./app/(admin)/adminlogin/page.tsx
+"use client";
 
-"use client"; // Mark as client component
-
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { useAuth } from "@/app/context/AuthContext";
+import { useRouter } from "next/navigation";
+import { toast } from "react-hot-toast";
 
 const AdminLoginPage: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [rememberMe, setRememberMe] = useState(false); // Add state for rememberMe
+  const [rememberMe, setRememberMe] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  
+  const { login, user } = useAuth();
+  const router = useRouter();
+  
+  // If user is already logged in as admin, redirect to dashboard
+  useEffect(() => {
+    if (user && user.role === 'admin') {
+      router.push('/dashboard');
+    }
+  }, [user, router]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Implement your login logic here (e.g., API call)
-    console.log(
-      "Email:",
-      email,
-      "Password:",
-      password,
-      "Remember Me:",
-      rememberMe
-    );
-
-    // Example API call (replace with your actual API endpoint)
-    // fetch("/api/login", {
-    //   method: "POST",
-    //   headers: {
-    //     "Content-Type": "application/json",
-    //   },
-    //   body: JSON.stringify({ email, password, rememberMe }),
-    // })
-    //   .then((response) => response.json())
-    //   .then((data) => {
-    //     // Handle successful login (e.g., redirect to dashboard)
-    //     console.log("Login successful:", data);
-    //   })
-    //   .catch((error) => {
-    //     // Handle login error (e.g., display error message)
-    //     console.error("Login error:", error);
-    //   });
+    setError("");
+    setIsLoading(true);
+    
+    try {
+      const success = await login(email, password);
+      
+      if (success) {
+        // Verify admin role after login
+        if (user && user.role === 'admin') {
+          toast.success("Admin login successful!");
+          router.push('/dashboard');
+        } else {
+          // User is authenticated but not an admin
+          setError("Access denied. Admin privileges required.");
+          // Logout the non-admin user
+          // logoutFunction would need to be implemented
+          toast.error("Access denied. Admin privileges required.");
+        }
+      } else {
+        setError("Invalid credentials");
+        toast.error("Invalid credentials");
+      }
+    } catch (error) {
+      setError("Authentication failed");
+      toast.error("Authentication failed");
+      console.error("Login error:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -50,10 +65,16 @@ const AdminLoginPage: React.FC = () => {
       {/* Right Section (Login Form) */}
       <div className="flex flex-col justify-center items-center w-1/2 bg-gray-100">
         <div className="w-96 p-8 bg-white rounded-lg shadow-md">
-          <h2 className="text-2xl font-semibold mb-4 text-center">Sign in</h2>
+          <h2 className="text-2xl font-semibold mb-4 text-center">Admin Sign in</h2>
           <p className="text-sm text-gray-600 mb-6 text-center">
             Enter your email address and password to access admin panel.
           </p>
+
+          {error && (
+            <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md text-sm">
+              {error}
+            </div>
+          )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -63,6 +84,8 @@ const AdminLoginPage: React.FC = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="w-full p-2 border rounded-md focus:outline-none focus:ring focus:border-blue-300"
+                disabled={isLoading}
+                required
               />
             </div>
             <div>
@@ -72,6 +95,8 @@ const AdminLoginPage: React.FC = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="w-full p-2 border rounded-md focus:outline-none focus:ring focus:border-blue-300"
+                disabled={isLoading}
+                required
               />
             </div>
             <div className="flex items-center">
@@ -81,6 +106,7 @@ const AdminLoginPage: React.FC = () => {
                 checked={rememberMe}
                 onChange={(e) => setRememberMe(e.target.checked)}
                 className="mr-2"
+                disabled={isLoading}
               />
               <label htmlFor="remember" className="text-sm text-gray-600">
                 Keep me logged in
@@ -88,9 +114,10 @@ const AdminLoginPage: React.FC = () => {
             </div>
             <button
               type="submit"
-              className="w-full bg-orange-500 text-white p-2 rounded-md hover:bg-orange-600 focus:outline-none focus:ring focus:border-orange-300"
+              className={`w-full ${isLoading ? 'bg-orange-300' : 'bg-orange-500'} text-white p-2 rounded-md hover:bg-orange-600 focus:outline-none focus:ring focus:border-orange-300`}
+              disabled={isLoading}
             >
-              Sign In
+              {isLoading ? "Signing in..." : "Sign In"}
             </button>
           </form>
         </div>

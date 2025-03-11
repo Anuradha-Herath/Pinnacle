@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useWishlist } from "../context/WishlistContext";
 import { useCart } from "../context/CartContext";
 import { toast } from "react-hot-toast";
+import { cartNotifications, wishlistNotifications } from "@/lib/notificationService";
 
 interface Product {
   id: string; // Changed from number to string to match MongoDB _id
@@ -40,14 +41,19 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
     sizes: product.sizes || [],
   };
 
+  // Update handleWishlistToggle to use the notification service
   const handleWishlistToggle = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     
     if (isWishlisted) {
       removeFromWishlist(product.id);
+      // Use notification service instead of direct toast call
+      wishlistNotifications.itemRemoved();
     } else {
       addToWishlist(product.id);
+      // Use notification service instead of direct toast call
+      wishlistNotifications.itemAdded();
     }
   };
 
@@ -64,6 +70,7 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
     // Determine which color image is selected (if any)
     const colorImage = selectedColor || currentImage;
     
+    // Important: Pass false to prevent duplicate notifications
     addToCart({
       id: product.id,
       name: product.name,
@@ -71,9 +78,10 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
       image: colorImage || product.image,
       size: selectedSize || undefined,
       color: selectedColor || undefined
-    });
+    }, false); // Set second parameter to false
     
-    toast.success(`${product.name} added to cart!`);
+    // Use notification service
+    cartNotifications.itemAdded(product.name);
   };
   
   const navigateToProductDetail = () => {
