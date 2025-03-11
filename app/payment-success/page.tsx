@@ -4,7 +4,7 @@ export default async function PaymentSuccess({
   searchParams: { amount: string; payment_intent: string };
 }) {
   // Access amount and payment intent after receiving the searchParams object
-  const { amount, payment_intent } = searchParams;
+  const { amount, payment_intent } = await searchParams;
 
   return (
     <main className="max-w-6xl mx-auto p-10 text-white text-center border m-10 rounded-md bg-gradient-to-tr from-black to-gray-500">
