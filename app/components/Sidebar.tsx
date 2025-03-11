@@ -32,7 +32,7 @@ const Sidebar: React.FC = () => {
     };
 
     // Helper function for Link or collapsed icon-only button
-    const NavLink = ({ href, children, onClick }: { href: string, children: React.ReactNode, onClick?: () => void }) => (
+    const NavLink = ({ href, children, onClick }: { href: string, children: React.ReactNode, onClick?: (e?: React.MouseEvent<HTMLAnchorElement>) => void }) => (
         <Link
             href={href}
             className={`flex items-center p-2 rounded hover:bg-gray-700 ${isActive(href) ? 'bg-gray-700' : ''}`}
@@ -252,9 +252,9 @@ const Sidebar: React.FC = () => {
                     </li>
                     <li>
                         <NavLink 
-                            href="/logout"
+                            href="/adminlogin"
                             onClick={(e) => {
-                                e.preventDefault();
+                                if (e) e.preventDefault();
                                 // Add your logout logic here, e.g.:
                                 // logout();
                                 // router.push('/login');
