@@ -13,6 +13,16 @@ import { useCart } from "@/app/context/CartContext";
 import { useWishlist } from "@/app/context/WishlistContext";
 import { toast } from "react-hot-toast";
 import { Heart, ShoppingBag } from "lucide-react";
+import { cartNotifications, wishlistNotifications } from "@/lib/notificationService";
+
+// Add debounce utility
+const debounce = (func: Function, delay: number) => {
+  let timeoutId: NodeJS.Timeout;
+  return function(...args: any[]) {
+    clearTimeout(timeoutId);
+    timeoutId = setTimeout(() => func.apply(this, args), delay);
+  };
+};
 
 export default function EnhancedProductDetailPage() {
   const params = useParams();
@@ -28,6 +38,7 @@ export default function EnhancedProductDetailPage() {
   const [relatedProducts, setRelatedProducts] = useState([]);
   const [recentlyViewed, setRecentlyViewed] = useState([]);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [selectedColor, setSelectedColor] = useState<string | null>(null);
   
   // Context hooks
   const { addToCart } = useCart();
@@ -47,6 +58,28 @@ export default function EnhancedProductDetailPage() {
     } catch (e) {
       return false;
     }
+  };
+
+  // Helper function to get the currently selected image
+  const getSelectedImage = () => {
+    return product?.images && product.images.length > 0
+      ? product.images[selectedImageIndex]
+      : placeholderImage;
+  };
+
+  // Helper function to get color name from color object or URL
+  const getColorName = (color: string | null): string | null => {
+    if (!color) return null;
+    
+    // If it's a URL, extract a simple name
+    if (color.startsWith('http') || color.startsWith('/')) {
+      // Get just the filename without extension
+      const parts = color.split('/');
+      const fileName = parts[parts.length - 1];
+      return fileName.split('.')[0];
+    }
+    
+    return color;
   };
   
   // Fetch product data
@@ -180,6 +213,44 @@ export default function EnhancedProductDetailPage() {
     setQuantity(Math.max(1, quantity + value));
   };
   
+  // Use debounce for cart and wishlist actions
+  const debouncedAddToCart = debounce((productData: any) => {
+    const selectedImg = getSelectedImage();
+    const colorName = getColorName(selectedColor);
+    
+    console.log("Adding to cart with:", {
+      selectedSize,
+      selectedColor,
+      colorName,
+      selectedImage: selectedImg
+    });
+    
+    addToCart({
+      id: productData.id,
+      name: productData.name,
+      price: productData.price,
+      image: selectedImg,
+      quantity: quantity,
+      size: selectedSize,
+      color: selectedColor // Store the original color identifier
+    }, false); // Pass false to prevent duplicate notification
+    
+    // Use notification service
+    cartNotifications.itemAdded(productData.name);
+  }, 300);
+
+  const debouncedToggleWishlist = debounce((productId: string, isInWishlist: boolean) => {
+    if (isInWishlist) {
+      removeFromWishlist(productId);
+      // Use notification service
+      wishlistNotifications.itemRemoved();
+    } else {
+      addToWishlist(productId);
+      // Use notification service
+      wishlistNotifications.itemAdded();
+    }
+  }, 300);
+  
   // Add to cart handler with quantity support
   const handleAddToCart = () => {
     if (!product) return;
@@ -189,40 +260,27 @@ export default function EnhancedProductDetailPage() {
       return;
     }
     
-    // Get the selected image to represent the color
-    const selectedImage = product.images && product.images.length > 0 
-      ? product.images[selectedImageIndex] 
-      : placeholderImage;
-    
-    addToCart({
+    // No need to define selectedImage here anymore, using helper function instead
+    debouncedAddToCart({
       id: product.id,
       name: product.name,
       price: product.price,
-      image: selectedImage,
-      size: selectedSize || undefined,
-      color: selectedImage, // Use the image URL as the color identifier
-      quantity: quantity // Pass the selected quantity
     });
-    
-    toast.success(`${quantity} ${product.name} added to cart!`);
   };
   
   // Toggle wishlist handler
   const toggleWishlist = () => {
     if (!product) return;
-    
-    if (isProductInWishlist) {
-      removeFromWishlist(product.id);
-      toast.success('Removed from wishlist');
-    } else {
-      addToWishlist(product.id);
-      toast.success('Added to wishlist');
-    }
+    debouncedToggleWishlist(product._id, isProductInWishlist);
   };
   
   // Sync the selectedImageIndex state with ProductInformation and ProductImageGallery
   const handleImageSelect = (index: number) => {
     setSelectedImageIndex(index);
+    // Also update selected color based on the selected image
+    if (product?.colors && product.colors[index]) {
+      setSelectedColor(product.images[index]);
+    }
   };
   
   // Loading state

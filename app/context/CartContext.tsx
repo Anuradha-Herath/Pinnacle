@@ -1,174 +1,289 @@
 "use client";
 
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect } from "react";
+import { useAuth } from "./AuthContext";
+import { toast } from "react-hot-toast";
+import { getValidImageUrl } from "@/lib/imageUtils"; // Import this utility
 
+// Define types
 export interface CartItem {
   id: string;
   name: string;
   price: number;
   image: string;
+  size?: string;
+  color?: string;
   quantity: number;
-  size?: string;
-  color?: string;
-  variantKey?: string;
 }
 
-interface AddToCartParams {
-  id: string;
-  name: string;
-  price: number;
-  image: string;
-  size?: string;
-  color?: string;
-  quantity?: number; // Make quantity optional in the params
-}
-
-interface CartContextType {
-  cartItems: CartItem[];
-  addToCart: (product: AddToCartParams) => void;
-  removeFromCart: (id: string) => void;
-  updateQuantity: (id: string, quantity: number) => void;
+export interface CartContextType {
+  cart: CartItem[];
+  addToCart: (item: Omit<CartItem, 'quantity'> & { quantity?: number }, showNotification?: boolean) => void;
+  removeFromCart: (id: string, size?: string, color?: string) => void;
   clearCart: () => void;
+  updateQuantity: (id: string, quantity: number, size?: string, color?: string) => void;
   getCartTotal: () => number;
   getCartCount: () => number;
+  isLoading: boolean;
 }
 
-const CartContext = createContext<CartContextType | undefined>(undefined);
+const CartContext = createContext<CartContextType>({
+  cart: [],
+  addToCart: () => {},
+  removeFromCart: () => {},
+  clearCart: () => {},
+  updateQuantity: () => {},
+  getCartTotal: () => 0,
+  getCartCount: () => 0,
+  isLoading: false,
+});
+
+export const useCart = () => useContext(CartContext);
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [cartItems, setCartItems] = useState<CartItem[]>([]);
-
-  // Load cart from localStorage on initial render with migration for old format
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [initialized, setInitialized] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const { user } = useAuth();
+  
+  // Load cart from localStorage or API when component mounts or user changes
   useEffect(() => {
-    const savedCart = localStorage.getItem('cart');
-    if (savedCart) {
+    const loadCart = async () => {
       try {
-        // Parse the saved cart
-        const parsedCart = JSON.parse(savedCart);
-        
-        // Check if items have the variantKey property - if not, add it
-        const migratedCart = parsedCart.map((item: CartItem) => {
-          if (!item.variantKey) {
-            return {
-              ...item,
-              quantity: item.quantity || 1,
-              variantKey: generateVariantKey(item.id, item.size, item.color)
-            };
+        setIsLoading(true);
+        if (user) {
+          // User is logged in, fetch cart from API
+          const response = await fetch('/api/user/cart');
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.cart) {
+              // Convert API cart format to our CartItem format with validated images
+              const apiCart = data.cart.map((item: any) => ({
+                id: item.productId,
+                name: item.name || "Product", // Fallback if name isn't stored
+                price: item.price || 0,
+                image: getValidImageUrl(item.image), // Validate image URL
+                size: item.size,
+                color: item.color,
+                quantity: item.quantity,
+              }));
+              setCart(apiCart);
+            }
           }
-          return item;
-        });
-        
-        setCartItems(migratedCart);
+        } else {
+          // User is not logged in, load from localStorage
+          const savedCart = localStorage.getItem('cart');
+          if (savedCart) {
+            try {
+              setCart(JSON.parse(savedCart));
+            } catch (e) {
+              console.error('Error parsing cart from localStorage:', e);
+              setCart([]);
+            }
+          }
+        }
       } catch (error) {
-        console.error('Error parsing cart from localStorage:', error);
-        // If error, clear localStorage to fix corrupt data
-        localStorage.removeItem('cart');
+        console.error('Error loading cart:', error);
+        // Fallback to localStorage in case of API error
+        const savedCart = localStorage.getItem('cart');
+        if (savedCart) {
+          try {
+            setCart(JSON.parse(savedCart));
+          } catch (e) {
+            setCart([]);
+          }
+        }
+      } finally {
+        setInitialized(true);
+        setIsLoading(false);
       }
-    }
-  }, []);
+    };
 
-  // Save cart to localStorage whenever it changes
+    loadCart();
+  }, [user]);
+
+  // Save cart to localStorage and API when it changes
   useEffect(() => {
-    localStorage.setItem('cart', JSON.stringify(cartItems));
-  }, [cartItems]);
+    if (!initialized) return;
+    
+    // Always save to localStorage (for guest users and as backup)
+    localStorage.setItem('cart', JSON.stringify(cart));
+    
+    // If user is logged in, also save to API
+    if (user) {
+      const saveCartToAPI = async () => {
+        try {
+          // Ensure all required fields are included when sending to API
+          const apiCart = cart.map(item => ({
+            productId: item.id,
+            name: item.name || "Product", // Ensure name is present
+            price: item.price || 0,       // Ensure price is present
+            image: item.image || "/placeholder.png", // Ensure image is present
+            size: item.size,
+            color: item.color,
+            quantity: item.quantity,
+          }));
 
-  // Helper function to generate a unique key for each variant
-  const generateVariantKey = (id: string, size?: string, color?: string): string => {
-    return `${id}_${size || 'default'}_${color || 'default'}`;
+          await fetch('/api/user/cart', {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ cart: apiCart }),
+          });
+        } catch (error) {
+          console.error('Error saving cart to API:', error);
+        }
+      };
+      
+      saveCartToAPI();
+    }
+  }, [cart, user, initialized]);
+
+  // Helper function to generate a unique key for cart items
+  const getItemKey = (id: string, size?: string, color?: string): string => {
+    return `${id}${size ? `-${size}` : ''}${color ? `-${color}` : ''}`;
   };
 
-  const addToCart = (product: AddToCartParams) => {
-    setCartItems(prevItems => {
-      // Generate a variant key for this product configuration
-      const variantKey = generateVariantKey(product.id, product.size, product.color);
-      
-      // Use provided quantity or default to 1
-      const itemQuantity = product.quantity || 1;
-      
-      // Check if item already exists in cart
-      const existingItemIndex = prevItems.findIndex(item => 
-        item.variantKey === variantKey || 
-        (item.id === product.id && 
-         item.size === product.size && 
-         item.color === product.color)
+  // Improved helper function for debugging
+  const logCartOperation = (operation: string, details: any) => {
+    console.log(`Cart operation: ${operation}`, details);
+  };
+
+  // Improved function to get a better color representation
+  const getDisplayColor = (color: string | undefined): string | undefined => {
+    if (!color) return undefined;
+    
+    // If color is a URL (likely when the color is stored as an image path)
+    if (color.startsWith('http') || color.startsWith('/')) {
+      // Extract just the filename for simplicity
+      const parts = color.split('/');
+      return parts[parts.length - 1].split('.')[0];
+    }
+    
+    return color;
+  };
+
+  // Cart operations
+  const addToCart = (item: Omit<CartItem, 'quantity'> & { quantity?: number }, showNotification: boolean = true) => {
+    const itemQuantity = item.quantity || 1;
+    
+    // Extract a display-friendly color if it's a URL
+    const displayColor = getDisplayColor(item.color);
+    
+    logCartOperation('addToCart', {
+      id: item.id, 
+      color: item.color,
+      displayColor,
+      size: item.size,
+      quantity: itemQuantity
+    });
+    
+    setCart(prevCart => {
+      // Check if item already exists in cart with same ID, size, and color
+      const existingItemIndex = prevCart.findIndex(
+        cartItem => 
+          cartItem.id === item.id && 
+          cartItem.size === item.size && 
+          cartItem.color === item.color
       );
       
-      if (existingItemIndex >= 0) {
-        // Item exists, increase quantity by the specified amount
-        const updatedItems = [...prevItems];
-        updatedItems[existingItemIndex] = {
-          ...updatedItems[existingItemIndex],
-          quantity: updatedItems[existingItemIndex].quantity + itemQuantity
-        };
-        return updatedItems;
+      if (existingItemIndex !== -1) {
+        // Item exists, update quantity
+        const updatedCart = [...prevCart];
+        updatedCart[existingItemIndex].quantity += itemQuantity;
+        return updatedCart;
       } else {
-        // Item doesn't exist, add new item with specified quantity
-        return [...prevItems, { 
-          ...product, 
-          variantKey, 
-          quantity: itemQuantity 
-        }];
+        // Item doesn't exist, add new item with valid image
+        const newItem = {
+          ...item,
+          image: item.image || "/placeholder.png",
+          colorDisplay: displayColor, // Add a display-friendly color name
+          quantity: itemQuantity
+        };
+        return [...prevCart, newItem];
       }
+    });
+    
+    // Toast is handled by the component
+  };
+
+  const removeFromCart = (id: string, size?: string, color?: string) => {
+    logCartOperation('removeFromCart', {id, size, color});
+    
+    setCart(prevCart => {
+      // Log current cart before removal
+      console.log("Current cart before removal:", JSON.stringify(prevCart.map(i => ({
+        id: i.id, 
+        size: i.size, 
+        color: i.color,
+        name: i.name
+      }))));
+      
+      // Find exact match for deletion
+      const updatedCart = prevCart.filter(item => {
+        const itemMatches = 
+          item.id === id && 
+          item.size === size && 
+          item.color === color;
+        
+        // Log each comparison for debugging
+        if (item.id === id) {
+          console.log(`Comparing item: ${item.name}, id matches, size: ${item.size}=${size}, color: ${item.color}=${color}, match=${!itemMatches}`);
+        }
+        
+        return !itemMatches;
+      });
+      
+      console.log(`Previous cart length: ${prevCart.length}, Updated cart length: ${updatedCart.length}`);
+      
+      return updatedCart;
     });
   };
 
-  // Enhanced removeFromCart to handle both variantKey and id
-  const removeFromCart = (key: string) => {
-    setCartItems(prevItems => {
-      // Try to remove by variantKey first
-      const filteredByVariantKey = prevItems.filter(item => item.variantKey !== key);
-      
-      // If we removed something, return the filtered array
-      if (filteredByVariantKey.length !== prevItems.length) {
-        return filteredByVariantKey;
-      }
-      
-      // Otherwise try to remove by ID
-      return prevItems.filter(item => item.id !== key);
-    });
-  };
-
-  const updateQuantity = (variantKey: string, quantity: number) => {
-    setCartItems(prevItems => 
-      prevItems.map(item => 
-        item.variantKey === variantKey ? { ...item, quantity: Math.max(1, quantity) } : item
-      )
-    );
-  };
-
-  // Add a method to forcefully clear the cart and localStorage
   const clearCart = () => {
-    setCartItems([]);
-    localStorage.removeItem('cart');
+    setCart([]);
+  };
+
+  const updateQuantity = (id: string, quantity: number, size?: string, color?: string) => {
+    logCartOperation('updateQuantity', {id, quantity, size, color});
+    
+    if (quantity <= 0) {
+      // Remove item if quantity is 0 or negative
+      removeFromCart(id, size, color);
+      return;
+    }
+    
+    setCart(prevCart => {
+      const updatedCart = prevCart.map(item => {
+        // Check for exact match
+        if (item.id === id && item.size === size && item.color === color) {
+          return { ...item, quantity };
+        }
+        return item;
+      });
+      return updatedCart;
+    });
   };
 
   const getCartTotal = () => {
-    return cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
+    return cart.reduce((total, item) => total + (item.price * item.quantity), 0);
   };
 
   const getCartCount = () => {
-    return cartItems.reduce((count, item) => count + item.quantity, 0);
+    return cart.reduce((count, item) => count + item.quantity, 0);
   };
 
-  return (
-    <CartContext.Provider value={{ 
-      cartItems, 
-      addToCart, 
-      removeFromCart, 
-      updateQuantity, 
-      clearCart,
-      getCartTotal,
-      getCartCount
-    }}>
-      {children}
-    </CartContext.Provider>
-  );
-};
+  const value = {
+    cart,
+    addToCart,
+    removeFromCart,
+    clearCart,
+    updateQuantity,
+    getCartTotal,
+    getCartCount,
+    isLoading,
+  };
 
-export const useCart = () => {
-  const context = useContext(CartContext);
-  if (context === undefined) {
-    throw new Error('useCart must be used within a CartProvider');
-  }
-  return context;
+  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 };
