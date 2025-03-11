@@ -43,7 +43,8 @@ const LoginPage = () => {
       const user = await login(email, password);
 
       if (user && user.role === "user") {
-        router.push("/customer-dashboard"); // Redirect to Customer Dashboard
+        authNotifications.loginSuccess();
+        router.push("/"); // Redirect to Customer Dashboard
       } else {
         authNotifications.loginError();
       }
