@@ -59,9 +59,11 @@ export default function InventoryDetailsPage() {
         }
         
         const data = await response.json();
-        const inventoryData = data.item;
+        let inventoryData = data.item;
         
-        // Fetch associated product to get color images
+        console.log("Original inventory data:", inventoryData);
+        
+        // Fetch associated product to get color information
         if (inventoryData.productId) {
           const productResponse = await fetch(`/api/products/${inventoryData.productId}`);
           
@@ -75,6 +77,42 @@ export default function InventoryDetailsPage() {
             })) || [];
             
             setProductColors(colors);
+            
+            // Initialize colorStock and colorSizeStock if they don't exist
+            const colorStock = inventoryData.colorStock || {};
+            const colorSizeStock = inventoryData.colorSizeStock || {};
+            
+            // Initialize stock data for each color if not present
+            colors.forEach((color: Color) => {
+              if (!colorStock[color.name]) {
+                colorStock[color.name] = 0;
+              }
+              
+              // Make sure colorSizeStock[color] exists
+              if (!colorSizeStock[color.name]) {
+                colorSizeStock[color.name] = {};
+              }
+              
+              // Initialize size stock for this color
+              if (inventoryData.sizeStock) {
+                Object.keys(inventoryData.sizeStock).forEach(size => {
+                  // Only initialize if undefined, preserve existing values
+                  if (colorSizeStock[color.name][size] === undefined) {
+                    colorSizeStock[color.name][size] = 0;
+                  }
+                });
+              }
+            });
+            
+            // Update inventory data with color info and initialized stock
+            inventoryData = {
+              ...inventoryData,
+              colorStock: colorStock,
+              colorSizeStock: colorSizeStock
+            };
+            
+            console.log("Processed inventory data with colorSizeStock:", 
+              JSON.stringify(inventoryData.colorSizeStock, null, 2));
             
             // Set default color and size if available
             if (colors.length > 0) {
@@ -349,6 +387,36 @@ export default function InventoryDetailsPage() {
                             <span>{color}</span>
                           </td>
                           <td className="p-3 pl-12">{quantity}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Add Color-Size Combination Stock Table */}
+            {inventory.colorSizeStock && selectedColor && inventory.sizeStock && Object.keys(inventory.sizeStock).length > 0 && (
+              <div className="bg-white p-6 rounded-lg shadow-lg mt-6">
+                <h2 className="text-lg font-semibold mb-4">
+                  {selectedColor} by Size Combinations
+                </h2>
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th className="p-3 text-left">Size</th>
+                      <th className="p-3 text-right">Quantity</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.keys(inventory.sizeStock).map((size) => {
+                      // Get the quantity safely with defaults
+                      const quantity = inventory.colorSizeStock?.[selectedColor]?.[size] || 0;
+                      
+                      return (
+                        <tr key={size} className="border-t">
+                          <td className="p-3">{size}</td>
+                          <td className="p-3 text-right">{quantity}</td>
                         </tr>
                       );
                     })}
