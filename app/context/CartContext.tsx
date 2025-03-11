@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useAuth } from "./AuthContext";
 import { toast } from "react-hot-toast";
+import { getValidImageUrl } from "@/lib/imageUtils"; // Import this utility
 
 // Define types
 export interface CartItem {
@@ -56,12 +57,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (response.ok) {
             const data = await response.json();
             if (data.success && data.cart) {
-              // Convert API cart format to our CartItem format
+              // Convert API cart format to our CartItem format with validated images
               const apiCart = data.cart.map((item: any) => ({
                 id: item.productId,
                 name: item.name || "Product", // Fallback if name isn't stored
                 price: item.price || 0,
-                image: item.image || "/placeholder.png",
+                image: getValidImageUrl(item.image), // Validate image URL
                 size: item.size,
                 color: item.color,
                 quantity: item.quantity,
@@ -112,12 +113,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (user) {
       const saveCartToAPI = async () => {
         try {
-          // Convert CartItem to API format
+          // Ensure all required fields are included when sending to API
           const apiCart = cart.map(item => ({
             productId: item.id,
-            name: item.name,
-            price: item.price,
-            image: item.image,
+            name: item.name || "Product", // Ensure name is present
+            price: item.price || 0,       // Ensure price is present
+            image: item.image || "/placeholder.png", // Ensure image is present
             size: item.size,
             color: item.color,
             quantity: item.quantity,

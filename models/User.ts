@@ -4,6 +4,9 @@ import bcrypt from 'bcryptjs';
 // Define CartItem interface
 interface CartItem {
   productId: string;
+  name: string;      // Add name field
+  price: number;     // Add price field
+  image: string;     // Add image field
   quantity: number;
   size?: string;
   color?: string;
@@ -63,6 +66,18 @@ const UserSchema = new Schema<IUser>(
     cart: {
       type: [{
         productId: {
+          type: String,
+          required: true
+        },
+        name: {          // Add name field
+          type: String,
+          required: true
+        },
+        price: {         // Add price field
+          type: Number,
+          required: true
+        },
+        image: {         // Add image field
           type: String,
           required: true
         },

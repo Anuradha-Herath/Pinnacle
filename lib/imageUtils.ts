@@ -44,13 +44,19 @@ export const getValidImageUrl = (url: string): string => {
 };
 
 /**
- * Event handler for image loading errors
+ * Enhanced image error handler with debugging
  * @param e The error event from the image
  */
 export const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>): void => {
   const target = e.target as HTMLImageElement;
+  const originalSrc = target.src;
+  console.log(`Image load failed: ${originalSrc}`);
+  
   target.onerror = null; // Prevent infinite loop
   target.src = PLACEHOLDER_IMAGE;
+  
+  // For debugging
+  console.log(`Image replaced with placeholder: ${PLACEHOLDER_IMAGE}`);
 };
 
 /**
