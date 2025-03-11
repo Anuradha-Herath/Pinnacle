@@ -20,6 +20,8 @@ export default function DiscountList() {
   const [discounts, setDiscounts] = useState<Discount[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [activeCount, setActiveCount] = useState(0);
+  const [expiredCount, setExpiredCount] = useState(0);
 
   useEffect(() => {
     // Fetch discounts from API
@@ -31,6 +33,25 @@ export default function DiscountList() {
         }
         const data = await response.json();
         setDiscounts(data.discounts || []);
+        
+        // Calculate counts based only on status field
+        let active = 0;
+        let expired = 0;
+        
+        data.discounts.forEach((discount: Discount) => {
+          if (discount.status === 'Active') {
+            active++;
+          } 
+          
+          // Count as expired if status is inactive
+          if (discount.status === 'Inactive') {
+            expired++;
+          }
+        });
+        
+        setActiveCount(active);
+        setExpiredCount(expired);
+        
       } catch (err) {
         setError("Failed to load discounts");
         console.error(err);
@@ -68,17 +89,49 @@ export default function DiscountList() {
         throw new Error('Failed to delete discount');
       }
       
-      // Remove the deleted discount from state to update UI
-      setDiscounts(prevDiscounts => 
-        prevDiscounts.filter(discount => discount._id !== discountId)
-      );
+      // Update discount list and recalculate counts
+      const updatedDiscounts = discounts.filter(discount => discount._id !== discountId);
+      setDiscounts(updatedDiscounts);
       
-      // Show success message (optional)
+      // Recalculate counts after deletion - based only on status field
+      let active = 0;
+      let expired = 0;
+      
+      updatedDiscounts.forEach((discount) => {
+        if (discount.status === 'Active') {
+          active++;
+        }
+        
+        if (discount.status === 'Inactive') {
+          expired++;
+        }
+      });
+      
+      setActiveCount(active);
+      setExpiredCount(expired);
+      
+      // Show success message
       alert("Discount deleted successfully");
       
     } catch (err) {
       console.error("Error deleting discount:", err);
       alert("Failed to delete discount. Please try again.");
+    }
+  };
+
+  // Status display helper - changed to show "Expired" only if status is Inactive
+  const getStatusDisplay = (discount: Discount): string => {
+    return discount.status;
+  };
+
+  // Status class helper function
+  const getStatusClass = (discount: Discount): string => {
+    if (discount.status === "Active") {
+      return "bg-green-300 text-green-800";
+    } else if (discount.status === "Inactive") {
+      return "bg-red-300 text-red-800";
+    } else {
+      return "bg-orange-300 text-orange-800";
     }
   };
 
@@ -126,13 +179,13 @@ export default function DiscountList() {
           <div className="bg-white p-6 rounded-lg shadow-lg flex justify-between items-center">
             <div>
               <p className="text-gray-700 text-lg font-semibold">Active Discounts</p>
-              <p className="text-gray-900 text-2xl font-bold">23</p>
+              <p className="text-gray-900 text-2xl font-bold">{activeCount}</p>
             </div>
           </div>
           <div className="bg-white p-6 rounded-lg shadow-lg flex justify-between items-center">
             <div>
               <p className="text-gray-700 text-lg font-semibold">Expired Discounts</p>
-              <p className="text-gray-900 text-2xl font-bold">12</p>
+              <p className="text-gray-900 text-2xl font-bold">{expiredCount}</p>
             </div>
           </div>
         </div>
@@ -161,12 +214,14 @@ export default function DiscountList() {
                   <tr key={discount._id} className="border-t">
                     <td className="p-3">{discount.product}</td>
                     <td className="p-3">{discount.type}</td>
-                    <td className="p-3">{discount.percentage}</td>
+                    <td className="p-3">{discount.percentage}%</td>
                     <td className="p-3">{discount.startDate}</td>
                     <td className="p-3">{discount.endDate}</td>
                     <td className="p-3">
-                      <span className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${discount.status === "Active" ? "bg-green-300 text-green-800" : "bg-orange-300 text-orange-800"}`}>
-                        {discount.status}
+                      <span 
+                        className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${getStatusClass(discount)}`}
+                      >
+                        {getStatusDisplay(discount)}
                       </span>
                     </td>
                     <td className="p-3 flex gap-2 justify-end">
@@ -204,14 +259,7 @@ export default function DiscountList() {
               )}
             </tbody>
           </table>
-          <div className="flex justify-end mt-6 pr-4">
-            <div className="flex items-center border rounded-md overflow-hidden shadow-md">
-              <button className="px-4 py-2 border-r bg-white hover:bg-gray-200">Previous</button>
-              <button className="px-4 py-2 bg-orange-500 text-white font-semibold">1</button>
-              <button className="px-4 py-2 border-l bg-white hover:bg-gray-200">2</button>
-              <button className="px-4 py-2 border-l bg-white hover:bg-gray-200">Next</button>
-            </div>
-          </div>
+          
         </div>
       </div>
     </div>
