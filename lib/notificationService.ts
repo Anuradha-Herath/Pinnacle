@@ -1,42 +1,60 @@
-import { toast, ToastOptions } from 'react-hot-toast';
+import toast from 'react-hot-toast';
 
-// Default toast options
-const defaultOptions: ToastOptions = {
-  duration: 3000, // 3 seconds
-  position: 'bottom-center',
+// Common toast configuration
+const toastConfig = {
+  position: 'bottom-right' as const,
+  duration: 5000
 };
 
-// Authentication notifications
 export const authNotifications = {
-  loginSuccess: () => toast.success('Successfully logged in', defaultOptions),
-  loginError: (message?: string) => toast.error(message || 'Login failed', defaultOptions),
-  logoutSuccess: () => toast.success('Successfully logged out', defaultOptions),
-  logoutError: () => toast.error('Error during logout', defaultOptions),
-  signupSuccess: () => toast.success('Account created successfully', defaultOptions),
-  signupError: (message?: string) => toast.error(message || 'Signup failed', defaultOptions),
+  loginSuccess: (message = 'Login successful!') => 
+    toast.success(message, toastConfig),
+  
+  loginError: (message = 'Login failed. Please check your credentials.') => 
+    toast.error(message, toastConfig),
+  
+  signupSuccess: (message = 'Account created successfully!') => 
+    toast.success(message, toastConfig),
+  
+  signupError: (message = 'Failed to create account.') => 
+    toast.error(message, toastConfig),
+  
+  logoutSuccess: (message = 'Logged out successfully!') => 
+    toast.success(message, toastConfig),
 };
 
-// Cart notifications
 export const cartNotifications = {
-  itemAdded: (productName?: string) => toast.success(
-    productName ? `${productName} added to cart` : 'Item added to cart',
-    defaultOptions
-  ),
-  itemRemoved: () => toast.success('Item removed from cart', defaultOptions),
-  itemUpdated: () => toast.success('Cart updated', defaultOptions),
-  cartCleared: () => toast.success('Cart cleared', defaultOptions),
+  itemAdded: (message = 'Item added to cart!') => 
+    toast.success(message, toastConfig),
+  
+  itemRemoved: (message = 'Item removed from cart.') => 
+    toast(message, { ...toastConfig, icon: '🛒' }),
+  
+  cartUpdated: (message = 'Cart updated successfully.') => 
+    toast.success(message, toastConfig),
+    
+  cartError: (message = 'Failed to update cart.') => 
+    toast.error(message, toastConfig),
 };
 
-// Wishlist notifications
 export const wishlistNotifications = {
-  itemAdded: () => toast.success('Item added to wishlist', defaultOptions),
-  itemRemoved: () => toast.success('Item removed from wishlist', defaultOptions),
-  wishlistCleared: () => toast.success('Wishlist cleared', defaultOptions),
+  itemAdded: (message = 'Item added to wishlist!') => 
+    toast.success(message, toastConfig),
+  
+  itemRemoved: (message = 'Item removed from wishlist.') => 
+    toast(message, { ...toastConfig, icon: '❤️' }),
+  
+  wishlistError: (message = 'Failed to update wishlist.') => 
+    toast.error(message, toastConfig),
 };
 
-// Generic notifications
 export const generalNotifications = {
-  success: (message: string) => toast.success(message, defaultOptions),
-  error: (message: string) => toast.error(message, defaultOptions),
-  info: (message: string) => toast.success(message, { ...defaultOptions, icon: '📢' }),
+  success: (message: string) => 
+    toast.success(message, toastConfig),
+  
+  error: (message: string) => 
+    toast.error(message, toastConfig),
+  
+  info: (message: string) => 
+    toast(message, toastConfig),
 };

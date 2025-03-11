@@ -40,7 +40,7 @@ export default function RootLayout({
                 <Providers>
                   {children}
                 </Providers>
-                <Toaster position="bottom-center" />
+                <Toaster position="bottom-right" />
               </CloudinaryProvider>
             </CartProvider>
           </WishlistProvider>
