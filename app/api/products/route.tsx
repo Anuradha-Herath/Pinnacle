@@ -96,10 +96,11 @@ export async function POST(request: Request) {
           // Upload to Cloudinary
           const imageUrl = await uploadToCloudinary(item.src);
           
-          // Return updated item with Cloudinary URL
+          // Return updated item with Cloudinary URL and preserve the color information
           return {
-            ...item,
-            src: imageUrl
+            src: imageUrl,
+            name: item.name || '',
+            color: item.color || ''  // Ensure color is included
           };
         }
         
