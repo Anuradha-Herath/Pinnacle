@@ -63,6 +63,7 @@ export default function InventoryEditPage() {
         let inventoryData = data.item;
         
         console.log("Original inventory data from API:", inventoryData);
+        console.log("ColorSizeStock in data:", JSON.stringify(inventoryData.colorSizeStock || {}, null, 2));
         
         // Now fetch the product data to get color information
         if (inventoryData.productId) {
@@ -711,12 +712,16 @@ export default function InventoryEditPage() {
                   </thead>
                   <tbody>
                     {Object.keys(inventory.sizeStock).map((size) => {
-                      // Always use a defined value, defaulting to 0 if not found
+                      // Safely access the value with fallback to 0
                       let sizeQuantity = 0;
                       
-                      if (inventory.colorSizeStock && 
-                          inventory.colorSizeStock[selectedColor]) {
-                        sizeQuantity = inventory.colorSizeStock[selectedColor][size] || 0;
+                      try {
+                        if (inventory.colorSizeStock && 
+                            inventory.colorSizeStock[selectedColor]) {
+                          sizeQuantity = inventory.colorSizeStock[selectedColor][size] || 0;
+                        }
+                      } catch (e) {
+                        console.error(`Error retrieving ${selectedColor}/${size} stock:`, e);
                       }
                       
                       return (
