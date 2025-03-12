@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link"; // Import Link component
-import { usePathname, useRouter } from "next/navigation"; // Import usePathname and useRouter for active route detection and navigation
+import { usePathname } from "next/navigation"; // Import usePathname for active route detection
 import {
     AiOutlineHome,
     AiOutlineShoppingCart,
@@ -15,8 +15,6 @@ import {
     AiOutlineMenu,
 } from "react-icons/ai";
 import { BsChevronDown } from "react-icons/bs";
-import { authNotifications } from "@/lib/notificationService";
-import { useAuth } from "../context/AuthContext";
 
 const Sidebar: React.FC = () => {
     const [openProducts, setOpenProducts] = useState(false);
@@ -26,8 +24,6 @@ const Sidebar: React.FC = () => {
     const [collapsed, setCollapsed] = useState(false);
     
     const pathname = usePathname(); // Get current path to determine active links
-    const router = useRouter(); // Get router instance for navigation
-      const { user, logout } = useAuth();
     
     const isActive = (path: string) => pathname === path;
 
@@ -36,7 +32,7 @@ const Sidebar: React.FC = () => {
     };
 
     // Helper function for Link or collapsed icon-only button
-    const NavLink = ({ href, children, onClick }: { href: string, children: React.ReactNode, onClick?: (e?: React.MouseEvent<HTMLAnchorElement>) => void }) => (
+    const NavLink = ({ href, children, onClick }: { href: string, children: React.ReactNode, onClick?: () => void }) => (
         <Link
             href={href}
             className={`flex items-center p-2 rounded hover:bg-gray-700 ${isActive(href) ? 'bg-gray-700' : ''}`}
@@ -45,15 +41,6 @@ const Sidebar: React.FC = () => {
             {children}
         </Link>
     );
-
-    //logout-function
-    const handleLogout = async () => {
-        await logout();
-        // Use notification service instead of direct toast call
-        authNotifications.logoutSuccess();
-       
-        router.push('/adminlogin');
-      };
 
     return (
         <aside
@@ -264,15 +251,18 @@ const Sidebar: React.FC = () => {
                         </NavLink>
                     </li>
                     <li>
-                    <button
-                            onClick={handleLogout}
-                           className="hover:bg-gray-700 rounded w-full text-left py-2 "
+                        <NavLink 
+                            href="/logout"
+                            onClick={(e) => {
+                                e.preventDefault();
+                                // Add your logout logic here, e.g.:
+                                // logout();
+                                // router.push('/login');
+                            }}
                         >
-                            <div className="inline-flex items-center">
-                            <AiOutlineLogout className="text-xl w-8 flex-shrink-0 pl-3" />
+                            <AiOutlineLogout className="text-xl w-6 flex-shrink-0" />
                             {!collapsed && <span className="ml-2">Logout</span>}
-                            </div>
-                        </button>
+                        </NavLink>
                     </li>
                 </ul>
             </nav>

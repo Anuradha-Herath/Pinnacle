@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useAuth } from "@/app/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { authNotifications } from "@/lib/notificationService";
 
@@ -9,47 +10,26 @@ const LoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-
+  
+  const { login } = useAuth();
   const router = useRouter();
 
-  // ✅ Login function inside the component
-  const login = async (email: string, password: string) => {
-    try {
-      const response = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Login failed");
-      }
-
-      return data.user; // Return user object
-    } catch (error) {
-      console.error("Login error:", error);
-      throw error;
-    }
-  };
-
-  // ✅ Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-
+    
     try {
-      const user = await login(email, password);
-
-      if (user && user.role === "user") {
+      const success = await login(email, password);
+      
+      if (success) {
         authNotifications.loginSuccess();
-        router.push("/"); // Redirect to Customer Dashboard
+        router.push("/"); // Redirect to home page
       } else {
         authNotifications.loginError();
       }
     } catch (error) {
-      authNotifications.loginError("Invalid email or password");
+      authNotifications.loginError("An error occurred during login");
+      console.error("Login error:", error);
     } finally {
       setIsLoading(false);
     }
@@ -88,9 +68,7 @@ const LoginPage = () => {
           <button
             type="submit"
             disabled={isLoading}
-            className={`w-full ${
-              isLoading ? "bg-gray-500" : "bg-gray-900"
-            } text-white font-semibold py-2 rounded-full hover:bg-gray-800 transition`}
+            className={`w-full ${isLoading ? 'bg-gray-500' : 'bg-gray-900'} text-white font-semibold py-2 rounded-full hover:bg-gray-800 transition`}
           >
             {isLoading ? "SIGNING IN..." : "SIGN IN"}
           </button>
@@ -103,7 +81,10 @@ const LoginPage = () => {
             Create an account
           </Link>{" "}
           or{" "}
-          <Link href="/forgot-password" className="font-semibold hover:underline">
+          <Link
+            href="/forgot-password"
+            className="font-semibold hover:underline"
+          >
             Forgot your password?
           </Link>
         </p>
