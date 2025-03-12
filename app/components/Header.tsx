@@ -192,6 +192,7 @@ const Header = () => {
     await logout();
     // Use notification service instead of direct toast call
     authNotifications.logoutSuccess();
+   
     router.push('/login');
   };
 
