@@ -64,10 +64,15 @@ export async function PUT(request: NextRequest) {
     
     const { wishlist } = await request.json();
     
+    // Ensure wishlist contains only unique product IDs
+    const uniqueWishlist = Array.isArray(wishlist) 
+      ? [...new Set(wishlist)] 
+      : [];
+    
     await connectDB();
     const user = await User.findByIdAndUpdate(
       authResult.user?.id,
-      { $set: { wishlist } },
+      { $set: { wishlist: uniqueWishlist } },
       { new: true }
     );
     
