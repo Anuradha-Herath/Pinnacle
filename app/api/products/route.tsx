@@ -122,34 +122,26 @@ export async function POST(request: Request) {
     
     await newProduct.save();
     
-    // Create inventory record for this product
-    const inventoryEntry = new Inventory({
+    // Create a new inventory entry for this product
+    const newInventory = new Inventory({
       productId: newProduct._id,
       productName: newProduct.productName,
-      stock: 0, // Initialize with 0 stock
-      status: 'Newly Added',
-      image: newProduct.gallery && newProduct.gallery.length > 0 ? 
-        newProduct.gallery[0].src : '',
-      // Initialize sizeStock for each size with 0
+      stock: 0, // Initialize with zero stock
+      status: 'Newly Added', // Set initial status
+      image: processedGallery.length > 0 ? processedGallery[0].src : '',
+      // Initialize size stock with zeros
       sizeStock: body.sizes.reduce((acc: any, size: string) => {
         acc[size] = 0;
-        return acc;
-      }, {}),
-      // Initialize colorStock for each color with 0
-      colorStock: processedGallery.reduce((acc: any, item: any) => {
-        if (item.color && !acc[item.color]) {
-          acc[item.color] = 0;
-        }
         return acc;
       }, {})
     });
     
-    await inventoryEntry.save();
+    await newInventory.save();
     
     return NextResponse.json({ 
-      message: "Product created with images uploaded to Cloudinary and added to inventory", 
+      message: "Product created and added to inventory", 
       product: newProduct,
-      inventory: inventoryEntry
+      inventory: newInventory
     }, { status: 201 });
   } catch (error) {
     console.error("Server error:", error);
