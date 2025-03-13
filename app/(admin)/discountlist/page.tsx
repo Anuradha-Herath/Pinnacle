@@ -20,6 +20,8 @@ export default function DiscountList() {
   const [discounts, setDiscounts] = useState<Discount[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [activeDiscounts, setActiveDiscounts] = useState(0);
+  const [expiredDiscounts, setExpiredDiscounts] = useState(0);
 
   useEffect(() => {
     // Fetch discounts from API
@@ -30,7 +32,15 @@ export default function DiscountList() {
           throw new Error('Failed to fetch discounts');
         }
         const data = await response.json();
-        setDiscounts(data.discounts || []);
+        const fetchedDiscounts = data.discounts || [];
+        setDiscounts(fetchedDiscounts);
+        
+        // Calculate discount counts
+        const active: number = fetchedDiscounts.filter((d: Discount) => d.status === "Active").length;
+        const inactive: number = fetchedDiscounts.filter((d: Discount) => d.status === "Inactive").length;
+        
+        setActiveDiscounts(active);
+        setExpiredDiscounts(inactive);
       } catch (err) {
         setError("Failed to load discounts");
         console.error(err);
@@ -126,13 +136,13 @@ export default function DiscountList() {
           <div className="bg-white p-6 rounded-lg shadow-lg flex justify-between items-center">
             <div>
               <p className="text-gray-700 text-lg font-semibold">Active Discounts</p>
-              <p className="text-gray-900 text-2xl font-bold">23</p>
+              <p className="text-gray-900 text-2xl font-bold">{activeDiscounts}</p>
             </div>
           </div>
           <div className="bg-white p-6 rounded-lg shadow-lg flex justify-between items-center">
             <div>
               <p className="text-gray-700 text-lg font-semibold">Expired Discounts</p>
-              <p className="text-gray-900 text-2xl font-bold">12</p>
+              <p className="text-gray-900 text-2xl font-bold">{expiredDiscounts}</p>
             </div>
           </div>
         </div>
