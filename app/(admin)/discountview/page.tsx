@@ -9,6 +9,7 @@ interface ItemDetails {
   id: string;
   name: string;
   image: string;
+  price?: number; // Add price field
 }
 
 export default function DiscountView() {
@@ -77,7 +78,8 @@ export default function DiscountView() {
                 setItemDetails({
                   id: productData.product._id,
                   name: productData.product.productName,
-                  image: galleryImage
+                  image: galleryImage,
+                  price: productData.product.regularPrice // Store the price
                 });
               }
             }
@@ -105,6 +107,27 @@ export default function DiscountView() {
 
     fetchDiscountDetails();
   }, [discountId]);
+
+  // Calculate discounted price
+  const calculateDiscountedPrice = () => {
+    if (!itemDetails?.price || !discountDetails.percentage) {
+      return null;
+    }
+    
+    const originalPrice = itemDetails.price;
+    const discountPercentage = parseFloat(discountDetails.percentage.toString());
+    const discountAmount = (originalPrice * discountPercentage) / 100;
+    const discountedPrice = originalPrice - discountAmount;
+    
+    return {
+      originalPrice: originalPrice.toFixed(2),
+      discountedPrice: discountedPrice.toFixed(2),
+      savedAmount: discountAmount.toFixed(2)
+    };
+  };
+  
+  // Get pricing information if available
+  const priceInfo = discountDetails.type === 'Product' && itemDetails?.price ? calculateDiscountedPrice() : null;
 
   const handleDelete = async () => {
     if (!window.confirm("Are you sure you want to delete this discount?")) {
@@ -253,6 +276,11 @@ export default function DiscountView() {
                           <div>
                             <p className="text-lg font-medium">{itemDetails.name}</p>
                             <p className="text-sm text-gray-500">ID: {itemDetails.id}</p>
+                            {itemDetails.price && (
+                              <p className="text-sm font-medium text-gray-700">
+                                Original Price: ${itemDetails.price.toFixed(2)}
+                              </p>
+                            )}
                           </div>
                         </>
                       ) : (
@@ -265,6 +293,29 @@ export default function DiscountView() {
                     <p className="text-gray-500 mb-1">Discount Percentage</p>
                     <p className="text-lg font-medium">{discountDetails.percentage}%</p>
                   </div>
+                  
+                  {/* Display price breakdown for single products */}
+                  {discountDetails.type === 'Product' && priceInfo && (
+                    <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                      <h3 className="font-medium text-blue-800 mb-3">Price Breakdown</h3>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-gray-600">Original Price:</p>
+                          <p className="text-lg font-medium">${priceInfo.originalPrice}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-600">Discounted Price:</p>
+                          <p className="text-lg font-medium text-green-600">${priceInfo.discountedPrice}</p>
+                        </div>
+                        <div className="col-span-2">
+                          <p className="text-gray-600">Customer Savings:</p>
+                          <p className="text-lg font-medium text-red-600">
+                            ${priceInfo.savedAmount} ({discountDetails.percentage}%)
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   
                   <div className="mb-6">
                     <p className="text-gray-500 mb-1">Description</p>

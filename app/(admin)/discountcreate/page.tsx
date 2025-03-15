@@ -10,6 +10,7 @@ interface Product {
   _id: string;
   productName: string;
   gallery?: Array<{src: string, name?: string, color?: string}>;
+  regularPrice?: number; // Add regularPrice to the interface
 }
 
 interface Category {
@@ -135,6 +136,27 @@ export default function DiscountCreate() {
       return "Active"; // Changed to match the enum case in the model
     }
   };
+
+  // Calculate the discounted price based on the percentage
+  const calculateDiscountedPrice = () => {
+    if (!selectedProduct?.regularPrice || !formData.discountPercentage) {
+      return null;
+    }
+    
+    const originalPrice = selectedProduct.regularPrice;
+    const discountPercentage = parseFloat(formData.discountPercentage);
+    const discountAmount = (originalPrice * discountPercentage) / 100;
+    const discountedPrice = originalPrice - discountAmount;
+    
+    return {
+      originalPrice: originalPrice.toFixed(2),
+      discountedPrice: discountedPrice.toFixed(2),
+      savedAmount: discountAmount.toFixed(2)
+    };
+  };
+  
+  // Get pricing information if available
+  const priceInfo = formData.selectionMode === 'single' ? calculateDiscountedPrice() : null;
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -309,9 +331,14 @@ export default function DiscountCreate() {
                                   className="object-cover h-full w-full"
                                 />
                               </div>
-                              <div>
+                              <div className="flex-grow">
                                 <p className="font-medium">{selectedProduct.productName}</p>
                                 <p className="text-sm text-gray-500">ID: {selectedProduct._id}</p>
+                                {selectedProduct.regularPrice && (
+                                  <p className="text-sm font-medium text-gray-700">
+                                    Price: ${selectedProduct.regularPrice.toFixed(2)}
+                                  </p>
+                                )}
                               </div>
                               <button 
                                 type="button"
@@ -405,6 +432,27 @@ export default function DiscountCreate() {
                     onChange={(e) => setFormData({ ...formData, discountPercentage: e.target.value })} 
                     required
                   />
+                  
+                  {/* Display price breakdown for single products */}
+                  {formData.selectionMode === 'single' && selectedProduct && priceInfo && (
+                    <div className="mt-3 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                      <h4 className="font-medium text-blue-800 mb-2">Price Breakdown</h4>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div>
+                          <p className="text-gray-600">Original Price:</p>
+                          <p className="font-medium">${priceInfo.originalPrice}</p>
+                        </div>
+                        <div>
+                          <p className="text-gray-600">Discounted Price:</p>
+                          <p className="font-medium text-green-600">${priceInfo.discountedPrice}</p>
+                        </div>
+                        <div className="col-span-2">
+                          <p className="text-gray-600">Customer Saves:</p>
+                          <p className="font-medium text-red-600">${priceInfo.savedAmount} ({formData.discountPercentage}%)</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   
                   <label className="block text-sm mt-4 mb-1">Description (optional)</label>
                   <textarea 
