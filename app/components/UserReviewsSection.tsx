@@ -33,6 +33,8 @@ const UserReviewsSection: React.FC<Props> = ({
   const [reviews, setReviews] = useState<Review[]>(initialReviews || []);
   const [loading, setLoading] = useState(!!productId);
   const [error, setError] = useState<string | null>(null);
+  const [showAllReviews, setShowAllReviews] = useState(false);
+  const initialReviewCount = 3; // Number of reviews to show initially
 
   // Calculate average rating
   const averageRating = reviews.length > 0
@@ -92,6 +94,11 @@ const UserReviewsSection: React.FC<Props> = ({
       return '';
     }
   };
+
+  // Get the reviews to display based on showAllReviews state
+  const displayedReviews = showAllReviews 
+    ? reviews 
+    : reviews.slice(0, initialReviewCount);
 
   return (
     <div className="mt-12 pt-6 border-t border-gray-200">
@@ -175,7 +182,7 @@ const UserReviewsSection: React.FC<Props> = ({
           {/* Review List */}
           {reviews.length > 0 ? (
             <div className="space-y-6">
-              {reviews.map((review) => (
+              {displayedReviews.map((review) => (
                 <div
                   key={review._id || review.id}
                   className="border-b border-gray-200 pb-6"
@@ -218,6 +225,18 @@ const UserReviewsSection: React.FC<Props> = ({
                   )}
                 </div>
               ))}
+
+              {/* See More / Show Less Button */}
+              {reviews.length > initialReviewCount && (
+                <div className="flex justify-center mt-8">
+                  <button
+                    onClick={() => setShowAllReviews(!showAllReviews)}
+                    className="py-2 px-6 border border-black rounded-md hover:bg-black hover:text-white transition-colors"
+                  >
+                    {showAllReviews ? "Show Less" : `See ${reviews.length - initialReviewCount} More Reviews`}
+                  </button>
+                </div>
+              )}
             </div>
           ) : (
             <div className="text-center py-8">
