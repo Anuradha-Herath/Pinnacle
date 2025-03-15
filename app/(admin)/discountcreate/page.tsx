@@ -1,9 +1,22 @@
 "use client";
 
-import { useState } from "react";
-import { BellIcon, Cog6ToothIcon, ClockIcon } from "@heroicons/react/24/solid";
+import { useState, useEffect } from "react";
+import { BellIcon, Cog6ToothIcon, ClockIcon, MagnifyingGlassIcon } from "@heroicons/react/24/solid";
 import Sidebar from "../../components/Sidebar";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
+
+interface Product {
+  _id: string;
+  productName: string;
+  gallery?: Array<{src: string, name?: string, color?: string}>;
+}
+
+interface Category {
+  _id: string;
+  title: string;
+  thumbnailImage?: string;
+}
 
 export default function DiscountCreate() {
   const router = useRouter();
@@ -11,14 +24,103 @@ export default function DiscountCreate() {
     discountStatus: "active",
     startDate: "",
     endDate: "",
-    discountType: "category",
+    discountType: "product",
     productId: "",
+    categoryId: "",
+    selectionMode: "single",
     discountPercentage: "",
     description: ""
   });
-  
+
+  // New state variables for products and categories
+  const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
+  const [dataLoading, setDataLoading] = useState(true);
   const [error, setError] = useState("");
+  
+  // State for product search
+  const [productSearchTerm, setProductSearchTerm] = useState("");
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [showProductDropdown, setShowProductDropdown] = useState(false);
+  
+  // Fetch products and categories on component mount
+  useEffect(() => {
+    const fetchProductsAndCategories = async () => {
+      try {
+        setDataLoading(true);
+        
+        // Fetch products
+        const productsResponse = await fetch('/api/products');
+        if (!productsResponse.ok) {
+          throw new Error('Failed to fetch products');
+        }
+        const productsData = await productsResponse.json();
+        
+        // Fetch categories
+        const categoriesResponse = await fetch('/api/categories');
+        if (!categoriesResponse.ok) {
+          throw new Error('Failed to fetch categories');
+        }
+        const categoriesData = await categoriesResponse.json();
+        
+        setProducts(productsData.products || []);
+        setCategories(categoriesData.categories || []);
+      } catch (err) {
+        console.error("Error fetching data:", err);
+        setError("Failed to load products or categories data");
+      } finally {
+        setDataLoading(false);
+      }
+    };
+    
+    fetchProductsAndCategories();
+  }, []);
+  
+  // Filter products based on search term
+  useEffect(() => {
+    if (products.length === 0) return;
+    
+    if (productSearchTerm.trim() === "") {
+      setFilteredProducts(products.slice(0, 5)); // Show only first 5 when no search term
+    } else {
+      const filtered = products.filter(product => 
+        product.productName.toLowerCase().includes(productSearchTerm.toLowerCase())
+      ).slice(0, 10); // Limit to 10 results
+      setFilteredProducts(filtered);
+    }
+  }, [productSearchTerm, products]);
+  
+  // Set selected product when productId changes
+  useEffect(() => {
+    if (formData.productId && products.length > 0) {
+      const product = products.find(p => p._id === formData.productId);
+      setSelectedProduct(product || null);
+    } else {
+      setSelectedProduct(null);
+    }
+  }, [formData.productId, products]);
+
+  const handleSelectProduct = (product: Product) => {
+    setFormData({ ...formData, productId: product._id });
+    setSelectedProduct(product);
+    setShowProductDropdown(false);
+    setProductSearchTerm("");
+  };
+  
+  const handleProductSearchFocus = () => {
+    setShowProductDropdown(true);
+    if (productSearchTerm.trim() === "" && products.length > 0) {
+      setFilteredProducts(products.slice(0, 5));
+    }
+  };
+
+  const getProductImage = (product: Product) => {
+    return product.gallery && product.gallery.length > 0 
+      ? product.gallery[0].src 
+      : "/placeholder.png";
+  };
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,12 +128,23 @@ export default function DiscountCreate() {
     setError("");
     
     try {
+      // Prepare the submission data based on selection mode
+      const submissionData = {
+        discountStatus: formData.discountStatus,
+        startDate: formData.startDate,
+        endDate: formData.endDate,
+        discountType: formData.selectionMode === 'single' ? 'Product' : 'Category',
+        productId: formData.selectionMode === 'single' ? formData.productId : formData.categoryId,
+        discountPercentage: formData.discountPercentage,
+        description: formData.description
+      };
+      
       const response = await fetch('/api/discounts', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(submissionData),
       });
       
       const data = await response.json();
@@ -74,7 +187,7 @@ export default function DiscountCreate() {
 
         <div className="p-6">
           <div className="mb-6">
-            <h1 className="text-xl font-semibold">Discounts Create</h1>
+            <h1 className="text-xl font-semibold">Create Discount</h1>
             <p className="text-sm text-gray-500">Home &gt; Discounts &gt; Create</p>
           </div>
           
@@ -128,29 +241,151 @@ export default function DiscountCreate() {
               <div className="col-span-3">
                 <div className="bg-white p-4 rounded-lg shadow-md mb-6">
                   <h2 className="text-md font-medium mb-4">Discount Information</h2>
-                  <div className="mb-4 flex gap-4">
-                    {['category', 'sub-category', 'product', 'all'].map((type) => (
-                      <label key={type} className="flex items-center gap-2">
+                  
+                  {/* Selection Mode */}
+                  <div className="mb-4">
+                    <h3 className="text-sm font-medium mb-2">Apply Discount To:</h3>
+                    <div className="flex gap-6 mb-4">
+                      <label className="flex items-center gap-2">
                         <input
                           type="radio"
-                          value={type}
-                          checked={formData.discountType === type}
-                          onChange={() => setFormData({ ...formData, discountType: type })}
+                          value="single"
+                          checked={formData.selectionMode === "single"}
+                          onChange={() => setFormData({ ...formData, selectionMode: "single", categoryId: "" })}
                         />
-                        <span>{type.charAt(0).toUpperCase() + type.slice(1)}</span>
+                        <span>Single Product</span>
                       </label>
-                    ))}
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="radio"
+                          value="category"
+                          checked={formData.selectionMode === "category"}
+                          onChange={() => setFormData({ ...formData, selectionMode: "category", productId: "" })}
+                        />
+                        <span>All Products in Category</span>
+                      </label>
+                    </div>
                   </div>
 
-                  <label className="block text-sm mb-1">Category/Sub-Category/Product ID</label>
-                  <input 
-                    type="text" 
-                    placeholder="Enter ID" 
-                    className="w-full border p-2 rounded-xl" 
-                    value={formData.productId} 
-                    onChange={(e) => setFormData({ ...formData, productId: e.target.value })} 
-                    required
-                  />
+                  {/* Enhanced Product Selection with Search */}
+                  {formData.selectionMode === "single" ? (
+                    <div className="mb-4">
+                      <label className="block text-sm mb-1">Select Product</label>
+                      {dataLoading ? (
+                        <p className="text-sm text-gray-500">Loading products...</p>
+                      ) : (
+                        <div className="relative">
+                          {/* Search input */}
+                          <div className="flex items-center border rounded-xl overflow-hidden">
+                            <div className="pl-3 text-gray-400">
+                              <MagnifyingGlassIcon className="h-5 w-5" />
+                            </div>
+                            <input
+                              type="text"
+                              className="w-full p-2 focus:outline-none"
+                              placeholder="Search products by name..."
+                              value={productSearchTerm}
+                              onChange={(e) => setProductSearchTerm(e.target.value)}
+                              onFocus={handleProductSearchFocus}
+                            />
+                          </div>
+
+                          {/* Selected product display */}
+                          {selectedProduct && (
+                            <div className="mt-2 p-3 border rounded-lg flex items-center bg-gray-50">
+                              <div className="h-12 w-12 relative mr-3 overflow-hidden rounded">
+                                <img 
+                                  src={getProductImage(selectedProduct)}
+                                  alt={selectedProduct.productName}
+                                  className="object-cover h-full w-full"
+                                />
+                              </div>
+                              <div>
+                                <p className="font-medium">{selectedProduct.productName}</p>
+                                <p className="text-sm text-gray-500">ID: {selectedProduct._id}</p>
+                              </div>
+                              <button 
+                                type="button"
+                                className="ml-auto text-xs text-blue-600 hover:text-blue-800"
+                                onClick={() => {
+                                  setFormData({...formData, productId: ""});
+                                  setSelectedProduct(null);
+                                }}
+                              >
+                                Change
+                              </button>
+                            </div>
+                          )}
+
+                          {/* Product search results dropdown */}
+                          {showProductDropdown && filteredProducts.length > 0 && !selectedProduct && (
+                            <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                              {filteredProducts.map((product) => (
+                                <div 
+                                  key={product._id} 
+                                  className="flex items-center p-2 hover:bg-gray-50 cursor-pointer border-b"
+                                  onClick={() => handleSelectProduct(product)}
+                                >
+                                  <div className="h-10 w-10 relative mr-3 overflow-hidden rounded">
+                                    <img 
+                                      src={getProductImage(product)}
+                                      alt={product.productName}
+                                      className="object-cover h-full w-full"
+                                    />
+                                  </div>
+                                  <div>
+                                    <p className="font-medium">{product.productName}</p>
+                                    <p className="text-xs text-gray-500 truncate">ID: {product._id}</p>
+                                  </div>
+                                </div>
+                              ))}
+                              {filteredProducts.length === 10 && (
+                                <div className="p-2 text-center text-sm text-gray-500">
+                                  Showing first 10 results. Refine your search for more options.
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          
+                          {showProductDropdown && filteredProducts.length === 0 && (
+                            <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg p-4">
+                              <p className="text-gray-500 text-center">No products found matching your search.</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="mb-4">
+                      <label className="block text-sm mb-1">Select Category</label>
+                      {dataLoading ? (
+                        <p className="text-sm text-gray-500">Loading categories...</p>
+                      ) : (
+                        <div className="grid grid-cols-2 gap-3 max-h-60 overflow-y-auto">
+                          {categories.map((category) => (
+                            <div 
+                              key={category._id}
+                              className={`p-3 border rounded-lg flex items-center cursor-pointer ${
+                                formData.categoryId === category._id ? 'border-blue-500 bg-blue-50' : 'border-gray-200'
+                              }`}
+                              onClick={() => setFormData({ ...formData, categoryId: category._id })}
+                            >
+                              {category.thumbnailImage && (
+                                <div className="h-10 w-10 relative mr-3 overflow-hidden rounded">
+                                  <img 
+                                    src={category.thumbnailImage}
+                                    alt={category.title}
+                                    className="object-cover h-full w-full"
+                                  />
+                                </div>
+                              )}
+                              <span className="font-medium">{category.title}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
                   
                   <label className="block text-sm mt-4 mb-1">Discount Percentage</label>
                   <input 

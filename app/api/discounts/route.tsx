@@ -46,7 +46,8 @@ export async function POST(request: NextRequest) {
       startDate: body.startDate,
       endDate: body.endDate,
       status: body.discountStatus.charAt(0).toUpperCase() + body.discountStatus.slice(1),
-      description: body.description || ''
+      description: body.description || '',
+      applyToAllProducts: body.discountType === 'Category' // Set true if category type
     });
     
     await newDiscount.save();
