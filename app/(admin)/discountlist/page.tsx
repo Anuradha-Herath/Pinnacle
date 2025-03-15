@@ -28,6 +28,12 @@ export default function DiscountList() {
     status: string;
   }
 
+  interface ItemDetails {
+    id: string;
+    name: string;
+    image: string;
+  }
+
   const [discounts, setDiscounts] = useState<Discount[]>([]);
   const [filteredDiscounts, setFilteredDiscounts] = useState<Discount[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,6 +42,9 @@ export default function DiscountList() {
   const [expiredDiscounts, setExpiredDiscounts] = useState(0);
   const [futurePlanDiscounts, setFuturePlanDiscounts] = useState(0);
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  
+  // New state to store product/category details
+  const [itemDetails, setItemDetails] = useState<Record<string, ItemDetails>>({});
 
   useEffect(() => {
     // Fetch discounts from API
@@ -75,6 +84,57 @@ export default function DiscountList() {
 
     fetchDiscounts();
   }, []);
+
+  // Fetch product or category details for the discounts
+  useEffect(() => {
+    if (discounts.length === 0) return;
+    
+    const fetchItemDetails = async () => {
+      const detailsMap: Record<string, ItemDetails> = {};
+      
+      for (const discount of discounts) {
+        try {
+          if (discount.type === 'Product') {
+            // Fetch product details
+            const response = await fetch(`/api/products/${discount.product}`);
+            if (response.ok) {
+              const data = await response.json();
+              if (data.product) {
+                const galleryImage = data.product.gallery && data.product.gallery.length > 0
+                  ? data.product.gallery[0].src
+                  : "/placeholder.png";
+                  
+                detailsMap[discount.product] = {
+                  id: data.product._id,
+                  name: data.product.productName,
+                  image: galleryImage
+                };
+              }
+            }
+          } else if (discount.type === 'Category') {
+            // Fetch category details
+            const response = await fetch(`/api/categories/${discount.product}`);
+            if (response.ok) {
+              const data = await response.json();
+              if (data.category) {
+                detailsMap[discount.product] = {
+                  id: data.category._id,
+                  name: data.category.title,
+                  image: data.category.thumbnailImage || "/placeholder.png"
+                };
+              }
+            }
+          }
+        } catch (err) {
+          console.error(`Error fetching details for ${discount.type} ${discount.product}:`, err);
+        }
+      }
+      
+      setItemDetails(detailsMap);
+    };
+    
+    fetchItemDetails();
+  }, [discounts]);
 
   // Apply filter when status filter changes
   useEffect(() => {
@@ -240,7 +300,7 @@ export default function DiscountList() {
           <table className="w-full border-collapse text-gray-600">
             <thead>
               <tr className="bg-gray-100 text-left text-gray-600">
-                <th className="p-3">Product Name</th>
+                <th className="p-3">Product/Category</th>
                 <th className="p-3">Discount Type</th>
                 <th className="p-3">Percentage</th>
                 <th className="p-3">Start Date</th>
@@ -253,7 +313,25 @@ export default function DiscountList() {
               {filteredDiscounts.length > 0 ? (
                 filteredDiscounts.map((discount) => (
                   <tr key={discount._id} className="border-t">
-                    <td className="p-3">{discount.product}</td>
+                    <td className="p-3">
+                      <div className="flex items-center">
+                        {/* Display image and name if available, fallback to ID */}
+                        {itemDetails[discount.product] ? (
+                          <>
+                            <div className="h-10 w-10 relative mr-3 overflow-hidden rounded">
+                              <img
+                                src={itemDetails[discount.product].image}
+                                alt={itemDetails[discount.product].name}
+                                className="h-full w-full object-cover"
+                              />
+                            </div>
+                            <span className="font-medium">{itemDetails[discount.product].name}</span>
+                          </>
+                        ) : (
+                          <span>{discount.product}</span>
+                        )}
+                      </div>
+                    </td>
                     <td className="p-3">{discount.type}</td>
                     <td className="p-3">{discount.percentage}%</td>
                     <td className="p-3">{discount.startDate}</td>

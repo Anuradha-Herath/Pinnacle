@@ -219,14 +219,14 @@ export default function DiscountCreate() {
               <div className="col-span-2">
                 <div className="bg-white p-4 rounded-lg shadow-md">
                   <h2 className="text-md font-medium mb-4">Date Schedule</h2>
-                  <p className="text-sm text-gray-500 mb-4">
+                  <p className="text-sm text-gray-500 mb-2">
                     The discount status will be automatically determined based on these dates:
-                    <ul className="list-disc list-inside mt-2">
-                      <li>Active: Current date is between start and end date</li>
-                      <li>Future Plan: Current date is before start date</li>
-                      <li>Inactive: Current date is after end date</li>
-                    </ul>
                   </p>
+                  <ul className="list-disc list-inside mb-4 text-sm text-gray-500">
+                    <li>Active: Current date is between start and end date</li>
+                    <li>Future Plan: Current date is before start date</li>
+                    <li>Inactive: Current date is after end date</li>
+                  </ul>
                   
                   <label className="block text-sm mb-1">Start Date</label>
                   <input 
