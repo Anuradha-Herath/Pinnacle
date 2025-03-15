@@ -21,7 +21,6 @@ interface Category {
 export default function DiscountCreate() {
   const router = useRouter();
   const [formData, setFormData] = useState({
-    discountStatus: "active",
     startDate: "",
     endDate: "",
     discountType: "product",
@@ -122,15 +121,33 @@ export default function DiscountCreate() {
       : "/placeholder.png";
   };
   
+  // Calculate discount status based on dates
+  const calculateDiscountStatus = (startDate: string, endDate: string): string => {
+    const today = new Date();
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    
+    if (today < start) {
+      return "Future Plan"; // Changed to match the enum case in the model
+    } else if (today > end) {
+      return "Inactive"; // Changed to match the enum case in the model
+    } else {
+      return "Active"; // Changed to match the enum case in the model
+    }
+  };
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError("");
     
     try {
+      // Calculate the status based on dates
+      const discountStatus = calculateDiscountStatus(formData.startDate, formData.endDate);
+      
       // Prepare the submission data based on selection mode
       const submissionData = {
-        discountStatus: formData.discountStatus,
+        discountStatus,
         startDate: formData.startDate,
         endDate: formData.endDate,
         discountType: formData.selectionMode === 'single' ? 'Product' : 'Category',
@@ -200,25 +217,17 @@ export default function DiscountCreate() {
           <form onSubmit={handleSubmit}>
             <div className="grid grid-cols-5 gap-6">
               <div className="col-span-2">
-                <div className="bg-white p-4 rounded-lg shadow-md mb-6">
-                  <h2 className="text-md font-medium mb-4">Discount Status</h2>
-                  <div className="flex gap-8">
-                    {['active', 'inactive', 'future plan'].map((status) => (
-                      <label key={status} className="flex items-center gap-2">
-                        <input
-                          type="radio"
-                          value={status}
-                          checked={formData.discountStatus === status}
-                          onChange={() => setFormData({ ...formData, discountStatus: status })}
-                        />
-                        <span>{status.charAt(0).toUpperCase() + status.slice(1)}</span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-
                 <div className="bg-white p-4 rounded-lg shadow-md">
                   <h2 className="text-md font-medium mb-4">Date Schedule</h2>
+                  <p className="text-sm text-gray-500 mb-4">
+                    The discount status will be automatically determined based on these dates:
+                    <ul className="list-disc list-inside mt-2">
+                      <li>Active: Current date is between start and end date</li>
+                      <li>Future Plan: Current date is before start date</li>
+                      <li>Inactive: Current date is after end date</li>
+                    </ul>
+                  </p>
+                  
                   <label className="block text-sm mb-1">Start Date</label>
                   <input 
                     type="date" 

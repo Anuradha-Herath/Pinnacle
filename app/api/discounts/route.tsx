@@ -38,16 +38,16 @@ export async function POST(request: NextRequest) {
     
     const body = await request.json();
     
-    // Create new discount with proper capitalized status
+    // Create new discount with status as-is (already correctly capitalized from client)
     const newDiscount = new Discount({
       product: body.productId,
       type: body.discountType.charAt(0).toUpperCase() + body.discountType.slice(1),
       percentage: body.discountPercentage,
       startDate: body.startDate,
       endDate: body.endDate,
-      status: body.discountStatus.charAt(0).toUpperCase() + body.discountStatus.slice(1),
+      status: body.discountStatus, // No need to capitalize here as it's already formatted correctly
       description: body.description || '',
-      applyToAllProducts: body.discountType === 'Category' // Set true if category type
+      applyToAllProducts: body.discountType === 'Category'
     });
     
     await newDiscount.save();
