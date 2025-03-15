@@ -51,8 +51,8 @@ export default function Page() {
                   <StarIcon
                     key={star}
                     className={`h-8 w-8 cursor-pointer ${
-                      star <= rating ? "text-yellow-400" : "text-gray-300"
-                    }`}
+                      star <= rating ? "text-black" : "text-gray-300"
+                    }`} // Changed from text-yellow-400
                     onClick={() => handleRating(star)}
                   />
                 ))}

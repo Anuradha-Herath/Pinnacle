@@ -32,7 +32,15 @@ const ProductInformation: React.FC<ProductInformationProps> = ({
   const renderRatingStars = () => {
     const stars = [];
     const fullStars = Math.floor(product.rating);
-    const hasHalfStar = product.rating % 1 !== 0;
+    const hasHalfStar = product.rating % 1 > 0.2; // Show half star if decimal part > 0.2
+    
+    // Handle case when no ratings exist
+    if (product.rating === 0) {
+      for (let i = 0; i < 5; i++) {
+        stars.push(<Star key={`empty-${i}`} size={18} className="text-gray-300" />);
+      }
+      return stars;
+    }
     
     // Full stars
     for (let i = 0; i < fullStars; i++) {
@@ -72,10 +80,14 @@ const ProductInformation: React.FC<ProductInformationProps> = ({
       
       {/* Rating */}
       <div className="flex items-center mb-4">
-        <div className="flex text-yellow-500 mr-2">
+        <div className="flex text-black mr-2">
           {renderRatingStars()}
         </div>
-        <span className="text-gray-600 text-sm">({product.rating} stars)</span>
+        <span className="text-gray-600 text-sm">
+          {product.rating > 0 
+            ? `(${product.rating.toFixed(1)} stars)` 
+            : "(No ratings yet)"}
+        </span>
       </div>
       
       {/* Price */}
