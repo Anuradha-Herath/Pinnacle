@@ -385,11 +385,8 @@ export default function EnhancedProductDetailPage() {
         {/* Product Details Section */}
         <ProductDetailsSection details={product.details} />
         
-        {/* User Reviews Section */}
-        <UserReviewsSection reviews={[
-          { id: 1, name: "John Doe", rating: 5, comment: "Great quality and fit!" },
-          { id: 2, name: "Jane Smith", rating: 4, comment: "Nice design, but the fabric is a bit thin." },
-        ]} />
+        {/* User Reviews Section - Update to pass productId */}
+        <UserReviewsSection productId={product.id} />
       </div>
       
       {/* Related Products */}
