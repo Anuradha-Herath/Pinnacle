@@ -23,7 +23,7 @@ interface Props {
   productId?: string;
 }
 
-const UserReviewsSection = ({ reviews: initialReviews, productId }: Props) => {
+const UserReviewsSection: React.FC<Props> = ({ reviews: initialReviews, productId }) => {
   const router = useRouter();
   const [reviews, setReviews] = useState<Review[]>(initialReviews || []);
   const [loading, setLoading] = useState(!!productId);
@@ -107,7 +107,7 @@ const UserReviewsSection = ({ reviews: initialReviews, productId }: Props) => {
                       key={i}
                       className={`h-4 w-4 ${
                         i < Math.floor(Number(averageRating))
-                          ? "text-yellow-400"
+                          ? "text-black"
                           : "text-gray-300"
                       }`}
                     />
@@ -125,11 +125,11 @@ const UserReviewsSection = ({ reviews: initialReviews, productId }: Props) => {
                 <div key={star} className="flex items-center mb-1">
                   <span className="text-sm w-6">{star}</span>
                   <div className="mx-2">
-                    <StarIcon className="h-4 w-4 text-yellow-400" />
+                    <StarIcon className="h-4 w-4 text-black" />
                   </div>
                   <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-yellow-400 rounded-full"
+                      className="h-full bg-black rounded-full"
                       style={{
                         width: `${
                           reviews.length
@@ -172,7 +172,7 @@ const UserReviewsSection = ({ reviews: initialReviews, productId }: Props) => {
                       {[...Array(5)].map((_, i) => (
                         <React.Fragment key={i}>
                           {i < review.rating ? (
-                            <StarIcon className="h-4 w-4 text-yellow-400" />
+                            <StarIcon className="h-4 w-4 text-black" />
                           ) : (
                             <StarOutline className="h-4 w-4 text-gray-300" />
                           )}
