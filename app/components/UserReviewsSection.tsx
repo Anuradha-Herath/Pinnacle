@@ -21,9 +21,14 @@ interface Review {
 interface Props {
   reviews?: Review[];
   productId?: string;
+  onRatingChange?: (rating: number) => void; // Add callback for rating changes
 }
 
-const UserReviewsSection: React.FC<Props> = ({ reviews: initialReviews, productId }) => {
+const UserReviewsSection: React.FC<Props> = ({ 
+  reviews: initialReviews, 
+  productId,
+  onRatingChange 
+}) => {
   const router = useRouter();
   const [reviews, setReviews] = useState<Review[]>(initialReviews || []);
   const [loading, setLoading] = useState(!!productId);
@@ -33,6 +38,14 @@ const UserReviewsSection: React.FC<Props> = ({ reviews: initialReviews, productI
   const averageRating = reviews.length > 0
     ? (reviews.reduce((acc, review) => acc + review.rating, 0) / reviews.length).toFixed(1)
     : "0.0";
+    
+  // Notify parent component when rating changes
+  useEffect(() => {
+    if (reviews.length > 0 && onRatingChange) {
+      const numRating = parseFloat(averageRating);
+      onRatingChange(numRating);
+    }
+  }, [averageRating, onRatingChange, reviews.length]);
 
   useEffect(() => {
     // If productId is provided, fetch reviews from API

@@ -39,6 +39,7 @@ export default function EnhancedProductDetailPage() {
   const [recentlyViewed, setRecentlyViewed] = useState([]);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
+  const [productRating, setProductRating] = useState<number>(0); // Add state for real rating
   
   // Context hooks
   const { addToCart } = useCart();
@@ -111,7 +112,7 @@ export default function EnhancedProductDetailPage() {
           ].filter(Boolean),
           colors: data.product.gallery?.map((item: any) => item.color) || [],
           sizes: data.product.sizes || [],
-          rating: 4.5, // Default rating if not available
+          rating: 0, // Initialize with 0, will be updated with real rating from reviews
         };
         
         // Store raw data for API interactions
@@ -345,7 +346,10 @@ export default function EnhancedProductDetailPage() {
           {/* Right Column - Product Information */}
           <div>
             <ProductInformation 
-              product={product} 
+              product={{
+                ...product,
+                rating: productRating > 0 ? productRating : 0, // Use the real rating if available, otherwise 0
+              }}
               quantity={quantity} 
               updateQuantity={updateQuantity}
               selectedSize={selectedSize}
@@ -385,8 +389,13 @@ export default function EnhancedProductDetailPage() {
         {/* Product Details Section */}
         <ProductDetailsSection details={product.details} />
         
-        {/* User Reviews Section - Update to pass productId */}
-        <UserReviewsSection productId={product.id} />
+        {/* User Reviews Section - Pass onRatingChange callback */}
+        <UserReviewsSection 
+          productId={product.id} 
+          onRatingChange={(newRating) => {
+            setProductRating(newRating);
+          }}
+        />
       </div>
       
       {/* Related Products */}
