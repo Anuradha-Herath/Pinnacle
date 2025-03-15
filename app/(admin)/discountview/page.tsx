@@ -170,18 +170,10 @@ export default function DiscountView() {
 
         {/* Content Area */}
         <div className="p-6">
-          {/* Breadcrumb */}
-          <div className="mb-6 flex justify-between">
-            <div>
-              <h1 className="text-xl font-semibold">Discount Details</h1>
-              <p className="text-sm text-gray-500">Home &gt; Discounts &gt; View</p>
-            </div>
-            <button 
-              onClick={handleReturn}
-              className="bg-gray-200 px-4 py-2 rounded hover:bg-gray-300"
-            >
-              Back to List
-            </button>
+          {/* Breadcrumb - removed Back button */}
+          <div className="mb-6">
+            <h1 className="text-xl font-semibold">Discount Details</h1>
+            <p className="text-sm text-gray-500">Home &gt; Discounts &gt; View</p>
           </div>
 
           {error ? (
@@ -296,6 +288,12 @@ export default function DiscountView() {
                       className="bg-red-500 text-white px-6 py-2 rounded hover:bg-red-600"
                     >
                       Delete
+                    </button>
+                    <button 
+                      onClick={handleReturn}
+                      className="bg-gray-200 text-gray-700 px-6 py-2 rounded hover:bg-gray-300"
+                    >
+                      Back to List
                     </button>
                   </div>
                 </div>
