@@ -5,6 +5,12 @@ import { BellIcon, Cog6ToothIcon, ClockIcon } from "@heroicons/react/24/solid";
 import Sidebar from "../../components/Sidebar";
 import { useRouter, useSearchParams } from "next/navigation";
 
+interface ItemDetails {
+  id: string;
+  name: string;
+  image: string;
+}
+
 export default function DiscountView() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -22,6 +28,8 @@ export default function DiscountView() {
     description: ""
   });
   
+  // State to hold product/category details
+  const [itemDetails, setItemDetails] = useState<ItemDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -44,16 +52,48 @@ export default function DiscountView() {
         const data = await response.json();
         
         if (data.discount) {
+          const discount = data.discount;
           setDiscountDetails({
-            id: data.discount._id || discountId,
-            product: data.discount.product || "",
-            type: data.discount.type || "",
-            percentage: data.discount.percentage || "",
-            startDate: data.discount.startDate || "",
-            endDate: data.discount.endDate || "",
-            status: data.discount.status || "",
-            description: data.discount.description || ""
+            id: discount._id || discountId,
+            product: discount.product || "",
+            type: discount.type || "",
+            percentage: discount.percentage || "",
+            startDate: discount.startDate || "",
+            endDate: discount.endDate || "",
+            status: discount.status || "",
+            description: discount.description || ""
           });
+          
+          // Fetch product or category details
+          if (discount.type === "Product") {
+            const productResponse = await fetch(`/api/products/${discount.product}`);
+            if (productResponse.ok) {
+              const productData = await productResponse.json();
+              if (productData.product) {
+                const galleryImage = productData.product.gallery && productData.product.gallery.length > 0
+                  ? productData.product.gallery[0].src
+                  : "/placeholder.png";
+                
+                setItemDetails({
+                  id: productData.product._id,
+                  name: productData.product.productName,
+                  image: galleryImage
+                });
+              }
+            }
+          } else if (discount.type === "Category") {
+            const categoryResponse = await fetch(`/api/categories/${discount.product}`);
+            if (categoryResponse.ok) {
+              const categoryData = await categoryResponse.json();
+              if (categoryData.category) {
+                setItemDetails({
+                  id: categoryData.category._id,
+                  name: categoryData.category.title,
+                  image: categoryData.category.thumbnailImage || "/placeholder.png"
+                });
+              }
+            }
+          }
         }
       } catch (err) {
         console.error("Failed to fetch discount details:", err);
@@ -111,7 +151,21 @@ export default function DiscountView() {
       <div className="flex-1">
         {/* Top Bar */}
         <div className="flex justify-between items-center p-4">
-          {/* ...existing code... */}
+          <div></div>
+          <div className="flex items-center gap-4">
+            <button className="p-2 hover:bg-gray-200 rounded-full">
+              <BellIcon className="h-5 w-5 text-gray-600" />
+            </button>
+            <button className="p-2 hover:bg-gray-200 rounded-full">
+              <Cog6ToothIcon className="h-5 w-5 text-gray-600" />
+            </button>
+            <button className="p-2 hover:bg-gray-200 rounded-full">
+              <ClockIcon className="h-5 w-5 text-gray-600" />
+            </button>
+            <button className="rounded-full">
+              <img src="/p4.webp" alt="Profile" className="h-8 w-8 rounded-full object-cover" />
+            </button>
+          </div>
         </div>
 
         {/* Content Area */}
@@ -120,7 +174,7 @@ export default function DiscountView() {
           <div className="mb-6 flex justify-between">
             <div>
               <h1 className="text-xl font-semibold">Discount Details</h1>
-              <p className="text-sm text-gray-500">Home &gt; Discounts &gt; {discountDetails.id}</p>
+              <p className="text-sm text-gray-500">Home &gt; Discounts &gt; View</p>
             </div>
             <button 
               onClick={handleReturn}
@@ -147,6 +201,8 @@ export default function DiscountView() {
                       className={`inline-block px-4 py-2 rounded-full text-sm font-bold ${
                         discountDetails.status === "Active" 
                           ? "bg-green-300 text-green-800" 
+                          : discountDetails.status === "Future Plan"
+                          ? "bg-blue-300 text-blue-800"
                           : "bg-orange-300 text-orange-800"
                       }`}
                     >
@@ -191,8 +247,26 @@ export default function DiscountView() {
                   </div>
                   
                   <div className="mb-6">
-                    <p className="text-gray-500 mb-1">Product/Category Name</p>
-                    <p className="text-lg font-medium">{discountDetails.product}</p>
+                    <p className="text-gray-500 mb-1">{discountDetails.type} Details</p>
+                    <div className="flex items-center mt-2">
+                      {itemDetails ? (
+                        <>
+                          <div className="h-16 w-16 relative mr-4 overflow-hidden rounded-lg">
+                            <img
+                              src={itemDetails.image}
+                              alt={itemDetails.name}
+                              className="h-full w-full object-cover"
+                            />
+                          </div>
+                          <div>
+                            <p className="text-lg font-medium">{itemDetails.name}</p>
+                            <p className="text-sm text-gray-500">ID: {itemDetails.id}</p>
+                          </div>
+                        </>
+                      ) : (
+                        <p className="text-lg font-medium">{discountDetails.product}</p>
+                      )}
+                    </div>
                   </div>
                   
                   <div className="mb-6">
