@@ -195,6 +195,18 @@ const Header = () => {
     router.push('/login');
   };
 
+  // Add function to properly validate the wishlist
+  const getValidWishlistCount = () => {
+    // Filter out any null, undefined, or invalid items
+    if (!Array.isArray(wishlist)) return 0;
+    
+    const validItems = wishlist.filter(item => 
+      item && typeof item === 'string' && item.trim().length > 0
+    );
+    
+    return validItems.length;
+  };
+
   return (
     <header className="bg-black text-white relative z-50">
       {/* Top Bar */}
@@ -325,9 +337,9 @@ const Header = () => {
             
             <Link href="/wishlist" className="hover:text-gray-300 relative">
               <Heart className="h-6 w-6" />
-              {wishlist.length > 0 && (
+              {getValidWishlistCount() > 0 && (
                 <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                  {wishlist.length}
+                  {getValidWishlistCount()}
                 </span>
               )}
             </Link>
