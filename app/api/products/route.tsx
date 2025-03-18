@@ -39,41 +39,68 @@ const uploadToCloudinary = async (imageData: string) => {
 export async function GET(request: NextRequest) {
   try {
     await connectDB();
-    
+
+    // Parse query parameters
     const searchParams = request.nextUrl.searchParams;
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const searchQuery = searchParams.get('q');
     const category = searchParams.get('category');
     const subCategory = searchParams.get('subCategory');
-    const limit = parseInt(searchParams.get('limit') || '20');
-    const page = parseInt(searchParams.get('page') || '1');
+
+    // Calculate skip value for pagination
     const skip = (page - 1) * limit;
+
+    // Build the query object
+    let query: any = {};
+
+    // Add search functionality
+    if (searchQuery) {
+      query.$or = [
+        { productName: { $regex: searchQuery, $options: 'i' } },
+        { description: { $regex: searchQuery, $options: 'i' } },
+        { tag: { $regex: searchQuery, $options: 'i' } }
+      ];
+    }
+
+    // Add category filter if provided
+    if (category) {
+      query.category = category;
+    }
+
+    // Add subCategory filter if provided
+    if (subCategory) {
+      query.subCategory = subCategory;
+    }
+
+    // Count total products matching the query for pagination
+    const totalProducts = await Product.countDocuments(query);
     
-    // Build filter based on query params
-    const filter: Record<string, any> = {};
-    if (category) filter.category = category;
-    if (subCategory) filter.subCategory = subCategory;
-    
-    // Count total products matching the filter
-    const total = await Product.countDocuments(filter);
-    
-    // Get products with pagination
-    const products = await Product.find(filter)
-      .sort({ createdAt: -1 })
+    // Calculate total pages
+    const totalPages = Math.ceil(totalProducts / limit);
+
+    // Fetch products with pagination
+    const products = await Product.find(query)
+      .sort({ createdAt: -1 }) // Sort by newest first
       .skip(skip)
       .limit(limit);
-    
-    return NextResponse.json({ 
+
+    return NextResponse.json({
+      success: true,
       products,
       pagination: {
-        total,
+        total: totalProducts,
+        pages: totalPages,
         page,
-        pages: Math.ceil(total / limit),
         limit
       }
     });
+
   } catch (error) {
-    console.error("Error fetching products:", error);
+    console.error('Error fetching products:', error);
     return NextResponse.json({ 
-      error: error instanceof Error ? error.message : "Failed to fetch products" 
+      success: false, 
+      error: 'Failed to fetch products' 
     }, { status: 500 });
   }
 }
