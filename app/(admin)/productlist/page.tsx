@@ -4,6 +4,7 @@ import Sidebar from '../../components/Sidebar';
 import AdminProductCart from '../../components/AdminProductCard';
 import TopBar from '../../components/TopBar';
 import { useRouter } from 'next/navigation';
+import { MagnifyingGlassIcon } from '@heroicons/react/24/solid';
 
 interface Product {
   _id: string;
@@ -22,12 +23,16 @@ const ProductsPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(9); // Show 9 products per page (3x3 grid)
   const [totalPages, setTotalPages] = useState(1);
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
   const router = useRouter();
 
-  const fetchProducts = async (page = 1) => {
+  const fetchProducts = async (page = 1, query = searchQuery) => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/products?page=${page}&limit=${itemsPerPage}`);
+      // Include the search query in the API call if it exists
+      const queryParam = query ? `&q=${encodeURIComponent(query)}` : '';
+      const response = await fetch(`/api/products?page=${page}&limit=${itemsPerPage}${queryParam}`);
       
       if (!response.ok) {
         throw new Error('Failed to fetch products');
@@ -58,8 +63,15 @@ const ProductsPage = () => {
       setCurrentPage(currentPage - 1);
     } else {
       // Otherwise just refresh the current page
-      fetchProducts(currentPage);
+      fetchProducts(currentPage, searchQuery);
     }
+  };
+
+  // Handle search submission
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    setCurrentPage(1); // Reset to first page when searching
+    fetchProducts(1, searchQuery);
   };
 
   // Handle pagination navigation
@@ -96,14 +108,36 @@ const ProductsPage = () => {
         <TopBar title='Product List' />
 
         <div className="p-6">
-          <header className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-bold">All Products</h1>
-            <button 
-              onClick={() => router.push('/productcreate')} 
-              className="bg-orange-500 text-white px-4 py-2 rounded-lg"
-            >
-              Add New Product
-            </button>
+          <header className="mb-6">
+            <div className="flex justify-between items-center mb-4">
+              <h1 className="text-2xl font-bold">All Products</h1>
+              <button 
+                onClick={() => router.push('/productcreate')} 
+                className="bg-orange-500 text-white px-4 py-2 rounded-lg"
+              >
+                Add New Product
+              </button>
+            </div>
+            
+            {/* Search bar */}
+            <form onSubmit={handleSearch} className="flex w-full max-w-md">
+              <div className="relative flex-grow">
+                <input
+                  type="text"
+                  placeholder="Search products..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border rounded-l-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+                <MagnifyingGlassIcon className="h-5 w-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+              </div>
+              <button 
+                type="submit"
+                className="bg-orange-500 text-white px-4 py-2 rounded-r-md hover:bg-orange-600"
+              >
+                Search
+              </button>
+            </form>
           </header>
 
           {/* Loading state */}
@@ -129,13 +163,28 @@ const ProductsPage = () => {
           {/* Empty state */}
           {!loading && !error && formattedProducts.length === 0 && (
             <div className="text-center py-10">
-              <p className="text-gray-500">No products found. Create your first product!</p>
-              <button 
-                onClick={() => router.push('/productcreate')} 
-                className="mt-4 px-4 py-2 bg-orange-500 text-white rounded-md"
-              >
-                Add New Product
-              </button>
+              <p className="text-gray-500">
+                {searchQuery ? `No products found matching "${searchQuery}"` : "No products found. Create your first product!"}
+              </p>
+              {!searchQuery && (
+                <button 
+                  onClick={() => router.push('/productcreate')} 
+                  className="mt-4 px-4 py-2 bg-orange-500 text-white rounded-md"
+                >
+                  Add New Product
+                </button>
+              )}
+              {searchQuery && (
+                <button
+                  onClick={() => {
+                    setSearchQuery('');
+                    fetchProducts(1, '');
+                  }}
+                  className="mt-4 px-4 py-2 bg-gray-500 text-white rounded-md"
+                >
+                  Clear Search
+                </button>
+              )}
             </div>
           )}
 
