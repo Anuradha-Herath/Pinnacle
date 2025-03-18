@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { EyeIcon, PencilIcon, TrashIcon, BellIcon, Cog6ToothIcon, ClockIcon, ArrowUpIcon, UserIcon } from "@heroicons/react/24/solid";
 import Sidebar from "../../components/Sidebar";
 import Image from "next/image";
-import { Crown, CheckSquare } from "lucide-react";
+import { Crown } from "lucide-react";
 {/*import { Card, CardContent } from "@/components/ui/card";*/}
 
 interface Customer {
@@ -132,7 +132,6 @@ export default function CustomerList() {
             <table className="w-full border-collapse">
               <thead>
                 <tr className="bg-gray-100 text-left">
-                  <th className="p-3"><CheckSquare className="w-5 h-5 text-gray-400" /></th>
                   <th className="p-3">Customer Name</th>
                   <th className="p-3">Id</th>
                   <th className="p-3">Joined date</th>
@@ -146,7 +145,6 @@ export default function CustomerList() {
                     className="border-t cursor-pointer hover:bg-gray-50"
                     onClick={() => router.push(`/customerdetails?id=${customer._id}`)}
                   >
-                    <td className="p-3"><input type="checkbox" className="w-5 h-5" /></td>
                     <td className="p-3 flex items-center gap-3">
                       <Image src={defaultImage} alt={`${customer.firstName} ${customer.lastName}`} width={30} height={30} className="rounded-full" />
                       {`${customer.firstName} ${customer.lastName}`}
