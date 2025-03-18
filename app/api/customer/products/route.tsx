@@ -16,6 +16,17 @@ const connectDB = async () => {
   }
 };
 
+// First, define a proper interface for your product items
+interface ProductItem {
+  _id: string;
+  productName: string;
+  regularPrice: number;
+  category: string;
+  gallery?: Array<{src: string, color?: string, name?: string}>;
+  sizes?: string[];
+  // Add other properties as needed
+}
+
 // GET method to fetch products for customers
 export async function GET(request: Request) {
   try {
@@ -58,15 +69,15 @@ export async function GET(request: Request) {
     console.log(`Found ${products.length} in-stock products with category: ${category || 'All'}`);
     
     // Transform products to customer format
-    const customerProducts = products.map(product => ({
-      id: product._id,
-      name: product.productName,
-      price: product.regularPrice,
-      category: product.category, // Include category for debugging
-      image: product.gallery && product.gallery.length > 0 ? 
-        product.gallery[0].src : '/placeholder.png',
-      colors: product.gallery.map(item => item.src), // Using images as colors
-      sizes: product.sizes || [],
+    const customerProducts = products.map((item: ProductItem) => ({
+      id: item._id,
+      name: item.productName,
+      price: item.regularPrice,
+      category: item.category, // Include category for debugging
+      image: item.gallery && item.gallery.length > 0 ? 
+        item.gallery[0].src : '/placeholder.png',
+      colors: item.gallery?.map((galleryItem) => galleryItem.src) || [],
+      sizes: item.sizes || [],
     }));
     
     return NextResponse.json({ products: customerProducts });
