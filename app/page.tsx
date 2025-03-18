@@ -362,25 +362,26 @@ const HomePage = () => {
           )}
         </div>
 
-        {/* Accessories */}
+        {/* Accessories - Updated to match the loading style of other carousels */}
         <div className="px-4 md:px-8 lg:px-12 my-8">
-          <h2 className="text-2xl font-bold text-white mb-6">Accessories</h2>
-          {accessoriesLoading ? (
-            <div className="flex justify-center items-center h-40">
-              <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-orange-500"></div>
-            </div>
-          ) : categoryProducts.accessories && categoryProducts.accessories.length > 0 ? (
-            <ProductCarousel 
-              title=""
-              products={categoryProducts.accessories}
-            />
-          ) : (
+          <ProductCarousel
+            title="Accessories"
+            products={categoryProducts.accessories && categoryProducts.accessories.length > 0 
+              ? categoryProducts.accessories 
+              : []
+            }
+            loading={accessoriesLoading}
+          />
+          
+          {/* Show message if no accessories products and not loading */}
+          {!accessoriesLoading && 
+            categoryProducts.accessories && 
+            categoryProducts.accessories.length === 0 && (
             <div className="text-center py-8 text-white">
               No accessories products found.
             </div>
           )}
         </div>
-        
       </div>
 
       {/* Footer */}
