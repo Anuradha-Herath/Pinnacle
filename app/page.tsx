@@ -4,7 +4,8 @@ import React, { useState, useEffect } from "react";
 import Header from "./components/Header";
 import ProductCarousel from "./components/ProductCarousel";
 import Footer from "./components/Footer";
-import Link from "next/link"; // Add this import
+import Link from "next/link";
+import HeaderPlaceholder from "./components/HeaderPlaceholder";
 
 // Updated mock products with simplified images - all using existing images
 const mockProducts = [
@@ -254,6 +255,8 @@ const HomePage = () => {
   return (
     <div className="bg-gray-900 min-h-screen flex flex-col">
       <Header />
+      <HeaderPlaceholder />
+      
       {/* Banner */}
       <div className="banner">
         <img src="/banner2.jpg" alt="Banner" className="w-full h-auto" />
