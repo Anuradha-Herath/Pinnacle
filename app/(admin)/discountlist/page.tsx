@@ -22,6 +22,7 @@ export default function DiscountList() {
   const [error, setError] = useState("");
   const [activeDiscounts, setActiveDiscounts] = useState(0);
   const [expiredDiscounts, setExpiredDiscounts] = useState(0);
+  const [showDropdown, setShowDropdown] = useState(false);
 
   useEffect(() => {
     // Fetch discounts from API
@@ -151,7 +152,22 @@ export default function DiscountList() {
         <div className="bg-white p-6 rounded-lg shadow-lg">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg text-gray-600 font-semibold">All Discount List</h2>
-            <button className="px-4 py-2 border rounded-lg text-gray-600">This Month ▼</button>
+            <div className="relative">
+                <button 
+                className="w-40 py-2 border rounded-lg text-gray-600" 
+                onClick={() => setShowDropdown(!showDropdown)}
+                >
+                This Month ▼
+                </button>
+                {showDropdown && (
+                <div className="absolute right-0 mt-2 w-40 justify-ce bg-white border rounded-lg shadow-lg">
+                    
+                    <button className="w-40 py-2 border rounded-lg text-gray-600 hover:bg-gray-100">Last Month</button>
+                  <button className="w-40 py-2 border rounded-lg text-gray-600 hover:bg-gray-100">Last 3 Months</button>
+                </div>
+                )}
+              
+           </div>
           </div>
           <table className="w-full border-collapse text-gray-600">
             <thead>
