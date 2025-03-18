@@ -1,8 +1,9 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { Star, Minus, Plus } from "lucide-react";
 import Image from "next/image";
+import SizeGuideModal from "./SizeGuideModal";
 
 interface ProductInformationProps {
   product: {
@@ -28,6 +29,9 @@ const ProductInformation: React.FC<ProductInformationProps> = ({
   setSelectedSize,
   onImageSelect 
 }) => {
+  // Add state for size guide modal
+  const [isSizeGuideOpen, setIsSizeGuideOpen] = useState(false);
+
   // Generate stars for rating
   const renderRatingStars = () => {
     const stars = [];
@@ -127,7 +131,12 @@ const ProductInformation: React.FC<ProductInformationProps> = ({
         <div className="mb-6">
           <div className="flex justify-between items-center mb-2">
             <h2 className="text-sm font-medium">Size</h2>
-            <button className="text-xs text-blue-600 underline">Size Guide</button>
+            <button 
+              onClick={() => setIsSizeGuideOpen(true)} 
+              className="text-xs text-blue-600 underline hover:text-blue-800"
+            >
+              Size Guide
+            </button>
           </div>
           <div className="flex flex-wrap gap-2">
             {product.sizes.map((size) => (
@@ -167,6 +176,13 @@ const ProductInformation: React.FC<ProductInformationProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Size Guide Modal */}
+      <SizeGuideModal 
+        isOpen={isSizeGuideOpen} 
+        onClose={() => setIsSizeGuideOpen(false)} 
+        category="apparel" 
+      />
     </div>
   );
 };
