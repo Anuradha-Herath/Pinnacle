@@ -135,7 +135,7 @@ export default function CustomerList() {
                   <th className="p-3">Customer Name</th>
                   <th className="p-3">Id</th>
                   <th className="p-3">Joined date</th>
-                  <th className="p-1 text-right">Type<span className="pr-40"></span></th>
+                  <th className="p-3 text-center">Type</th>
                 </tr>
               </thead>
               <tbody>
@@ -151,8 +151,8 @@ export default function CustomerList() {
                     </td>
                     <td className="p-3">#{customer._id.substring(0, 5)}</td>
                     <td className="p-3">{customer.createdAt ? formatDate(customer.createdAt) : 'N/A'}</td>
-                    <td className="p-3 text-right pr-10">
-                      <Crown className={`w-5 h-5 ${getCustomerType(customer.role) === 'black' ? 'text-black' : getCustomerType(customer.role) === 'gray' ? 'text-gray-400' : 'text-orange-500'}`} />
+                    <td className="p-3 text-center">
+                      <Crown className={`w-5 h-5 inline ${getCustomerType(customer.role) === 'black' ? 'text-black' : getCustomerType(customer.role) === 'gray' ? 'text-gray-400' : 'text-orange-500'}`} />
                     </td>
                   </tr>
                 ))}
