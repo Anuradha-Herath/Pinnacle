@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Sidebar from '../../components/Sidebar';
 import AdminProductCart from '../../components/AdminProductCard';
 import TopBar from '../../components/TopBar';
@@ -15,6 +15,12 @@ interface Product {
   remaining?: number; // Optional as it might not exist in newly created products
 }
 
+interface SearchSuggestion {
+  id: string;
+  name: string;
+  image: string;
+}
+
 const ProductsPage = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,6 +32,9 @@ const ProductsPage = () => {
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
   const router = useRouter();
+  const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
 
   const fetchProducts = async (page = 1, query = searchQuery) => {
     try {
@@ -53,7 +62,53 @@ const ProductsPage = () => {
     fetchProducts(currentPage);
   }, [currentPage, itemsPerPage]);
 
-  // Handle product deletion and refresh list
+  // Close suggestions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // Fetch suggestions as user types
+  useEffect(() => {
+    const fetchSuggestions = async () => {
+      if (searchQuery.length >= 2) {
+        try {
+          const response = await fetch(`/api/search/suggestions?q=${encodeURIComponent(searchQuery)}&limit=5`);
+          if (response.ok) {
+            const data = await response.json();
+            setSuggestions(data.suggestions);
+            setShowSuggestions(true);
+          }
+        } catch (error) {
+          console.error('Error fetching suggestions:', error);
+        }
+      } else {
+        setSuggestions([]);
+        setShowSuggestions(false);
+      }
+    };
+
+    // Debounce the search to prevent too many API calls
+    const debounceTimer = setTimeout(() => {
+      if (searchQuery) {
+        fetchSuggestions();
+      } else {
+        setSuggestions([]);
+        setShowSuggestions(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(debounceTimer);
+  }, [searchQuery]);
+
   const handleProductDelete = (deletedProductId: string) => {
     // Remove the deleted product from the state
     setProducts(products.filter(product => product._id !== deletedProductId));
@@ -72,6 +127,32 @@ const ProductsPage = () => {
     e.preventDefault();
     setCurrentPage(1); // Reset to first page when searching
     fetchProducts(1, searchQuery);
+  };
+
+  const handleSuggestionClick = (suggestion: string) => {
+    setSearchQuery(suggestion);
+    setShowSuggestions(false);
+    fetchProducts(1, suggestion);
+  };
+
+  // Handle search input change
+  const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    setSearchQuery(newValue);
+    
+    // If search input is cleared, fetch all products
+    if (newValue === '') {
+      setCurrentPage(1);
+      fetchProducts(1, '');
+    }
+  };
+
+  // Clear search and show all products
+  const handleClearSearch = () => {
+    setSearchQuery('');
+    setCurrentPage(1);
+    fetchProducts(1, '');
+    setShowSuggestions(false);
   };
 
   // Handle pagination navigation
@@ -119,25 +200,73 @@ const ProductsPage = () => {
               </button>
             </div>
             
-            {/* Search bar */}
-            <form onSubmit={handleSearch} className="flex w-full max-w-md">
-              <div className="relative flex-grow">
-                <input
-                  type="text"
-                  placeholder="Search products..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border rounded-l-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-                />
-                <MagnifyingGlassIcon className="h-5 w-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
-              </div>
-              <button 
-                type="submit"
-                className="bg-orange-500 text-white px-4 py-2 rounded-r-md hover:bg-orange-600"
-              >
-                Search
-              </button>
-            </form>
+            {/* Search bar with suggestions */}
+            <div ref={searchRef} className="relative w-full max-w-md">
+              <form onSubmit={handleSearch} className="flex w-full">
+                <div className="relative flex-grow">
+                  <input
+                    type="text"
+                    placeholder="Search products..."
+                    value={searchQuery}
+                    onChange={handleSearchInputChange}
+                    onFocus={() => searchQuery.length >= 2 && setShowSuggestions(true)}
+                    className="w-full pl-10 pr-10 py-2 border rounded-l-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  />
+                  <MagnifyingGlassIcon className="h-5 w-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+                  
+                  {/* Clear search button - only show when there's text */}
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={handleClearSearch}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+                <button 
+                  type="submit"
+                  className="bg-orange-500 text-white px-4 py-2 rounded-r-md hover:bg-orange-600"
+                >
+                  Search
+                </button>
+              </form>
+              
+              {/* Search Suggestions with Images */}
+              {showSuggestions && suggestions.length > 0 && (
+                <div className="absolute z-10 w-full bg-white mt-1 border rounded-md shadow-lg max-h-60 overflow-auto">
+                  {suggestions.map((suggestion) => (
+                    <div
+                      key={suggestion.id}
+                      className="px-4 py-2 hover:bg-gray-100 cursor-pointer flex items-center"
+                      onClick={() => handleSuggestionClick(suggestion.name)}
+                    >
+                      {/* Product Image */}
+                      <div className="w-10 h-10 flex-shrink-0 mr-3 bg-gray-100 rounded overflow-hidden">
+                        <img 
+                          src={suggestion.image} 
+                          alt={suggestion.name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = '/placeholder.png';
+                          }}
+                        />
+                      </div>
+                      {/* Product Name */}
+                      <div className="flex-grow">
+                        <span className="text-sm">{suggestion.name}</span>
+                      </div>
+                      {/* Search Icon */}
+                      <MagnifyingGlassIcon className="h-4 w-4 text-gray-400 ml-2" />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </header>
 
           {/* Loading state */}
@@ -176,10 +305,7 @@ const ProductsPage = () => {
               )}
               {searchQuery && (
                 <button
-                  onClick={() => {
-                    setSearchQuery('');
-                    fetchProducts(1, '');
-                  }}
+                  onClick={handleClearSearch}
                   className="mt-4 px-4 py-2 bg-gray-500 text-white rounded-md"
                 >
                   Clear Search
