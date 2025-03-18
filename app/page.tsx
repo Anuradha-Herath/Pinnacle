@@ -86,6 +86,7 @@ const HomePage = () => {
   const [trendingProducts, setTrendingProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [genderLoading, setGenderLoading] = useState(false);
+  const [accessoriesLoading, setAccessoriesLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedGender, setSelectedGender] = useState<'men' | 'women'>('women');
   
@@ -193,9 +194,49 @@ const HomePage = () => {
     }
   };
 
+  // New function to specifically fetch accessories products
+  const fetchAccessoriesProducts = async () => {
+    try {
+      setAccessoriesLoading(true);
+      
+      // Log the request we're making for debugging
+      console.log('Fetching accessories products...');
+      
+      // Fetch products filtered by Accessories category
+      const response = await fetch(`/api/customer/products?category=Accessories`);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch accessories products`);
+      }
+      
+      const data = await response.json();
+      console.log(`Fetched ${data.products?.length || 0} accessories products`);
+      
+      // Debug: Log the categories of fetched products
+      if (data.products?.length > 0) {
+        console.log('Accessories product categories:', 
+          data.products.map((p: any) => p.category));
+      }
+      
+      // Update just the accessories category in our state
+      if (data.products) {
+        setCategoryProducts(prev => ({
+          ...prev,
+          accessories: data.products
+        }));
+      }
+      
+    } catch (err) {
+      console.error(`Error fetching accessories products:`, err);
+    } finally {
+      setAccessoriesLoading(false);
+    }
+  };
+
   // Initial product fetch
   useEffect(() => {
     fetchProducts();
+    fetchAccessoriesProducts(); // Fetch accessories products specifically
   }, []);
 
   // Fetch products when gender toggle changes
@@ -322,10 +363,24 @@ const HomePage = () => {
         </div>
 
         {/* Accessories */}
-        <ProductCarousel 
-          title="Accessories" 
-          products={categoryProducts.accessories.length > 0 ? categoryProducts.accessories : products}
-        />
+        <div className="px-4 md:px-8 lg:px-12 my-8">
+          <h2 className="text-2xl font-bold text-white mb-6">Accessories</h2>
+          {accessoriesLoading ? (
+            <div className="flex justify-center items-center h-40">
+              <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-orange-500"></div>
+            </div>
+          ) : categoryProducts.accessories && categoryProducts.accessories.length > 0 ? (
+            <ProductCarousel 
+              title=""
+              products={categoryProducts.accessories}
+            />
+          ) : (
+            <div className="text-center py-8 text-white">
+              No accessories products found.
+            </div>
+          )}
+        </div>
+        
       </div>
 
       {/* Footer */}

@@ -40,9 +40,12 @@ export async function GET(request: Request) {
     // Build query to find products that are in stock
     const query: any = { _id: { $in: inStockProductIds } };
     
-    // Add category filter if provided
+    // Add category filter if provided - use case-insensitive regex matching
     if (category) {
-      query.category = category;
+      // For exact category matching (case-insensitive)
+      query.category = { $regex: new RegExp(`^${category}$`, 'i') };
+      
+      console.log(`Filtering products by category: ${category}`);
     }
     
     console.log(`Fetching in-stock products with category: ${category || 'All'}`);
@@ -52,13 +55,14 @@ export async function GET(request: Request) {
       .sort({ createdAt: -1 })
       .limit(limit);
     
-    console.log(`Found ${products.length} in-stock products`);
+    console.log(`Found ${products.length} in-stock products with category: ${category || 'All'}`);
     
     // Transform products to customer format
     const customerProducts = products.map(product => ({
       id: product._id,
       name: product.productName,
       price: product.regularPrice,
+      category: product.category, // Include category for debugging
       image: product.gallery && product.gallery.length > 0 ? 
         product.gallery[0].src : '/placeholder.png',
       colors: product.gallery.map(item => item.src), // Using images as colors
