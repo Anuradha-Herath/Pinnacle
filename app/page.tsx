@@ -85,72 +85,129 @@ const HomePage = () => {
   const [products, setProducts] = useState(mockProducts);
   const [trendingProducts, setTrendingProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [genderLoading, setGenderLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedGender, setSelectedGender] = useState<'men' | 'women'>('women');
   
-  // Categories we want to display
-  const categories = ["Mens", "Womens", "Accessories"];
+  // Categories we want to display - use lowercase consistently
+  const categories = ["mens", "womens", "accessories"];
   const [categoryProducts, setCategoryProducts] = useState<Record<string, any[]>>({
-    Mens: [],
-    Womens: [],
-    Accessories: []
+    mens: [],
+    womens: [],
+    accessories: []
   });
 
-  useEffect(() => {
-    const fetchProducts = async () => {
-      try {
-        setLoading(true);
-        
-        // Fetch all products
-        const response = await fetch('/api/customer/products');
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch products');
-        }
-        
-        const data = await response.json();
-        
-        if (data.products && data.products.length > 0) {
-          setProducts(data.products);
-          
-          // Organize products by category
-          const productsByCategory: Record<string, any[]> = {
-            Mens: [],
-            Womens: [],
-            Accessories: []
-          };
-          
-          data.products.forEach((product: any) => {
-            // Match category to our predefined categories
-            if (product.category?.toLowerCase() === "mens") {
-              productsByCategory.Mens.push(product);
-            } else if (product.category?.toLowerCase() === "womens") {
-              productsByCategory.Womens.push(product);
-            } else {
-              productsByCategory.Accessories.push(product);
-            }
-          });
-          
-          setCategoryProducts(productsByCategory);
-        }
-        
-        // Fetch trending products (newly created + recently stocked)
-        const trendingResponse = await fetch('/api/customer/trending');
-        
-        if (trendingResponse.ok) {
-          const trendingData = await trendingResponse.json();
-          setTrendingProducts(trendingData.products || []);
-        }
-        
-      } catch (err) {
-        console.error('Error fetching products:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load products');
-      } finally {
-        setLoading(false);
+  // Function to fetch all products and categorize them
+  const fetchProducts = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch all products
+      const response = await fetch('/api/customer/products');
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch products');
       }
-    };
-    
+      
+      const data = await response.json();
+      
+      if (data.products && data.products.length > 0) {
+        setProducts(data.products);
+        
+        // Organize products by category - use lowercase consistently
+        const productsByCategory: Record<string, any[]> = {
+          mens: [],
+          womens: [],
+          accessories: []
+        };
+        
+        data.products.forEach((product: any) => {
+          const category = product.category?.toLowerCase() || "";
+          console.log(`Product: ${product.name}, Category: ${category}`);
+          
+          // Match category to our predefined categories
+          if (category === "men" || category === "mens") {
+            productsByCategory.mens.push(product);
+          } else if (category === "women" || category === "womens") {
+            productsByCategory.womens.push(product);
+          } else {
+            productsByCategory.accessories.push(product);
+          }
+        });
+        
+        console.log("Categorized products:", {
+          menProducts: productsByCategory.mens.length,
+          womenProducts: productsByCategory.womens.length,
+          accessoriesProducts: productsByCategory.accessories.length
+        });
+        
+        setCategoryProducts(productsByCategory);
+      }
+      
+      // Fetch trending products (newly created + recently stocked)
+      const trendingResponse = await fetch('/api/customer/trending');
+      
+      if (trendingResponse.ok) {
+        const trendingData = await trendingResponse.json();
+        setTrendingProducts(trendingData.products || []);
+      }
+      
+    } catch (err) {
+      console.error('Error fetching products:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load products');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch products by specific category when gender toggle changes
+  const fetchProductsByCategory = async (category: string) => {
+    try {
+      setGenderLoading(true);
+      
+      // Convert 'men'/'women' to match API parameter ('Men'/'Women')
+      const apiCategory = category === 'men' ? 'Men' : 'Women';
+      
+      // Fetch products filtered by category
+      const response = await fetch(`/api/customer/products?category=${apiCategory}`);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch ${apiCategory} products`);
+      }
+      
+      const data = await response.json();
+      console.log(`Fetched ${apiCategory} products:`, data.products?.length || 0);
+      
+      // Update just the specific category in our state
+      if (data.products) {
+        setCategoryProducts(prev => ({
+          ...prev,
+          [category + 's']: data.products
+        }));
+      }
+      
+    } catch (err) {
+      console.error(`Error fetching ${category} products:`, err);
+    } finally {
+      setGenderLoading(false);
+    }
+  };
+
+  // Initial product fetch
+  useEffect(() => {
     fetchProducts();
   }, []);
+
+  // Fetch products when gender toggle changes
+  useEffect(() => {
+    fetchProductsByCategory(selectedGender);
+  }, [selectedGender]);
+
+  // Handle gender toggle with debug info
+  const handleGenderToggle = (gender: 'men' | 'women') => {
+    console.log(`Switching to ${gender} products`);
+    setSelectedGender(gender);
+  };
 
   return (
     <div className="bg-gray-900 min-h-screen flex flex-col">
@@ -214,16 +271,60 @@ const HomePage = () => {
           </div>
         </div>
 
-        {/* Women's Collection */}
-        <ProductCarousel 
-          title="Women's Collection" 
-          products={categoryProducts.Womens.length > 0 ? categoryProducts.Womens : products}
-        />
+        {/* Best Sellers with Gender Toggle */}
+        <div className="px-4 md:px-8 lg:px-12 my-8">
+          {/* Title with Toggle Buttons */}
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-2xl font-bold text-white">Best Sellers</h2>
+            <div className="bg-gray-800 rounded-full p-1 inline-flex">
+              <button 
+                className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${
+                  selectedGender === 'men' 
+                    ? 'bg-orange-500 text-white' 
+                    : 'text-white hover:bg-gray-700'
+                }`}
+                onClick={() => handleGenderToggle('men')}
+              >
+                MEN
+              </button>
+              <button 
+                className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${
+                  selectedGender === 'women' 
+                    ? 'bg-orange-500 text-white' 
+                    : 'text-white hover:bg-gray-700'
+                }`}
+                onClick={() => handleGenderToggle('women')}
+              >
+                WOMEN
+              </button>
+            </div>
+          </div>
+          
+          {/* Products Carousel without title (using empty string) */}
+          <ProductCarousel
+            title=""
+            products={
+              selectedGender === 'men'
+                ? categoryProducts.mens.length > 0 ? categoryProducts.mens : []
+                : categoryProducts.womens.length > 0 ? categoryProducts.womens : []
+            }
+            loading={genderLoading}
+          />
+          
+          {/* Show message if no products in category */}
+          {!genderLoading && 
+            ((selectedGender === 'men' && categoryProducts.mens.length === 0) || 
+             (selectedGender === 'women' && categoryProducts.womens.length === 0)) && (
+            <div className="text-center py-8 text-white">
+              No products found for {selectedGender === 'men' ? 'men' : 'women'}.
+            </div>
+          )}
+        </div>
 
         {/* Accessories */}
         <ProductCarousel 
           title="Accessories" 
-          products={categoryProducts.Accessories.length > 0 ? categoryProducts.Accessories : products}
+          products={categoryProducts.accessories.length > 0 ? categoryProducts.accessories : products}
         />
       </div>
 
