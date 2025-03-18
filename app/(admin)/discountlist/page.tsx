@@ -15,14 +15,36 @@ export default function DiscountList() {
     startDate: string;
     endDate: string;
     status: string;
+    createdAt?: string; // Add createdAt field to the interface
   }
 
   const [discounts, setDiscounts] = useState<Discount[]>([]);
+  const [filteredDiscounts, setFilteredDiscounts] = useState<Discount[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [activeDiscounts, setActiveDiscounts] = useState(0);
   const [expiredDiscounts, setExpiredDiscounts] = useState(0);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [currentFilter, setCurrentFilter] = useState("This Month");
+
+  // Safe date parsing function to handle various date formats
+  const parseDate = (dateString: string) => {
+    try {
+      // Try to parse the date string directly
+      const date = new Date(dateString);
+      
+      // Check if the date is valid
+      if (isNaN(date.getTime())) {
+        console.error(`Invalid date: ${dateString}`);
+        return null;
+      }
+      
+      return date;
+    } catch (error) {
+      console.error(`Error parsing date: ${dateString}`, error);
+      return null;
+    }
+  };
 
   useEffect(() => {
     // Fetch discounts from API
@@ -34,7 +56,18 @@ export default function DiscountList() {
         }
         const data = await response.json();
         const fetchedDiscounts = data.discounts || [];
+        
+        console.log('Fetched discounts:', fetchedDiscounts);
+        
+        // Check if createdAt exists, log a warning if it doesn't
+        if (fetchedDiscounts.length > 0 && !fetchedDiscounts[0].createdAt) {
+          console.warn('Warning: createdAt field is missing from discount data. Last 3 Months filter may not work correctly.');
+        }
+        
         setDiscounts(fetchedDiscounts);
+        
+        // Apply default filter
+        applyFilter(fetchedDiscounts, "This Month");
         
         // Calculate discount counts
         const active: number = fetchedDiscounts.filter((d: Discount) => d.status === "Active").length;
@@ -52,6 +85,95 @@ export default function DiscountList() {
 
     fetchDiscounts();
   }, []);
+
+  // Apply filter function with improved date handling
+  const applyFilter = (discountList: Discount[], filter: string) => {
+    setCurrentFilter(filter);
+    
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const currentMonth = now.getMonth();
+    
+    console.log(`Applying filter: ${filter}`);
+    console.log(`Total discounts before filtering: ${discountList.length}`);
+    
+    let filtered: Discount[] = [];
+    
+    switch(filter) {
+      case "This Month":
+        // Filter discounts with start date in current month
+        filtered = discountList.filter(discount => {
+          const startDate = parseDate(discount.startDate);
+          if (!startDate) return false;
+          
+          const isThisMonth = startDate.getMonth() === currentMonth && 
+                             startDate.getFullYear() === currentYear;
+                             
+          if (isThisMonth) {
+            console.log(`Matching discount (This Month): ${discount.product}, Date: ${discount.startDate}`);
+          }
+          
+          return isThisMonth;
+        });
+        break;
+        
+      case "Last Month":
+        // Last month calculation
+        const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+        const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+        
+        // Filter discounts with start date in last month
+        filtered = discountList.filter(discount => {
+          const startDate = parseDate(discount.startDate);
+          if (!startDate) return false;
+          
+          const isLastMonth = startDate.getMonth() === lastMonth && 
+                             startDate.getFullYear() === lastMonthYear;
+          
+          if (isLastMonth) {
+            console.log(`Matching discount (Last Month): ${discount.product}, Date: ${discount.startDate}`);
+          }
+          
+          return isLastMonth;
+        });
+        break;
+        
+      case "Last 3 Months":
+        // Calculate date 3 months ago
+        const threeMonthsAgo = new Date();
+        threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+        
+        // Filter discounts created within last 3 months
+        filtered = discountList.filter(discount => {
+          // Use createdAt if available, otherwise fall back to startDate
+          const dateField = discount.createdAt || discount.startDate;
+          const creationDate = parseDate(dateField);
+          
+          if (!creationDate) return false;
+          
+          const isWithinLast3Months = creationDate >= threeMonthsAgo && creationDate <= now;
+          
+          if (isWithinLast3Months) {
+            console.log(`Matching discount (Last 3 Months): ${discount.product}, Creation Date: ${dateField}`);
+          }
+          
+          return isWithinLast3Months;
+        });
+        break;
+        
+      default:
+        filtered = discountList;
+    }
+    
+    console.log(`Filtered discounts count: ${filtered.length}`);
+    setFilteredDiscounts(filtered);
+  };
+
+  // Function to handle filter selection
+  const handleFilterSelect = (filter: string) => {
+    applyFilter(discounts, filter);
+    setShowDropdown(false);
+  };
 
   // Function to view discount details
   const handleViewDiscount = (discountId: string) => {
@@ -79,10 +201,10 @@ export default function DiscountList() {
         throw new Error('Failed to delete discount');
       }
       
-      // Remove the deleted discount from state to update UI
-      setDiscounts(prevDiscounts => 
-        prevDiscounts.filter(discount => discount._id !== discountId)
-      );
+      // Remove the deleted discount from both states
+      const updatedDiscounts = discounts.filter(discount => discount._id !== discountId);
+      setDiscounts(updatedDiscounts);
+      applyFilter(updatedDiscounts, currentFilter);
       
       // Show success message (optional)
       alert("Discount deleted successfully");
@@ -148,26 +270,30 @@ export default function DiscountList() {
           </div>
         </div>
 
-        {/* Discount Table */}
+        {/* Discount Table with Debug Info */}
         <div className="bg-white p-6 rounded-lg shadow-lg">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg text-gray-600 font-semibold">All Discount List</h2>
+            <h2 className="text-lg text-gray-600 font-semibold">
+              All Discount List 
+              <span className="text-sm ml-2 text-gray-500">
+                ({filteredDiscounts.length} of {discounts.length} total)
+              </span>
+            </h2>
             <div className="relative">
-                <button 
+              <button 
                 className="w-40 py-2 border rounded-lg text-gray-600" 
                 onClick={() => setShowDropdown(!showDropdown)}
-                >
-                This Month ▼
-                </button>
-                {showDropdown && (
-                <div className="absolute right-0 mt-2 w-40 justify-ce bg-white border rounded-lg shadow-lg">
-                    
-                    <button className="w-40 py-2 border rounded-lg text-gray-600 hover:bg-gray-100">Last Month</button>
-                  <button className="w-40 py-2 border rounded-lg text-gray-600 hover:bg-gray-100">Last 3 Months</button>
+              >
+                {currentFilter} ▼
+              </button>
+              {showDropdown && (
+                <div className="absolute right-0 mt-2 w-40 bg-white border rounded-lg shadow-lg z-10">
+                  <button onClick={() => handleFilterSelect("This Month")} className="w-full py-2 text-gray-600 hover:bg-gray-100">This Month</button>
+                  <button onClick={() => handleFilterSelect("Last Month")} className="w-full py-2 text-gray-600 hover:bg-gray-100">Last Month</button>
+                  <button onClick={() => handleFilterSelect("Last 3 Months")} className="w-full py-2 text-gray-600 hover:bg-gray-100">Last 3 Months</button>
                 </div>
-                )}
-              
-           </div>
+              )}
+            </div>
           </div>
           <table className="w-full border-collapse text-gray-600">
             <thead>
@@ -182,8 +308,8 @@ export default function DiscountList() {
               </tr>
             </thead>
             <tbody>
-              {discounts.length > 0 ? (
-                discounts.map((discount) => (
+              {filteredDiscounts.length > 0 ? (
+                filteredDiscounts.map((discount) => (
                   <tr key={discount._id} className="border-t">
                     <td className="p-3">{discount.product}</td>
                     <td className="p-3">{discount.type}</td>
@@ -223,7 +349,7 @@ export default function DiscountList() {
                     {error ? (
                       <p className="text-red-500">{error}</p>
                     ) : (
-                      <p>No discounts found. Create your first discount!</p>
+                      <p>No discounts found for the selected time period.</p>
                     )}
                   </td>
                 </tr>

@@ -20,7 +20,10 @@ export async function GET() {
   try {
     await connectDB();
     
-    const discounts = await Discount.find({}).sort({ createdAt: -1 });
+    // Explicitly select all fields including createdAt to ensure it's included
+    const discounts = await Discount.find({})
+      .select('product type percentage startDate endDate status description createdAt')
+      .sort({ createdAt: -1 });
     
     return NextResponse.json({ discounts });
   } catch (error) {
