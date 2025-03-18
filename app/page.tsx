@@ -83,6 +83,7 @@ const mockProducts = [
 
 const HomePage = () => {
   const [products, setProducts] = useState(mockProducts);
+  const [trendingProducts, setTrendingProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
@@ -131,6 +132,15 @@ const HomePage = () => {
           
           setCategoryProducts(productsByCategory);
         }
+        
+        // Fetch trending products (newly created + recently stocked)
+        const trendingResponse = await fetch('/api/customer/trending');
+        
+        if (trendingResponse.ok) {
+          const trendingData = await trendingResponse.json();
+          setTrendingProducts(trendingData.products || []);
+        }
+        
       } catch (err) {
         console.error('Error fetching products:', err);
         setError(err instanceof Error ? err.message : 'Failed to load products');
@@ -152,6 +162,13 @@ const HomePage = () => {
 
       {/* Main Content */}
       <div className="flex-grow">
+        {/* Trending Products - Newly Created + Recently Stocked */}
+        <ProductCarousel 
+          title="Trending Products" 
+          products={trendingProducts.length > 0 ? trendingProducts : products} 
+          loading={loading}
+        />
+
         {/* Men's Collection */}
         <ProductCarousel 
           title="Men's Collection" 

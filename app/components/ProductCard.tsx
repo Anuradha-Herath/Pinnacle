@@ -20,6 +20,7 @@ interface Product {
     percentage: number;
     discountedPrice: number;
   };
+  tag?: string | null; // Add tag field to the interface
 }
 
 interface ProductCardProps {
@@ -180,6 +181,13 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
       className="w-[300px] min-w-[300px] bg-white shadow-md rounded-lg p-4 relative cursor-pointer hover:shadow-lg transition-shadow"
       onClick={navigateToProductDetail}
     >
+      {/* Tag display */}
+      {product.tag && (
+        <div className="absolute top-3 left-3 z-10 bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded">
+          {product.tag}
+        </div>
+      )}
+      
       {!hideWishlist && (
         <button 
           onClick={handleWishlistToggle}
