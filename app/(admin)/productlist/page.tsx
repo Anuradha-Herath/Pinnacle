@@ -158,7 +158,7 @@ const ProductsPage = () => {
               <div className="flex justify-center items-center gap-2">
                 <button 
                   className={`px-4 py-2 rounded-md ${
-                    currentPage === 1 ? 'bg-gray-200 cursor-not-allowed' : 'bg-gray-300 hover:bg-gray-400'
+                    currentPage === 1 ? 'bg-orange-200 text-gray-700 cursor-not-allowed' : 'bg-orange-500 text-white hover:bg-orange-600'
                   }`}
                   onClick={handlePreviousPage}
                   disabled={currentPage === 1}
@@ -170,7 +170,7 @@ const ProductsPage = () => {
                 </span>
                 <button 
                   className={`px-4 py-2 rounded-md ${
-                    currentPage === totalPages ? 'bg-gray-200 cursor-not-allowed' : 'bg-gray-300 hover:bg-gray-400'
+                    currentPage === totalPages ? 'bg-orange-200 text-gray-700 cursor-not-allowed' : 'bg-orange-500 text-white hover:bg-orange-600'
                   }`}
                   onClick={handleNextPage}
                   disabled={currentPage === totalPages}
