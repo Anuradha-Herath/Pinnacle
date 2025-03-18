@@ -37,6 +37,7 @@ export default function DiscountList() {
 
   const [discounts, setDiscounts] = useState<Discount[]>([]);
   const [filteredDiscounts, setFilteredDiscounts] = useState<Discount[]>([]);
+  const [displayedDiscounts, setDisplayedDiscounts] = useState<Discount[]>([]); // For pagination
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [activeDiscounts, setActiveDiscounts] = useState(0);
@@ -45,6 +46,14 @@ export default function DiscountList() {
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const [currentFilter, setCurrentFilter] = useState("This Month");
+  
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10); // Show 10 discounts per page
+  const [totalPages, setTotalPages] = useState(1);
+
+  // New state to store product/category details
+  const [itemDetails, setItemDetails] = useState<Record<string, ItemDetails>>({});
   
   const parseDate = (dateString: string) => {
     try {
@@ -63,9 +72,6 @@ export default function DiscountList() {
       return null;
     }
   };
-
-  // New state to store product/category details
-  const [itemDetails, setItemDetails] = useState<Record<string, ItemDetails>>({});
 
   useEffect(() => {
     // Fetch discounts from API
@@ -157,13 +163,44 @@ export default function DiscountList() {
     fetchItemDetails();
   }, [discounts]);
 
+  // Apply pagination when filtered discounts or page changes
+  useEffect(() => {
+    applyPagination(filteredDiscounts);
+    // Calculate total pages
+    const total = Math.ceil(filteredDiscounts.length / itemsPerPage);
+    setTotalPages(total > 0 ? total : 1);
+  }, [currentPage, filteredDiscounts, itemsPerPage]);
+  
+  // Handle pagination
+  const applyPagination = (items: Discount[]) => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    setDisplayedDiscounts(items.slice(startIndex, endIndex));
+  };
+  
+  // Handle pagination navigation
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
   // Apply filter when status filter changes
   useEffect(() => {
     if (statusFilter) {
-      setFilteredDiscounts(discounts.filter(discount => discount.status === statusFilter));
+      const filtered = discounts.filter(discount => discount.status === statusFilter);
+      setFilteredDiscounts(filtered);
     } else {
       setFilteredDiscounts(discounts);
     }
+    // Reset to page 1 when filter changes
+    setCurrentPage(1);
   }, [statusFilter, discounts]);
 
   const handleFilterByStatus = (status: string | null) => {
@@ -265,6 +302,8 @@ export default function DiscountList() {
     }
     
     console.log(`Filtered discounts count: ${filtered.length}`);
+    // Reset to page 1 when applying new filter
+    setCurrentPage(1);
     setFilteredDiscounts(filtered);
   };
 
@@ -441,8 +480,8 @@ export default function DiscountList() {
               </tr>
             </thead>
             <tbody>
-              {filteredDiscounts.length > 0 ? (
-                filteredDiscounts.map((discount) => (
+              {displayedDiscounts.length > 0 ? (
+                displayedDiscounts.map((discount) => (
                   <tr key={discount._id} className="border-t">
                     <td className="p-3">
                       <div className="flex items-center">
@@ -512,14 +551,35 @@ export default function DiscountList() {
               )}
             </tbody>
           </table>
-          <div className="flex justify-end mt-6 pr-4">
-            <div className="flex items-center border rounded-md overflow-hidden shadow-md">
-              <button className="px-4 py-2 border-r bg-white hover:bg-gray-200">Previous</button>
-              <button className="px-4 py-2 bg-orange-500 text-white font-semibold">1</button>
-              <button className="px-4 py-2 border-l bg-white hover:bg-gray-200">2</button>
-              <button className="px-4 py-2 border-l bg-white hover:bg-gray-200">Next</button>
+          
+          {/* Pagination */}
+          {filteredDiscounts.length > 0 && (
+            <div className="flex justify-center mt-6">
+              <div className="flex items-center gap-2">
+                <button 
+                  className={`px-4 py-2 rounded-md ${
+                    currentPage === 1 ? 'bg-orange-200 text-gray-700 cursor-not-allowed' : 'bg-orange-500 text-white hover:bg-orange-600'
+                  }`}
+                  onClick={handlePreviousPage}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </button>
+                <span className="mx-2 text-gray-600">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button 
+                  className={`px-4 py-2 rounded-md ${
+                    currentPage === totalPages ? 'bg-orange-200 text-gray-700 cursor-not-allowed' : 'bg-orange-500 text-white hover:bg-orange-600'
+                  }`}
+                  onClick={handleNextPage}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                </button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
