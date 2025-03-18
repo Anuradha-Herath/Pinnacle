@@ -1,24 +1,72 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { EyeIcon, PencilIcon, TrashIcon, BellIcon, Cog6ToothIcon, ClockIcon, ArrowUpIcon, UserIcon } from "@heroicons/react/24/solid";
 import Sidebar from "../../components/Sidebar";
 import Image from "next/image";
-import { Crown, CheckSquare } from "lucide-react";
+import { Crown } from "lucide-react";
 {/*import { Card, CardContent } from "@/components/ui/card";*/}
+
+interface Customer {
+  _id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: string;
+  createdAt: string;
+}
 
 export default function CustomerList() {
   const router = useRouter();
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [customerCount, setCustomerCount] = useState<number>(0);
 
-  const customers = [
-    { id: "#25426", name: "Micheal", date: "Dec 06 2024", type: "black", image: "/p3.webp" },
-    { id: "#25425", name: "David", date: "Dec 06 2024", type: "gray", image: "/p9.webp" },
-    { id: "#25424", name: "Mike", date: "Dec 06 2024", type: "orange", image: "/p9.webp" },
-    { id: "#25423", name: "Shivam", date: "Dec 06 2024", type: "orange", image: "/p9.webp" },
-    { id: "#25422", name: "Shadab", date: "Dec 06 2024", type: "black", image: "/p9.webp" },
-    { id: "#25421", name: "Nisal", date: "Dec 06 2024", type: "black", image: "/p9.webp" },
-  ];
+  useEffect(() => {
+    const fetchCustomers = async () => {
+      try {
+        const response = await fetch('/api/users');
+        if (!response.ok) {
+          throw new Error('Failed to fetch customers');
+        }
+        const data = await response.json();
+        if (data.success) {
+          setCustomers(data.users);
+          setCustomerCount(data.users.length);
+        } else {
+          throw new Error(data.error || 'Failed to fetch customers');
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+        console.error('Error fetching customers:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCustomers();
+  }, []);
+
+  // Function to format date from ISO string
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const month = date.toLocaleString('default', { month: 'short' });
+    const day = date.getDate();
+    const year = date.getFullYear();
+    return `${month} ${day} ${year}`;
+  };
+
+  // Function to determine customer type (just a placeholder implementation)
+  const getCustomerType = (role: string) => {
+    if (role === 'admin') return 'black';
+    if (role === 'premium') return 'orange';
+    return 'gray';
+  };
+
+  // Default profile image
+  const defaultImage = "/p9.webp";
 
   return (
     <div className="flex">
@@ -57,7 +105,7 @@ export default function CustomerList() {
               <div className="p-2 bg-red-500 text-white rounded-lg">
                 <UserIcon className="h-5 w-5 text-white" />
               </div>
-              <span className="text-2xl font-bold ml-3">1013</span>
+              <span className="text-2xl font-bold ml-3">{customerCount}</span>
               <div className="flex items-center text-sm text-green-500 font-semibold ml-3">
                 <ArrowUpIcon className="w-4 h-4" />
                 <span className="ml-1">34.7%</span>
@@ -73,36 +121,48 @@ export default function CustomerList() {
             <h2 className="text-lg font-semibold">All Customer List</h2>
             <button className="px-4 py-2 border rounded-lg text-gray-600">This Month ▼</button>
           </div>
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="bg-gray-100 text-left">
-                <th className="p-3"><CheckSquare className="w-5 h-5 text-gray-400" /></th>
-                <th className="p-3">Customer Name</th>
-                <th className="p-3">Id</th>
-                <th className="p-3">Joined date</th>
-                <th className="p-1 text-right">Type<span className="pr-40"></span></th>
-              </tr>
-            </thead>
-            <tbody>
-              {customers.map((customer, index) => (
-                <tr key={index} className="border-t">
-                  <td className="p-3"><input type="checkbox" className="w-5 h-5" /></td>
-                  <td className="p-3 flex items-center gap-3">
-                    <Image src={customer.image} alt={customer.name} width={30} height={30} className="rounded-full" />
-                    {customer.name}
-                  </td>
-                  <td className="p-3">{customer.id}</td>
-                  <td className="p-3">{customer.date}</td>
-                  <td className="p-3 text-right pr-10">
-                    <Crown className={`w-5 h-5 ${customer.type === 'black' ? 'text-black' : customer.type === 'gray' ? 'text-gray-400' : 'text-orange-500'}`} />
-                  </td>
+          
+          {loading ? (
+            <div className="flex justify-center items-center p-10">
+              <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-orange-500"></div>
+            </div>
+          ) : error ? (
+            <div className="text-red-500 text-center p-4">{error}</div>
+          ) : (
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-gray-100 text-left">
+                  <th className="p-3">Customer Name</th>
+                  <th className="p-3">Id</th>
+                  <th className="p-3">Joined date</th>
+                  <th className="p-3 text-center">Type</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-          </div>
-        {/* Additional Information Section */}
-        <div >
+              </thead>
+              <tbody>
+                {customers.map((customer) => (
+                  <tr 
+                    key={customer._id}
+                    className="border-t cursor-pointer hover:bg-gray-50"
+                    onClick={() => router.push(`/customerdetails?id=${customer._id}`)}
+                  >
+                    <td className="p-3 flex items-center gap-3">
+                      <Image src={defaultImage} alt={`${customer.firstName} ${customer.lastName}`} width={30} height={30} className="rounded-full" />
+                      {`${customer.firstName} ${customer.lastName}`}
+                    </td>
+                    <td className="p-3">#{customer._id.substring(0, 5)}</td>
+                    <td className="p-3">{customer.createdAt ? formatDate(customer.createdAt) : 'N/A'}</td>
+                    <td className="p-3 text-center">
+                      <Crown className={`w-5 h-5 inline ${getCustomerType(customer.role) === 'black' ? 'text-black' : getCustomerType(customer.role) === 'gray' ? 'text-gray-400' : 'text-orange-500'}`} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+        
+        {/* Pagination */}
+        <div>
           <div className="flex justify-end mt-6 pr-4">
             <div className="flex items-center space-x-2">
               <a href="/previouspage"><button className="px-4 py-2 border-r bg-white hover:bg-gray-200">Previous</button></a>
@@ -112,12 +172,7 @@ export default function CustomerList() {
             </div>
           </div>
         </div>
-
-       
       </div>
-      
-        </div>
-      
-    
+    </div>
   );
 }
