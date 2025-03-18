@@ -46,13 +46,44 @@ const Header = () => {
   const [categoriesLoading, setCategoriesLoading] = useState(false);
   const { user, logout } = useAuth();
   const [showUserDropdown, setShowUserDropdown] = useState(false);
+  
+  // New state variables for scroll behavior
+  const [prevScrollPos, setPrevScrollPos] = useState(0);
+  const [visible, setVisible] = useState(true);
+  const [atTop, setAtTop] = useState(true);
+  
   let userDropdownTimeout: NodeJS.Timeout;
+  let timeout: NodeJS.Timeout;
   
   // Refs for click outside detection
   const searchRef = useRef<HTMLDivElement>(null!);
   const dropdownRef = useRef(null);
-  
-  let timeout: NodeJS.Timeout;
+
+  // Handle scroll events to show/hide header
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollPos = window.scrollY;
+      const isScrolledUp = prevScrollPos > currentScrollPos;
+      const isAtPageTop = currentScrollPos < 10;
+      
+      setAtTop(isAtPageTop);
+      
+      // Only change visibility when scrolling more than 10px to prevent small movements
+      if (currentScrollPos < 10) {
+        setVisible(true); // Always visible at the top
+      } else if (Math.abs(prevScrollPos - currentScrollPos) > 10) {
+        setVisible(isScrolledUp);
+      }
+      
+      setPrevScrollPos(currentScrollPos);
+    };
+    
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, [prevScrollPos]);
 
   // Handle search form submission
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -208,7 +239,7 @@ const Header = () => {
   };
 
   return (
-    <header className="bg-black text-white relative z-50">
+    <header className={`bg-black text-white w-full transition-all duration-300 ${!atTop ? 'fixed top-0 left-0 right-0 z-50' : 'relative z-50'} ${visible ? 'translate-y-0 opacity-100 shadow-lg' : '-translate-y-full opacity-0'}`}>
       {/* Top Bar */}
       <div className="max-w-7xl mx-auto px-4 py-3">
         <div className="flex items-center justify-between">
