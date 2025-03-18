@@ -87,7 +87,7 @@ const Sidebar: React.FC = () => {
                         </NavLink>
                     </li>
                     <li>
-                        <NavLink href="/orders">
+                        <NavLink href="/orderlist">
                             <FaShoppingBag className="text-xl w-6 flex-shrink-0" />
                             {!collapsed && <span className="ml-2">Orders</span>}
                         </NavLink>
@@ -111,7 +111,7 @@ const Sidebar: React.FC = () => {
                         </NavLink>
                     </li>
                     <li>
-                        <NavLink href="/profile">
+                        <NavLink href="/adminprofile">
                             <CgProfile className="text-xl w-6 flex-shrink-0" />
                             {!collapsed && <span className="ml-2">Profile</span>}
                         </NavLink>
