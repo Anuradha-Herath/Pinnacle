@@ -18,12 +18,16 @@ const ProductsPage = () => {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(9); // Show 9 products per page (3x3 grid)
+  const [totalPages, setTotalPages] = useState(1);
   const router = useRouter();
 
-  const fetchProducts = async () => {
+  const fetchProducts = async (page = 1) => {
     try {
       setLoading(true);
-      const response = await fetch('/api/products');
+      const response = await fetch(`/api/products?page=${page}&limit=${itemsPerPage}`);
       
       if (!response.ok) {
         throw new Error('Failed to fetch products');
@@ -31,6 +35,7 @@ const ProductsPage = () => {
       
       const data = await response.json();
       setProducts(data.products);
+      setTotalPages(data.pagination.pages);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
       console.error('Error fetching products:', err);
@@ -40,13 +45,34 @@ const ProductsPage = () => {
   };
 
   useEffect(() => {
-    fetchProducts();
-  }, []);
+    fetchProducts(currentPage);
+  }, [currentPage, itemsPerPage]);
 
   // Handle product deletion and refresh list
   const handleProductDelete = (deletedProductId: string) => {
     // Remove the deleted product from the state
     setProducts(products.filter(product => product._id !== deletedProductId));
+    
+    // If this was the last item on the page and not the first page, go back one page
+    if (products.length === 1 && currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    } else {
+      // Otherwise just refresh the current page
+      fetchProducts(currentPage);
+    }
+  };
+
+  // Handle pagination navigation
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
   };
 
   // Transform database products to the format expected by AdminProductCard
@@ -128,9 +154,30 @@ const ProductsPage = () => {
 
           {/* Pagination - Only show if there are products */}
           {!loading && !error && formattedProducts.length > 0 && (
-            <footer className="mt-6 flex justify-center">
-              <button className="bg-gray-300 px-3 py-1 rounded-md mr-2">Previous</button>
-              <button className="bg-gray-300 px-3 py-1 rounded-md">Next</button>
+            <footer className="mt-6">
+              <div className="flex justify-center items-center gap-2">
+                <button 
+                  className={`px-4 py-2 rounded-md ${
+                    currentPage === 1 ? 'bg-gray-200 cursor-not-allowed' : 'bg-gray-300 hover:bg-gray-400'
+                  }`}
+                  onClick={handlePreviousPage}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </button>
+                <span className="mx-2 text-gray-600">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button 
+                  className={`px-4 py-2 rounded-md ${
+                    currentPage === totalPages ? 'bg-gray-200 cursor-not-allowed' : 'bg-gray-300 hover:bg-gray-400'
+                  }`}
+                  onClick={handleNextPage}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                </button>
+              </div>
             </footer>
           )}
         </div>
