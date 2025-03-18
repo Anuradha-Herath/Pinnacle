@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Header from "./components/Header";
 import ProductCarousel from "./components/ProductCarousel";
 import Footer from "./components/Footer";
+import Link from "next/link"; // Add this import
 
 // Updated mock products with simplified images - all using existing images
 const mockProducts = [
@@ -268,32 +269,40 @@ const HomePage = () => {
         />
 
         {/* Large Shop Now Images */}
-        <div className="flex gap-4 my-10 px-4 justify-center">
+        <div className="flex flex-col md:flex-row gap-6 md:gap-8 my-12 md:my-16 px-4 md:px-8 justify-center">
           {/* Shop Men */}
-          <div className="relative w-[45%]">
-            <img
-              src="/shopmen.webp"
-              alt="Shop Men"
-              className="w-full h-[300px] object-cover rounded-lg"
-            />
-            <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30">
-              <button className="bg-white text-black font-semibold py-2 px-6 rounded hover:bg-gray-200">
-                Shop Men
-              </button>
+          <div className="relative w-full md:w-[45%] overflow-hidden rounded-xl shadow-xl transform transition-all duration-500 hover:shadow-2xl group">
+            <div className="aspect-[4/3] w-full">
+              <img
+                src="/shopmen.webp"
+                alt="Shop Men"
+                className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-105"
+              />
+            </div>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent flex items-end justify-center pb-10 md:pb-12">
+              <Link href="/category/Men" className="block">
+                <button className="bg-white text-black font-semibold py-3 px-8 rounded-lg transform transition-all duration-300 hover:bg-black hover:text-white hover:scale-105 hover:shadow-lg border-2 border-transparent hover:border-white">
+                  SHOP MEN
+                </button>
+              </Link>
             </div>
           </div>
 
           {/* Shop Women */}
-          <div className="relative w-[45%]">
-            <img
-              src="/shopwomen.webp"
-              alt="Shop Women"
-              className="w-full h-[300px] object-cover rounded-lg"
-            />
-            <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30">
-              <button className="bg-white text-black font-semibold py-2 px-6 rounded hover:bg-gray-200">
-                Shop Women
-              </button>
+          <div className="relative w-full md:w-[45%] overflow-hidden rounded-xl shadow-xl transform transition-all duration-500 hover:shadow-2xl group mt-6 md:mt-0">
+            <div className="aspect-[4/3] w-full">
+              <img
+                src="/shopwomen.webp"
+                alt="Shop Women"
+                className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-105"
+              />
+            </div>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent flex items-end justify-center pb-10 md:pb-12">
+              <Link href="/category/Women" className="block">
+                <button className="bg-white text-black font-semibold py-3 px-8 rounded-lg transform transition-all duration-300 hover:bg-black hover:text-white hover:scale-105 hover:shadow-lg border-2 border-transparent hover:border-white">
+                  SHOP WOMEN
+                </button>
+              </Link>
             </div>
           </div>
         </div>
