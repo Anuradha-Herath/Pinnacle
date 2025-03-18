@@ -308,16 +308,22 @@ const HomePage = () => {
         </div>
 
         {/* Large Accessories Banner */}
-        <div className="relative w-full my-10 px-4 md:px-8 lg:px-12">
-          <img
-            src="/cap.jpg"
-            alt="Accessories"
-            className="w-full h-[250px] object-cover rounded-lg"
-          />
-          <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30">
-            <button className="bg-white text-black font-semibold py-2 px-6 rounded hover:bg-gray-200">
-              Shop Accessories
-            </button>
+        <div className="relative w-full my-12 md:my-16 px-4 md:px-8 lg:px-12">
+          <div className="relative overflow-hidden rounded-xl shadow-xl transform transition-all duration-500 hover:shadow-2xl group">
+            <div className="aspect-[16/5] w-full">
+              <img
+                src="/cap.jpg"
+                alt="Accessories"
+                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+              />
+            </div>
+            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent flex items-end md:items-center justify-center md:justify-end pb-10 md:pb-0 md:pr-20">
+              <Link href="/category/Accessories" className="block">
+                <button className="bg-white text-black font-semibold py-3 px-8 rounded-lg transform transition-all duration-300 hover:bg-black hover:text-white hover:scale-105 hover:shadow-lg border-2 border-transparent hover:border-white">
+                  SHOP ACCESSORIES
+                </button>
+              </Link>
+            </div>
           </div>
         </div>
 
