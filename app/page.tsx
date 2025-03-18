@@ -169,12 +169,6 @@ const HomePage = () => {
           loading={loading}
         />
 
-        {/* Men's Collection */}
-        <ProductCarousel 
-          title="Men's Collection" 
-          products={categoryProducts.Mens.length > 0 ? categoryProducts.Mens : products} 
-        />
-
         {/* Large Shop Now Images */}
         <div className="flex gap-4 my-10 px-4 justify-center">
           {/* Shop Men */}
