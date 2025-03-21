@@ -6,6 +6,7 @@ import ProductCarousel from "./components/ProductCarousel";
 import Footer from "./components/Footer";
 import Link from "next/link";
 import HeaderPlaceholder from "./components/HeaderPlaceholder";
+import Chatbot from "./components/Chatbot";
 
 // Updated mock products with simplified images - all using existing images
 const mockProducts = [
@@ -404,6 +405,9 @@ const HomePage = () => {
 
       {/* Footer */}
       <Footer />
+      
+      {/* Chatbot */}
+      <Chatbot />
     </div>
   );
 };
