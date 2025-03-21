@@ -50,7 +50,10 @@ const Chatbot: React.FC = () => {
         text: msg.text
       }));
       
-      // Call the chatbot API
+      // Call the chatbot API with a timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 second timeout
+      
       const response = await fetch('/api/chatbot', {
         method: 'POST',
         headers: {
@@ -60,8 +63,10 @@ const Chatbot: React.FC = () => {
           message: userMessage.text,
           chatHistory: apiChatHistory
         }),
+        signal: controller.signal
       });
       
+      clearTimeout(timeoutId);
       const data = await response.json();
       
       if (data.success) {
@@ -72,21 +77,31 @@ const Chatbot: React.FC = () => {
           timestamp: new Date()
         }]);
       } else {
-        // Add error message to chat history
+        // Add fallback response or error message to chat history
         setChatHistory(prev => [...prev, {
           isUser: false,
-          text: "Sorry, I encountered an error. Please try again later.",
+          text: data.fallbackResponse || "Sorry, I encountered an error. Please try again later.",
           timestamp: new Date()
         }]);
         console.error("Chatbot error:", data.error);
       }
     } catch (error) {
       console.error("Error calling chatbot API:", error);
-      setChatHistory(prev => [...prev, {
-        isUser: false,
-        text: "Sorry, I couldn't connect to the server. Please try again later.",
-        timestamp: new Date()
-      }]);
+      
+      // Check if it was an abort error (timeout)
+      if (error.name === 'AbortError') {
+        setChatHistory(prev => [...prev, {
+          isUser: false,
+          text: "Sorry, the request took too long to process. Please try a shorter question or try again later.",
+          timestamp: new Date()
+        }]);
+      } else {
+        setChatHistory(prev => [...prev, {
+          isUser: false,
+          text: "Sorry, I couldn't connect to the server. Please try again later.",
+          timestamp: new Date()
+        }]);
+      }
     } finally {
       setIsLoading(false);
     }
