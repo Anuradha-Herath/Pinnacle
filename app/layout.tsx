@@ -7,6 +7,7 @@ import { WishlistProvider } from "./context/WishlistContext";
 import { AuthProvider } from "./context/AuthContext"; // Add this import
 import { Toaster } from "react-hot-toast";
 import CloudinaryProvider from "./components/CloudinaryProvider";
+import Chatbot from "./components/Chatbot"; // Add this import
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -41,6 +42,7 @@ export default function RootLayout({
                   {children}
                 </Providers>
                 <Toaster position="bottom-right" />
+                <Chatbot /> {/* Add Chatbot here */}
               </CloudinaryProvider>
             </CartProvider>
           </WishlistProvider>
