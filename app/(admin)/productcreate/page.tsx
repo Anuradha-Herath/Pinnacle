@@ -28,6 +28,9 @@ export default function ProductCreate() {
     tag: string;
     sizes: string[];
     gallery: GalleryItem[];
+    occasions: string[]; // New field for occasions
+    style: string[];     // New field for style attributes
+    season: string[];    // New field for seasons
   }>({
     productName: "",
     description: "",
@@ -37,6 +40,9 @@ export default function ProductCreate() {
     tag: "",
     sizes: [],
     gallery: [],
+    occasions: [], // Initialize empty occasions array
+    style: [],     // Initialize empty style array
+    season: [],    // Initialize empty season array
   });
 
   // State for storing all categories fetched from the API
@@ -305,6 +311,117 @@ export default function ProductCreate() {
                   onChange={handleChange}
                   className="w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500"
                 />
+              </div>
+
+              {/* Add occasion selector after the Tag input field */}
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Suitable Occasions
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {["Casual", "Formal", "Business", "Party", "Wedding", "Beach", "Outdoor", "Sportswear"].map(
+                    (occasion) => (
+                      <label key={occasion} className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={formData.occasions.includes(occasion)}
+                          onChange={() => {
+                            setFormData((prev) => ({
+                              ...prev,
+                              occasions: prev.occasions.includes(occasion)
+                                ? prev.occasions.filter((o) => o !== occasion)
+                                : [...prev.occasions, occasion],
+                            }));
+                          }}
+                          className="hidden"
+                        />
+                        <span
+                          className={`inline-flex items-center justify-center px-3 py-1 text-sm font-medium rounded-md border border-gray-300 cursor-pointer ${
+                            formData.occasions.includes(occasion)
+                              ? "bg-blue-500 text-white"
+                              : "bg-gray-100"
+                          }`}
+                        >
+                          {occasion}
+                        </span>
+                      </label>
+                    )
+                  )}
+                </div>
+              </div>
+
+              {/* Style attributes selector */}
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Style Attributes
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {["Classic", "Modern", "Vintage", "Bohemian", "Minimalist", "Elegant", "Casual", "Trendy"].map(
+                    (style) => (
+                      <label key={style} className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={formData.style.includes(style)}
+                          onChange={() => {
+                            setFormData((prev) => ({
+                              ...prev,
+                              style: prev.style.includes(style)
+                                ? prev.style.filter((s) => s !== style)
+                                : [...prev.style, style],
+                            }));
+                          }}
+                          className="hidden"
+                        />
+                        <span
+                          className={`inline-flex items-center justify-center px-3 py-1 text-sm font-medium rounded-md border border-gray-300 cursor-pointer ${
+                            formData.style.includes(style)
+                              ? "bg-purple-500 text-white"
+                              : "bg-gray-100"
+                          }`}
+                        >
+                          {style}
+                        </span>
+                      </label>
+                    )
+                  )}
+                </div>
+              </div>
+
+              {/* Season selector */}
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Suitable Seasons
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {["Spring", "Summer", "Fall", "Winter", "All Seasons"].map(
+                    (season) => (
+                      <label key={season} className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={formData.season.includes(season)}
+                          onChange={() => {
+                            setFormData((prev) => ({
+                              ...prev,
+                              season: prev.season.includes(season)
+                                ? prev.season.filter((s) => s !== season)
+                                : [...prev.season, season],
+                            }));
+                          }}
+                          className="hidden"
+                        />
+                        <span
+                          className={`inline-flex items-center justify-center px-3 py-1 text-sm font-medium rounded-md border border-gray-300 cursor-pointer ${
+                            formData.season.includes(season)
+                              ? "bg-green-500 text-white"
+                              : "bg-gray-100"
+                          }`}
+                        >
+                          {season}
+                        </span>
+                      </label>
+                    )
+                  )}
+                </div>
               </div>
             </form>
             <div className="space-y-6">

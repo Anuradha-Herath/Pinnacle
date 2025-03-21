@@ -245,6 +245,15 @@ const Chatbot: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatHistory]);
 
+  // Add suggested prompts related to occasions
+  const occasionPrompts = [
+    "What should I wear to a summer wedding?",
+    "Help me find an outfit for a job interview",
+    "Suggest a casual outfit for a weekend brunch",
+    "What's trending for beach parties this season?",
+    "Build me an outfit for a formal dinner"
+  ];
+
   return (
     <>
       {/* Floating chat button - positioned absolutely in bottom right corner */}
