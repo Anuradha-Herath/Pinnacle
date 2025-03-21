@@ -27,15 +27,66 @@ const timeoutPromise = (ms: number) => {
 
 // Function to limit product context to prevent exceeding token limits
 const prepareProductContext = (products: any[]) => {
-  // Limit to fewer products with essential information only
+  // Return full product details for better recommendations
   return products.slice(0, 20).map(product => ({
-    id: product._id,
+    id: product._id.toString(),
     name: product.productName,
-    price: `$${product.regularPrice.toFixed(2)}`,
+    price: product.regularPrice.toFixed(2),
     category: product.category,
     subCategory: product.subCategory,
-    sizes: Array.isArray(product.sizes) ? product.sizes.join(", ") : "Not specified"
+    sizes: Array.isArray(product.sizes) ? product.sizes.join(", ") : "Not specified",
+    image: product.gallery && product.gallery.length > 0 ? product.gallery[0].src : null,
+    description: product.description || "No description available",
   }));
+};
+
+// Process AI response to inject product cards
+const processResponseWithProductCards = async (responseText: string, productContext: any[]) => {
+  // Look for product recommendations in the format "product_name ($price)"
+  const productNameRegex = /([A-Za-z0-9\s\-&']+)(\s+\(\$\d+(\.\d+)?\))/g;
+  let matches;
+  let processedText = responseText;
+  const productMatches = [];
+
+  // Find product mentions in the response
+  while ((matches = productNameRegex.exec(responseText)) !== null) {
+    const potentialProductName = matches[1].trim();
+    productMatches.push(potentialProductName);
+  }
+
+  // If we found potential product mentions, look them up in our context
+  if (productMatches.length > 0) {
+    const recommendedProducts = [];
+    
+    // Find matching products from our context
+    productMatches.forEach(productName => {
+      // Look for products with similar names (case insensitive partial match)
+      const matchingProducts = productContext.filter(product => 
+        product.name.toLowerCase().includes(productName.toLowerCase()) ||
+        productName.toLowerCase().includes(product.name.toLowerCase())
+      );
+      
+      if (matchingProducts.length > 0) {
+        // Add unique products to recommendations
+        matchingProducts.forEach(product => {
+          if (!recommendedProducts.some(p => p.id === product.id)) {
+            recommendedProducts.push(product);
+          }
+        });
+      }
+    });
+    
+    // Limit to 3 recommendations to avoid cluttering the chat
+    const limitedRecommendations = recommendedProducts.slice(0, 3);
+    
+    // If we found matching products, add structured product data to the response
+    if (limitedRecommendations.length > 0) {
+      // Add a special marker that the frontend can detect and replace with product cards
+      processedText = `${processedText}\n\n[[PRODUCT_RECOMMENDATIONS]]\n${JSON.stringify(limitedRecommendations)}`;
+    }
+  }
+  
+  return processedText;
 };
 
 export async function POST(request: NextRequest) {
@@ -55,18 +106,18 @@ export async function POST(request: NextRequest) {
       }, { status: 500 });
     }
 
-    // Fetch product data from MongoDB - limit to fewer products
+    // Fetch product data from MongoDB
     const products = await Product.find()
-      .select('_id productName regularPrice category subCategory sizes gallery.color')
-      .limit(20);
+      .select('_id productName regularPrice category subCategory sizes gallery description')
+      .limit(30);
     
-    // Format product data with limited context to reduce token usage
+    // Format product data with full context for better recommendations
     const productContext = prepareProductContext(products);
 
     // Initialize the Gemini API client
     const genAI = new GoogleGenerativeAI(apiKey);
     
-    // Prepare system prompt with product information - simplified
+    // Enhanced system prompt with product recommendation instructions
     const systemPrompt = `
       You are Pinnacle Assistant, a helpful chatbot for the Pinnacle fashion store.
       
@@ -75,8 +126,9 @@ export async function POST(request: NextRequest) {
       
       When answering:
       1. Be conversational and helpful
-      2. Recommend products by name when relevant
-      3. Provide pricing information if available
+      2. When recommending products, mention the product name followed by price in parentheses like "Product Name ($XX.XX)"
+         Example: "I recommend our Classic White T-Shirt ($19.99) which is very popular."
+      3. If the user asks for product recommendations, suggest 2-3 specific products that match their request
       4. If you don't know an answer, admit it and suggest contacting customer service
       5. Keep responses concise (under 100 words when possible)
     `;
@@ -116,15 +168,18 @@ export async function POST(request: NextRequest) {
         // If we get here, the model worked
         const responseText = result.response.text();
         
+        // Process the response to inject product cards when appropriate
+        const processedResponse = await processResponseWithProductCards(responseText, productContext);
+        
         return NextResponse.json({
           success: true,
-          response: responseText,
-          model: modelName // Include which model was used in the response
+          response: processedResponse,
+          model: modelName
         });
       } catch (error) {
         console.error(`Error with model ${modelName}:`, error);
         lastError = error;
-        // Continue to the next model in the priority list
+        // Continue to the next model
       }
     }
 

@@ -3,11 +3,22 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FaRobot, FaUser, FaTimes, FaCommentDots } from 'react-icons/fa';
 import { FiSend } from 'react-icons/fi';
+import Link from 'next/link';
 
 interface ChatMessage {
   isUser: boolean;
   text: string;
   timestamp: Date;
+  productRecommendations?: ProductRecommendation[];
+}
+
+interface ProductRecommendation {
+  id: string;
+  name: string;
+  price: string;
+  image: string;
+  category: string;
+  subCategory: string;
 }
 
 const Chatbot: React.FC = () => {
@@ -25,6 +36,33 @@ const Chatbot: React.FC = () => {
 
   const toggleChat = () => {
     setIsChatOpen(!isChatOpen);
+  };
+
+  // Process the response to extract product recommendations
+  const processResponseWithRecommendations = (responseText: string) => {
+    const parts = responseText.split('[[PRODUCT_RECOMMENDATIONS]]');
+    
+    if (parts.length === 2) {
+      // Extract the main text content
+      const textContent = parts[0].trim();
+      
+      try {
+        // Parse the JSON part containing product recommendations
+        const recommendationsJson = parts[1].trim();
+        const recommendations = JSON.parse(recommendationsJson);
+        
+        return {
+          text: textContent,
+          productRecommendations: recommendations
+        };
+      } catch (e) {
+        console.error("Error parsing product recommendations:", e);
+        return { text: responseText, productRecommendations: undefined };
+      }
+    }
+    
+    // If no product recommendations marker is found, return the original text
+    return { text: responseText, productRecommendations: undefined };
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -70,11 +108,15 @@ const Chatbot: React.FC = () => {
       const data = await response.json();
       
       if (data.success) {
-        // Add bot response to chat history
+        // Process response to extract any product recommendations
+        const processedResponse = processResponseWithRecommendations(data.response);
+        
+        // Add bot response to chat history with any product recommendations
         setChatHistory(prev => [...prev, {
           isUser: false,
-          text: data.response,
-          timestamp: new Date()
+          text: processedResponse.text,
+          timestamp: new Date(),
+          productRecommendations: processedResponse.productRecommendations
         }]);
       } else {
         // Add fallback response or error message to chat history
@@ -105,6 +147,49 @@ const Chatbot: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Render product recommendations as cards
+  const ProductCard: React.FC<{ product: ProductRecommendation }> = ({ product }) => {
+    return (
+      <Link 
+        href={`/product/${product.id}`}
+        className="block w-full bg-gray-800 border border-gray-700 rounded-lg overflow-hidden transition-all duration-300 hover:bg-gray-700 hover:border-orange-500 shadow-md hover:shadow-orange-500/20"
+      >
+        <div className="flex flex-col h-full">
+          {/* Product Image */}
+          <div className="h-32 overflow-hidden bg-gray-900">
+            {product.image ? (
+              <img
+                src={product.image}
+                alt={product.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-gray-800">
+                <span className="text-gray-500">No image</span>
+              </div>
+            )}
+          </div>
+          
+          {/* Product Info */}
+          <div className="p-3 flex-grow">
+            <h3 className="font-medium text-white text-sm line-clamp-2">{product.name}</h3>
+            <div className="mt-2 flex justify-between items-center">
+              <span className="text-orange-500 font-bold">${product.price}</span>
+              <span className="text-xs text-gray-400">{product.category}</span>
+            </div>
+          </div>
+          
+          {/* View Button */}
+          <div className="p-2 bg-gray-800 border-t border-gray-700">
+            <button className="w-full py-1 bg-orange-600 hover:bg-orange-700 text-white text-xs font-medium rounded transition-colors">
+              View Product
+            </button>
+          </div>
+        </div>
+      </Link>
+    );
   };
 
   // Auto-scroll to the latest message
@@ -194,6 +279,18 @@ const Chatbot: React.FC = () => {
                   <p className="text-xs opacity-70 mt-1 text-right">
                     {msg.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   </p>
+
+                  {/* Product recommendation cards */}
+                  {!msg.isUser && msg.productRecommendations && msg.productRecommendations.length > 0 && (
+                    <div className="mt-3 pt-3 border-t border-orange-400/30">
+                      <p className="text-xs text-white mb-2">Recommended products:</p>
+                      <div className="grid grid-cols-1 gap-2">
+                        {msg.productRecommendations.map((product, idx) => (
+                          <ProductCard key={idx} product={product} />
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
