@@ -25,69 +25,485 @@ const timeoutPromise = (ms: number) => {
   });
 };
 
-// Function to limit product context to prevent exceeding token limits
-const prepareProductContext = (products: any[]) => {
-  // Return full product details for better recommendations
-  return products.slice(0, 20).map(product => ({
-    id: product._id.toString(),
-    name: product.productName,
-    price: product.regularPrice.toFixed(2),
-    category: product.category,
-    subCategory: product.subCategory,
-    sizes: Array.isArray(product.sizes) ? product.sizes.join(", ") : "Not specified",
-    image: product.gallery && product.gallery.length > 0 ? product.gallery[0].src : null,
-    description: product.description || "No description available",
-  }));
+// Product cache with TTL mechanism
+let productCache: any[] = [];
+let lastCacheUpdate = 0;
+const CACHE_TTL = 2 * 60 * 1000; // Reduced to 2 minutes to catch new products faster
+
+// Store unique categories we've seen
+let knownCategories = new Set<string>();
+let knownSubCategories = new Set<string>();
+
+// Function to check if the cache should be refreshed
+const shouldRefreshCache = (forceRefresh: boolean = false, newCategory: boolean = false): boolean => {
+  const now = Date.now();
+  return forceRefresh || 
+         !productCache.length || 
+         (now - lastCacheUpdate) > CACHE_TTL || 
+         newCategory;
 };
 
-// Process AI response to inject product cards
-const processResponseWithProductCards = async (responseText: string, productContext: any[]) => {
-  // Look for product recommendations in the format "product_name ($price)"
-  const productNameRegex = /([A-Za-z0-9\s\-&']+)(\s+\(\$\d+(\.\d+)?\))/g;
-  let matches;
-  let processedText = responseText;
-  const productMatches = [];
-
-  // Find product mentions in the response
-  while ((matches = productNameRegex.exec(responseText)) !== null) {
-    const potentialProductName = matches[1].trim();
-    productMatches.push(potentialProductName);
-  }
-
-  // If we found potential product mentions, look them up in our context
-  if (productMatches.length > 0) {
-    const recommendedProducts = [];
+// Function to fetch fresh product data from database
+const fetchFreshProductData = async (forceRefresh: boolean = false): Promise<any[]> => {
+  // Get current categories and subcategories before fetching
+  const previousKnownCategories = new Set(knownCategories);
+  const previousKnownSubCategories = new Set(knownSubCategories);
+  
+  try {
+    // Always fetch all categories to detect new ones
+    const allProducts = await Product.find()
+      .select('category subCategory')
+      .lean();
     
-    // Find matching products from our context
-    productMatches.forEach(productName => {
-      // Look for products with similar names (case insensitive partial match)
-      const matchingProducts = productContext.filter(product => 
-        product.name.toLowerCase().includes(productName.toLowerCase()) ||
-        productName.toLowerCase().includes(product.name.toLowerCase())
-      );
-      
-      if (matchingProducts.length > 0) {
-        // Add unique products to recommendations
-        matchingProducts.forEach(product => {
-          if (!recommendedProducts.some(p => p.id === product.id)) {
-            recommendedProducts.push(product);
-          }
-        });
+    // Extract all unique categories and subcategories
+    const currentCategories = new Set(allProducts.map(p => p.category?.toLowerCase()).filter(Boolean));
+    const currentSubCategories = new Set(allProducts.map(p => p.subCategory?.toLowerCase()).filter(Boolean));
+    
+    // Check if any new categories were added
+    let hasNewCategories = false;
+    currentCategories.forEach(cat => {
+      if (!previousKnownCategories.has(cat)) {
+        console.log(`Detected new category: ${cat}`);
+        hasNewCategories = true;
       }
     });
     
-    // Limit to 3 recommendations to avoid cluttering the chat
-    const limitedRecommendations = recommendedProducts.slice(0, 3);
+    currentSubCategories.forEach(subcat => {
+      if (!previousKnownSubCategories.has(subcat)) {
+        console.log(`Detected new subcategory: ${subcat}`);
+        hasNewCategories = true;
+      }
+    });
     
-    // If we found matching products, add structured product data to the response
-    if (limitedRecommendations.length > 0) {
-      // Add a special marker that the frontend can detect and replace with product cards
-      processedText = `${processedText}\n\n[[PRODUCT_RECOMMENDATIONS]]\n${JSON.stringify(limitedRecommendations)}`;
+    // Update our known categories
+    knownCategories = currentCategories;
+    knownSubCategories = currentSubCategories;
+    
+    // If we don't need to refresh (and no new categories found), return cached data
+    if (!shouldRefreshCache(forceRefresh, hasNewCategories)) {
+      console.log("Using cached product data, cache age:", (Date.now() - lastCacheUpdate) / 1000, "seconds");
+      return productCache;
+    }
+
+    console.log("Fetching fresh product data from database");
+    
+    // Fetch all products
+    const products = await Product.find()
+      .select('_id productName regularPrice category subCategory sizes gallery description tag createdAt')
+      .sort({ createdAt: -1 }) // Get newest products first
+      .limit(200);
+    
+    productCache = products;
+    lastCacheUpdate = Date.now();
+    console.log(`Refreshed product cache with ${products.length} products`);
+    
+    // Debug: Log names of first few products in cache
+    const productNames = products.slice(0, 10).map(p => p.productName);
+    console.log("Sample products in cache:", productNames.join(", "));
+    
+    return products;
+  } catch (error) {
+    console.error("Error fetching product data:", error);
+    // If error fetching new data, return cached data if available, otherwise empty array
+    return productCache.length > 0 ? productCache : [];
+  }
+};
+
+// Export the cache for refresh endpoint to access
+export { productCache, lastCacheUpdate, fetchFreshProductData, knownCategories, knownSubCategories };
+
+// Enhanced function to prepare product context with more detailed information
+const prepareProductContext = (products: any[]) => {
+  return products.map(product => {
+    // Extract colors from gallery items
+    const colors = Array.isArray(product.gallery) 
+      ? product.gallery.map((item: any) => item.color).filter(Boolean)
+      : [];
+    
+    // Create a unique set of colors (no duplicates)
+    const uniqueColors = [...new Set(colors)];
+    
+    // Add normalized name for better matching
+    const normalizedName = product.productName.toLowerCase().trim();
+    
+    // Extract creation date for sorting by newness
+    const createdAt = product.createdAt || new Date();
+    
+    // Generate important keywords based on product attributes - more comprehensive
+    const keywordParts = [
+      product.productName,
+      product.category,
+      product.subCategory,
+      product.description,
+      product.tag,
+      ...uniqueColors,
+      ...product.sizes || []
+    ].filter(Boolean);
+    
+    return {
+      id: product._id.toString(),
+      name: product.productName,
+      normalizedName,
+      price: product.regularPrice.toFixed(2),
+      category: product.category, 
+      subCategory: product.subCategory,
+      sizes: Array.isArray(product.sizes) ? product.sizes : [],
+      colors: uniqueColors,
+      image: product.gallery && product.gallery.length > 0 ? product.gallery[0].src : null,
+      description: product.description || "No description available",
+      keywords: keywordParts.join(' ').toLowerCase(),
+      tag: product.tag || null,
+      createdAt: createdAt
+    };
+  });
+};
+
+// Improved product matching algorithm with multiple strategies
+const findRecommendedProducts = (responseText: string, productContext: any[], userQuery: string) => {
+  console.log(`Finding product recommendations for: "${userQuery.substring(0, 50)}..."`);
+  const recommendedProducts = [];
+  const debug = { strategies: {} as any };
+  
+  // Strategy 1: Look for explicit product recommendations in format "product_name ($price)"
+  const productPriceRegex = /([A-Za-z0-9\s\-&']+)(\s+\(\$\d+(\.\d+)?\))/g;
+  let matches;
+  const explicitProductMatches = [];
+  
+  while ((matches = productPriceRegex.exec(responseText)) !== null) {
+    const potentialProductName = matches[1].trim();
+    explicitProductMatches.push(potentialProductName);
+  }
+  debug.strategies.explicitFormat = { found: explicitProductMatches.length };
+  
+  // Strategy 2: Extract potential product names using more flexible patterns
+  // This regex looks for capitalized phrases that might be product names
+  const potentialProductRegex = /\b([A-Z][A-Za-z0-9\s\-&']{2,})\b/g;
+  const potentialProductMatches = [];
+  
+  while ((matches = potentialProductRegex.exec(responseText)) !== null) {
+    const potentialProduct = matches[1].trim();
+    // Filter out common non-product capitalized words
+    if (potentialProduct !== 'I' && 
+        potentialProduct !== 'Pinnacle' && 
+        !potentialProduct.startsWith('The ') && 
+        potentialProduct.length > 3) {
+      potentialProductMatches.push(potentialProduct);
+    }
+  }
+  debug.strategies.capitalizedPhrases = { found: potentialProductMatches.length };
+  
+  // Strategy 3: Direct query match - look for specific product names or categories in user query
+  const queryTerms = userQuery.toLowerCase().split(/\s+/);
+  const relevantQueryTerms = queryTerms.filter(term => 
+    term.length > 3 && 
+    !['what', 'which', 'when', 'where', 'show', 'find', 'for', 'me', 'some', 'any', 'the'].includes(term)
+  );
+  debug.strategies.queryTerms = { terms: relevantQueryTerms };
+  
+  // Strategy 4: Look for specific categories or types of products in user query
+  const categoryMatches = [];
+  const productCategories = [
+    'hoodie', 'hoody', 'hoodies', 'sweater', 'jacket', 'tshirt', 't-shirt', 'shirt', 
+    'pants', 'jeans', 'shorts', 'dress', 'skirt', 'blouse', 'coat', 'shoes', 'sneakers', 
+    'boots', 'hat', 'cap', 'socks', 'accessories'
+  ];
+  
+  for (const category of productCategories) {
+    if (userQuery.toLowerCase().includes(category)) {
+      categoryMatches.push(category);
+    }
+  }
+  debug.strategies.categoryMatches = { found: categoryMatches };
+  
+  // Function to calculate string similarity (improved version)
+  const stringSimilarity = (str1: string, str2: string) => {
+    const a = str1.toLowerCase();
+    const b = str2.toLowerCase();
+    
+    // Check for exact match or substring inclusion
+    if (a === b) return 1.0;
+    if (a.includes(b)) return 0.9;
+    if (b.includes(a)) return 0.85;
+    
+    // Check for word matches (useful for multi-word names)
+    const aWords = a.split(/\s+/);
+    const bWords = b.split(/\s+/);
+    
+    let wordMatches = 0;
+    for (const aWord of aWords) {
+      if (aWord.length < 3) continue; // Skip short words
+      for (const bWord of bWords) {
+        if (bWord.length < 3) continue;
+        if (aWord === bWord || aWord.includes(bWord) || bWord.includes(aWord)) {
+          wordMatches++;
+          break;
+        }
+      }
+    }
+    
+    const wordSimilarity = wordMatches / Math.max(aWords.length, bWords.length);
+    
+    // Count character matches
+    const minLength = Math.min(a.length, b.length);
+    let charMatches = 0;
+    for (let i = 0; i < minLength; i++) {
+      if (a[i] === b[i]) charMatches++;
+    }
+    const charSimilarity = charMatches / Math.max(a.length, b.length);
+    
+    // Calculate weighted similarity
+    return Math.max(wordSimilarity * 0.7, charSimilarity * 0.3);
+  };
+  
+  // Match products based on explicit recommendations (highest priority)
+  if (explicitProductMatches.length > 0) {
+    const matches = [];
+    explicitProductMatches.forEach(productName => {
+      for (const product of productContext) {
+        // Look for strong matches with product name
+        const similarity = stringSimilarity(product.name, productName);
+        if (similarity > 0.5) {
+          matches.push({product, similarity, method: 'explicit'});
+        }
+      }
+    });
+    
+    // Sort by similarity and add unique products
+    matches.sort((a, b) => b.similarity - a.similarity);
+    for (const match of matches) {
+      if (!recommendedProducts.some(p => p.id === match.product.id)) {
+        recommendedProducts.push(match.product);
+        if (recommendedProducts.length >= 3) break;
+      }
+    }
+    debug.strategies.explicitMatches = { found: matches.length };
+  }
+  
+  // If specific product mentioned in query, try direct matching (high priority)
+  // Important for specific product names like "Calypso Hoody"
+  if (recommendedProducts.length === 0) {
+    const matches = [];
+    for (const product of productContext) {
+      const queryLower = userQuery.toLowerCase();
+      const productNameLower = product.normalizedName;
+      
+      if (queryLower.includes(productNameLower) || productNameLower.includes(queryLower)) {
+        matches.push({
+          product,
+          similarity: stringSimilarity(userQuery, product.name),
+          method: 'direct-name'
+        });
+      }
+    }
+    
+    // Sort by similarity and add unique products
+    matches.sort((a, b) => b.similarity - a.similarity);
+    for (const match of matches) {
+      if (!recommendedProducts.some(p => p.id === match.product.id)) {
+        recommendedProducts.push(match.product);
+        if (recommendedProducts.length >= 3) break;
+      }
+    }
+    debug.strategies.directMatches = { found: matches.length };
+  }
+  
+  // If we still don't have recommendations, try category matching
+  if (recommendedProducts.length === 0 && categoryMatches.length > 0) {
+    const categoryFiltered = productContext.filter(product => {
+      const productCategories = [product.category, product.subCategory].map(c => c?.toLowerCase() || '');
+      
+      return categoryMatches.some(catMatch => 
+        productCategories.some(prodCat => {
+          // Special handling for hoodies
+          if (catMatch === 'hoodie' || catMatch === 'hoodies' || catMatch === 'hoody') {
+            return prodCat === 'hoodies' || prodCat.includes('hood') || 
+                  (product.keywords && product.keywords.includes('hood'));
+          }
+          return prodCat === catMatch || prodCat.includes(catMatch);
+        })
+      );
+    });
+    
+    // Add up to 3 products that match the category
+    for (let i = 0; i < Math.min(3, categoryFiltered.length); i++) {
+      if (!recommendedProducts.some(p => p.id === categoryFiltered[i].id)) {
+        recommendedProducts.push(categoryFiltered[i]);
+      }
+    }
+    
+    debug.strategies.categoryFiltered = { count: categoryFiltered.length };
+  }
+  
+  // If we still don't have recommendations, try using potential product names
+  if (recommendedProducts.length === 0 && potentialProductMatches.length > 0) {
+    const matches = [];
+    potentialProductMatches.forEach(productName => {
+      for (const product of productContext) {
+        // Check if the product name or keywords contains the potential product name
+        const similarity = stringSimilarity(product.name, productName);
+        if (similarity > 0.5) {
+          matches.push({product, similarity, method: 'potential-name'});
+        }
+      }
+    });
+    
+    // Sort by similarity and add unique products
+    matches.sort((a, b) => b.similarity - a.similarity);
+    for (const match of matches) {
+      if (!recommendedProducts.some(p => p.id === match.product.id)) {
+        recommendedProducts.push(match.product);
+        if (recommendedProducts.length >= 3) break;
+      }
+    }
+    
+    debug.strategies.potentialNames = { found: matches.length };
+  }
+  
+  // New strategy: Match by any category or subcategory mentioned in query
+  // This is a more generic approach that doesn't require predefined category lists
+  if (recommendedProducts.length === 0) {
+    // Extract potential category or subcategory terms from the query
+    const queryLower = userQuery.toLowerCase();
+    
+    // Use our known categories and subcategories to match
+    const matchingCategories = Array.from(knownCategories).filter(cat => 
+      queryLower.includes(cat.toLowerCase())
+    );
+    
+    const matchingSubCategories = Array.from(knownSubCategories).filter(subcat => 
+      queryLower.includes(subcat.toLowerCase())
+    );
+    
+    if (matchingCategories.length > 0 || matchingSubCategories.length > 0) {
+      console.log("Found matching categories:", matchingCategories);
+      console.log("Found matching subcategories:", matchingSubCategories);
+      
+      const categoryFiltered = productContext.filter(product => {
+        const productCat = (product.category || "").toLowerCase();
+        const productSubCat = (product.subCategory || "").toLowerCase();
+        
+        return matchingCategories.some(cat => productCat.includes(cat.toLowerCase())) ||
+               matchingSubCategories.some(subcat => productSubCat.includes(subcat.toLowerCase()));
+      });
+      
+      // Add up to 3 category-matching products
+      for (let i = 0; i < Math.min(3, categoryFiltered.length); i++) {
+        if (!recommendedProducts.some(p => p.id === categoryFiltered[i].id)) {
+          recommendedProducts.push(categoryFiltered[i]);
+        }
+      }
     }
   }
   
-  return processedText;
+  // Strategy: Recommend products based on creation date (newest products)
+  // This will catch newly added products regardless of category
+  if (recommendedProducts.length === 0 && userQuery.toLowerCase().includes("new")) {
+    // Sort by creation date
+    const newestProducts = [...productContext].sort((a, b) => {
+      const dateA = new Date(a.createdAt);
+      const dateB = new Date(b.createdAt);
+      return dateB.getTime() - dateA.getTime();
+    }).slice(0, 3);
+    
+    for (const product of newestProducts) {
+      if (!recommendedProducts.some(p => p.id === product.id)) {
+        recommendedProducts.push(product);
+      }
+    }
+  }
+  
+  // If we still don't have recommendations but specific colors are mentioned
+  if (recommendedProducts.length === 0) {
+    const colorRegex = /\b(red|blue|green|black|white|yellow|purple|pink|orange|brown|grey|gray)\b/gi;
+    const mentionedColors = [];
+    while ((matches = colorRegex.exec(userQuery + ' ' + responseText)) !== null) {
+      mentionedColors.push(matches[1].toLowerCase());
+    }
+    
+    if (mentionedColors.length > 0) {
+      const colorMatches = [];
+      productContext.forEach(product => {
+        if (Array.isArray(product.colors)) {
+          const hasMatchingColor = product.colors.some((color: string) => 
+            mentionedColors.includes(color.toLowerCase())
+          );
+          
+          if (hasMatchingColor) {
+            colorMatches.push(product);
+          }
+        }
+      });
+      
+      // Add up to 3 color-matching products
+      for (let i = 0; i < Math.min(3, colorMatches.length); i++) {
+        if (!recommendedProducts.some(p => p.id === colorMatches[i].id)) {
+          recommendedProducts.push(colorMatches[i]);
+        }
+      }
+      
+      debug.strategies.colorMatches = { found: colorMatches.length };
+    }
+  }
+  
+  // If absolutely nothing else worked, recommend newest products
+  if (recommendedProducts.length === 0) {
+    // Grab the first 3 products (which should be newest because of our sort order)
+    const newest = productContext.slice(0, 3);
+    for (const product of newest) {
+      recommendedProducts.push(product);
+    }
+    
+    debug.strategies.fallback = { used: true };
+  }
+
+  console.log("Recommendation debug info:", JSON.stringify(debug, null, 2));
+  console.log(`Found ${recommendedProducts.length} recommended products`);
+  if (recommendedProducts.length > 0) {
+    console.log("Recommended products:", recommendedProducts.map(p => p.name).join(", "));
+  }
+  
+  // Limit recommendations to prevent overwhelming the chat
+  return recommendedProducts.slice(0, 3);
 };
+
+// Process AI response to inject product cards with improved matching
+const processResponseWithProductCards = async (responseText: string, productContext: any[], userQuery: string) => {
+  // Find recommended products using our improved algorithm
+  const recommendedProducts = findRecommendedProducts(responseText, productContext, userQuery);
+  
+  // If we found matching products, add structured product data to the response
+  if (recommendedProducts.length > 0) {
+    // Add a special marker that the frontend can detect and replace with product cards
+    return `${responseText}\n\n[[PRODUCT_RECOMMENDATIONS]]\n${JSON.stringify(recommendedProducts)}`;
+  }
+  
+  return responseText;
+};
+
+// Check if a message indicates the user is asking about new products
+const isAskingAboutNewProducts = (message: string): boolean => {
+  const newProductKeywords = [
+    'new product', 'new products', 'newest product', 'newest products', 'latest product', 'latest products',
+    'just added', 'recently added', 'recently created', 'new item', 'new items', 'just launched', 'just released',
+    'new category', 'new collection', 'new arrival', 'new arrivals'
+  ];
+  
+  const lowercaseMessage = message.toLowerCase();
+  return newProductKeywords.some(keyword => lowercaseMessage.includes(keyword));
+};
+
+// Check if query is about specific products or categories
+const isSpecificProductQuery = (query: string): boolean => {
+  const specificProductTerms = [
+    'hoodie', 'hoodies', 'hoody', 't-shirt', 'tshirt', 'jacket', 'sweater',
+    'pants', 'jeans', 'shoe', 'shoes', 'dress', 'hat', 'cap', 'socks'
+  ];
+  
+  const queryLower = query.toLowerCase();
+  
+  // Check if query contains specific product terms
+  return specificProductTerms.some(term => queryLower.includes(term));
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -106,31 +522,49 @@ export async function POST(request: NextRequest) {
       }, { status: 500 });
     }
 
-    // Fetch product data from MongoDB
-    const products = await Product.find()
-      .select('_id productName regularPrice category subCategory sizes gallery description')
-      .limit(30);
+    // Check if forcing a refresh is needed
+    const forceRefresh = isAskingAboutNewProducts(message);
     
-    // Format product data with full context for better recommendations
+    // Debug log
+    console.log(`Processing query: "${message}". Force refresh? ${forceRefresh}`);
+    
+    // Fetch product data (either from cache or fresh from DB)
+    const products = await fetchFreshProductData(forceRefresh);
+    
+    // Format product data with enhanced context
     const productContext = prepareProductContext(products);
+    
+    // Log how many products are available for recommendations
+    console.log(`Prepared ${productContext.length} products for recommendations`);
 
     // Initialize the Gemini API client
     const genAI = new GoogleGenerativeAI(apiKey);
     
-    // Enhanced system prompt with product recommendation instructions
+    // Enhanced system prompt with better product recommendation instructions
     const systemPrompt = `
       You are Pinnacle Assistant, a helpful chatbot for the Pinnacle fashion store.
       
-      Here is information about some of our products that you can use to answer customer questions:
+      Here's information about our products that you can use to answer customer questions:
       ${JSON.stringify(productContext, null, 2)}
+      
+      Our store has these categories: ${Array.from(knownCategories).join(", ")}
+      And these subcategories: ${Array.from(knownSubCategories).join(", ")}
+      
+      Product information was last updated: ${new Date(lastCacheUpdate).toLocaleString()}
       
       When answering:
       1. Be conversational and helpful
-      2. When recommending products, mention the product name followed by price in parentheses like "Product Name ($XX.XX)"
+      2. IMPORTANT: When recommending products, ALWAYS use this exact format: "Product Name ($XX.XX)"
          Example: "I recommend our Classic White T-Shirt ($19.99) which is very popular."
-      3. If the user asks for product recommendations, suggest 2-3 specific products that match their request
-      4. If you don't know an answer, admit it and suggest contacting customer service
-      5. Keep responses concise (under 100 words when possible)
+      3. Recommend products from ANY category that matches the customer's request
+      4. If the user asks about a specific category of products, recommend items from that category
+      5. If you don't know an answer, admit it and suggest contacting customer service
+      6. Keep responses concise (under 100 words when possible)
+      
+      Examples of good product recommendations:
+      - "You might like our Cotton Polo Shirt ($24.99) in blue or black."
+      - "For winter, I recommend our Wool Jacket ($89.99) which is very warm and stylish."
+      - "Our newest addition is the Urban Comfort Pants ($45.99) which just arrived in our store."
     `;
 
     // Format the conversation for the API
@@ -168,13 +602,15 @@ export async function POST(request: NextRequest) {
         // If we get here, the model worked
         const responseText = result.response.text();
         
-        // Process the response to inject product cards when appropriate
-        const processedResponse = await processResponseWithProductCards(responseText, productContext);
+        // Process the response to inject product cards with improved matching
+        const processedResponse = await processResponseWithProductCards(responseText, productContext, message);
         
         return NextResponse.json({
           success: true,
           response: processedResponse,
-          model: modelName
+          model: modelName,
+          productCount: productContext.length,
+          cacheAge: Math.floor((Date.now() - lastCacheUpdate) / 1000) // Cache age in seconds
         });
       } catch (error) {
         console.error(`Error with model ${modelName}:`, error);

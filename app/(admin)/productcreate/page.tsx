@@ -106,10 +106,30 @@ export default function ProductCreate() {
   };
 
   const handleGalleryChange = (newGallery: GalleryItem[]) => {
-    setFormData((prev) => ({ ...prev, gallery: newGallery }));
-    if (newGallery.length > 0 && !mainProductImage) {
-      setMainProductImage(newGallery[0].src);
-    } else if (newGallery.length === 0) {
+    // Ensure each gallery item has valid color information
+    const galleryWithColors = newGallery.map(item => {
+      // If color is empty, set a default value based on the file name
+      // This helps the chatbot recognize colors even if admin didn't set them explicitly
+      if (!item.color || item.color.trim() === '') {
+        const colorKeywords = ['red', 'blue', 'green', 'black', 'white', 'yellow', 
+                              'purple', 'pink', 'orange', 'brown', 'grey', 'gray'];
+        
+        // Check if the filename contains any color keywords
+        const fileName = item.name.toLowerCase();
+        const detectedColor = colorKeywords.find(color => fileName.includes(color));
+        
+        return {
+          ...item,
+          color: detectedColor || 'default' // Use detected color or set to 'default'
+        };
+      }
+      return item;
+    });
+    
+    setFormData((prev) => ({ ...prev, gallery: galleryWithColors }));
+    if (galleryWithColors.length > 0 && !mainProductImage) {
+      setMainProductImage(galleryWithColors[0].src);
+    } else if (galleryWithColors.length === 0) {
       setMainProductImage(null);
     }
   };
@@ -134,6 +154,13 @@ export default function ProductCreate() {
       alert(
         "Please fill in all required fields (Product Name, Sizes, Category, Sub-Category, Regular Price) and add at least one product image with color!"
       );
+      return;
+    }
+
+    // Validate that all gallery items have color information
+    const missingColorItems = formData.gallery.filter(item => !item.color || item.color.trim() === '');
+    if (missingColorItems.length > 0) {
+      alert("Please specify a color for all product images. Colors help customers identify products and improve search results.");
       return;
     }
 

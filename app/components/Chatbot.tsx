@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
-import { FaRobot, FaUser, FaTimes, FaCommentDots } from 'react-icons/fa';
+import { FaRobot, FaUser, FaTimes, FaCommentDots, FaSync } from 'react-icons/fa';
 import { FiSend } from 'react-icons/fi';
 import Link from 'next/link';
 
@@ -65,6 +65,43 @@ const Chatbot: React.FC = () => {
     return { text: responseText, productRecommendations: undefined };
   };
 
+  // New function to check for special commands
+  const processSpecialCommands = (msg: string): boolean => {
+    // Command to refresh product data
+    if (msg.toLowerCase() === '/refresh' || msg.toLowerCase() === '/update products') {
+      setChatHistory(prev => [...prev, {
+        isUser: false,
+        text: "I'm refreshing my product knowledge... One moment please.",
+        timestamp: new Date()
+      }]);
+      
+      // Call a special refresh endpoint (optional)
+      fetch('/api/chatbot/refresh', { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+          setChatHistory(prev => [...prev, {
+            isUser: false,
+            text: data.success 
+              ? `My product knowledge has been refreshed! I now know about ${data.productCount} products.`
+              : "I tried to refresh my product knowledge, but encountered an issue. I'll still try my best to help you.",
+            timestamp: new Date()
+          }]);
+        })
+        .catch(error => {
+          console.error("Error refreshing product data:", error);
+          setChatHistory(prev => [...prev, {
+            isUser: false,
+            text: "I had trouble refreshing my product knowledge. Let's continue and I'll do my best to help you.",
+            timestamp: new Date()
+          }]);
+        });
+      
+      return true; // Command was processed
+    }
+    
+    return false; // No special command detected
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -79,6 +116,12 @@ const Chatbot: React.FC = () => {
     
     setChatHistory(prev => [...prev, userMessage]);
     setMessage('');
+    
+    // Check if this is a special command
+    if (processSpecialCommands(userMessage.text)) {
+      return; // Don't proceed with normal API call
+    }
+    
     setIsLoading(true);
     
     try {
@@ -118,6 +161,11 @@ const Chatbot: React.FC = () => {
           timestamp: new Date(),
           productRecommendations: processedResponse.productRecommendations
         }]);
+        
+        // If response includes metadata about product count, show it (optional)
+        if (data.productCount && data.cacheAge) {
+          console.log(`Chatbot knows about ${data.productCount} products. Cache age: ${data.cacheAge} seconds`);
+        }
       } else {
         // Add fallback response or error message to chat history
         setChatHistory(prev => [...prev, {
@@ -295,6 +343,8 @@ const Chatbot: React.FC = () => {
               </div>
             </div>
           ))}
+          
+          {/* Fix: Correctly structured loading animation */}
           {isLoading && (
             <div className="mb-3 flex justify-start">
               <div className="flex gap-2 items-start max-w-[80%]">
@@ -314,7 +364,7 @@ const Chatbot: React.FC = () => {
           <div ref={messagesEndRef} />
         </div>
         
-        {/* Chat input - redesigned input area */}
+        {/* Fix: Form tag should wrap all form content */}
         <form onSubmit={handleSubmit} className="border-t border-gray-800 p-3 bg-gray-900">
           <div className="relative">
             <input
