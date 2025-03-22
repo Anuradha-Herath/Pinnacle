@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useUserPreferences } from "@/app/context/UserPreferencesContext";
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
 import ProductCarousel from "../../components/ProductCarousel";
@@ -28,6 +29,9 @@ export default function EnhancedProductDetailPage() {
   const params = useParams();
   const router = useRouter();
   const id = params?.id as string;
+  
+  // Get user preferences
+  const { trackProductView } = useUserPreferences();
   
   // State to hold product data
   const [product, setProduct] = useState<any>(null);
@@ -124,6 +128,15 @@ export default function EnhancedProductDetailPage() {
         // Store recently viewed products in localStorage
         storeRecentlyViewed(formattedProduct);
         
+        // Track product view for personalization
+        trackProductView({
+          id: data.product._id,
+          name: data.product.productName,
+          category: data.product.category,
+          subCategory: data.product.subCategory,
+          timestamp: Date.now()
+        });
+        
         // Fetch related products based on category
         fetchRelatedProducts(data.product.category);
         
@@ -141,7 +154,7 @@ export default function EnhancedProductDetailPage() {
     if (id) {
       fetchProductData();
     }
-  }, [id]);
+  }, [id, trackProductView]);
   
   // Improved store recently viewed function
   const storeRecentlyViewed = (product: any) => {

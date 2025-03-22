@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { FaRobot, FaUser, FaTimes, FaCommentDots, FaSync } from 'react-icons/fa';
 import { FiSend } from 'react-icons/fi';
 import Link from 'next/link';
+import { useUserPreferences } from '../context/UserPreferencesContext';
 
 interface ChatMessage {
   isUser: boolean;
@@ -33,7 +34,10 @@ const Chatbot: React.FC = () => {
   ]);
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
+  
+  // Access user preferences
+  const { preferences } = useUserPreferences();
+  
   const toggleChat = () => {
     setIsChatOpen(!isChatOpen);
   };
@@ -65,9 +69,22 @@ const Chatbot: React.FC = () => {
     return { text: responseText, productRecommendations: undefined };
   };
 
-  // New function to check for special commands
+  // Special commands handler
   const processSpecialCommands = (msg: string): boolean => {
-    // Command to refresh product data
+    // Add a special command to show personalized recommendations
+    if (msg.toLowerCase() === '/personal' || msg.toLowerCase() === '/recommendations' || msg.toLowerCase() === '/for me') {
+      setChatHistory(prev => [...prev, {
+        isUser: false,
+        text: "Let me find some products just for you based on your preferences...",
+        timestamp: new Date()
+      }]);
+      
+      // Fetch personalized recommendations
+      fetchPersonalizedRecommendations();
+      return true;
+    }
+    
+    // Existing special commands
     if (msg.toLowerCase() === '/refresh' || msg.toLowerCase() === '/update products') {
       setChatHistory(prev => [...prev, {
         isUser: false,
@@ -101,6 +118,63 @@ const Chatbot: React.FC = () => {
     
     return false; // No special command detected
   };
+  
+  // New function to fetch personalized recommendations
+  const fetchPersonalizedRecommendations = async () => {
+    try {
+      setIsLoading(true);
+      
+      const response = await fetch('/api/chatbot/personalized', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ preferences })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to get personalized recommendations');
+      }
+      
+      const data = await response.json();
+      
+      if (data.success && data.personalizedProducts?.length > 0) {
+        // Format products for display
+        const recommendations = data.personalizedProducts.slice(0, 3).map((product: any) => ({
+          id: product._id,
+          name: product.productName,
+          price: product.regularPrice.toFixed(2),
+          image: product.gallery && product.gallery.length > 0 ? product.gallery[0].src : null,
+          category: product.category,
+          subCategory: product.subCategory
+        }));
+        
+        // Add response with personalized recommendations
+        setChatHistory(prev => [...prev, {
+          isUser: false,
+          text: `Based on your preferences, I think you might like these items:`,
+          timestamp: new Date(),
+          productRecommendations: recommendations
+        }]);
+      } else {
+        // Fallback message if no recommendations
+        setChatHistory(prev => [...prev, {
+          isUser: false,
+          text: "I don't have enough information about your preferences yet. Try browsing some products or telling me what styles you like!",
+          timestamp: new Date()
+        }]);
+      }
+    } catch (error) {
+      console.error("Error fetching personalized recommendations:", error);
+      setChatHistory(prev => [...prev, {
+        isUser: false,
+        text: "I couldn't get personalized recommendations right now. Please try again later.",
+        timestamp: new Date()
+      }]);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -117,9 +191,30 @@ const Chatbot: React.FC = () => {
     setChatHistory(prev => [...prev, userMessage]);
     setMessage('');
     
-    // Check if this is a special command
+    // Check for personalization-related keywords
+    const personalizationKeywords = [
+      'recommend for me',
+      'suggest for me',
+      'personalized', 
+      'my style', 
+      'my preferences', 
+      'what would suit me',
+      'what would look good on me'
+    ];
+    
+    const isRequestingPersonalized = personalizationKeywords.some(keyword => 
+      userMessage.text.toLowerCase().includes(keyword)
+    );
+    
+    // If user is asking for personalized recommendations
+    if (isRequestingPersonalized) {
+      fetchPersonalizedRecommendations();
+      return;
+    }
+    
+    // Check for special commands
     if (processSpecialCommands(userMessage.text)) {
-      return; // Don't proceed with normal API call
+      return;
     }
     
     setIsLoading(true);
@@ -135,6 +230,7 @@ const Chatbot: React.FC = () => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 second timeout
       
+      // Include user preferences in the API call
       const response = await fetch('/api/chatbot', {
         method: 'POST',
         headers: {
@@ -142,7 +238,8 @@ const Chatbot: React.FC = () => {
         },
         body: JSON.stringify({
           message: userMessage.text,
-          chatHistory: apiChatHistory
+          chatHistory: apiChatHistory,
+          userPreferences: preferences // Send user preferences to the API
         }),
         signal: controller.signal
       });
@@ -253,6 +350,16 @@ const Chatbot: React.FC = () => {
     "What's trending for beach parties this season?",
     "Build me an outfit for a formal dinner"
   ];
+
+  // Add personalization-specific prompts
+  const personalPrompts = [
+    "Recommend something for me",
+    "What would suit my style?",
+    "Show me personalized recommendations",
+    "What should I wear based on my preferences?"
+  ];
+  
+  const combinedPrompts = [...occasionPrompts, ...personalPrompts];
 
   return (
     <>
@@ -399,6 +506,13 @@ const Chatbot: React.FC = () => {
           </div>
         </form>
       </div>
+
+      {/* Add a way to show personalization is active */}
+      {isChatOpen && preferences && (
+        <div className="absolute top-14 right-8 bg-orange-100 text-orange-800 text-xs px-3 py-1 rounded-full">
+          Personalized mode active
+        </div>
+      )}
     </>
   );
 };

@@ -1,16 +1,42 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { useState, useEffect } from "react";
 import Chatbot from "./Chatbot";
+import PreferencesModal from "./PreferencesModal";
+import { useUserPreferences } from "../context/UserPreferencesContext";
 
 export default function ChatbotWrapper() {
   const pathname = usePathname();
+  const { preferences } = useUserPreferences();
+  const [showPreferencesModal, setShowPreferencesModal] = useState(false);
   
-  // Debug the actual pathname
-  console.log("Current pathname:", pathname);
+  // Check if it's a first-time user
+  useEffect(() => {
+    const hasSeenPreferencesModal = localStorage.getItem("hasSeenPreferencesModal");
+    
+    // If user hasn't provided any preferences and hasn't seen the modal
+    if (!hasSeenPreferencesModal && 
+        (!preferences.preferredStyles?.length && 
+         !preferences.preferredOccasions?.length && 
+         !preferences.preferredColors?.length)) {
+      
+      // Wait a bit before showing the modal
+      const timer = setTimeout(() => {
+        setShowPreferencesModal(true);
+      }, 5000); // Show after 5 seconds
+      
+      return () => clearTimeout(timer);
+    }
+  }, [preferences]);
   
-  // Check for admin routes - need to modify the check to match actual URL patterns
-  // Admin pages use URL patterns like /productcreate, /customerlist, etc.
+  // Mark as seen when modal is closed
+  const handleClosePreferencesModal = () => {
+    localStorage.setItem("hasSeenPreferencesModal", "true");
+    setShowPreferencesModal(false);
+  };
+  
+  // Don't render the chatbot if we're in the admin section
   const adminRoutes = [
     '/productcreate',
     '/productlist',
@@ -33,5 +59,13 @@ export default function ChatbotWrapper() {
     return null;
   }
   
-  return <Chatbot />;
+  return (
+    <>
+      <Chatbot />
+      <PreferencesModal 
+        isOpen={showPreferencesModal} 
+        onClose={handleClosePreferencesModal} 
+      />
+    </>
+  );
 }

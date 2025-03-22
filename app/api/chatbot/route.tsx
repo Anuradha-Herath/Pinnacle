@@ -534,8 +534,8 @@ export async function POST(request: NextRequest) {
     // Connect to the database
     await connectDB();
 
-    // Get the message and chat history from the request
-    const { message, chatHistory } = await request.json();
+    // Get the message, chat history, and user preferences from the request
+    const { message, chatHistory, userPreferences } = await request.json();
 
     // Check if API key is defined
     const apiKey = process.env.GEMINI_API_KEY;
@@ -564,8 +564,8 @@ export async function POST(request: NextRequest) {
     // Initialize the Gemini API client
     const genAI = new GoogleGenerativeAI(apiKey);
     
-    // Enhanced system prompt with better outfit recommendation instructions
-    const systemPrompt = `
+    // Enhanced system prompt with personalization
+    let systemPrompt = `
       You are Pinnacle Assistant, a helpful chatbot for the Pinnacle fashion store.
       
       Here's information about our products that you can use to answer customer questions:
@@ -575,6 +575,46 @@ export async function POST(request: NextRequest) {
       And these subcategories: ${Array.from(knownSubCategories).join(", ")}
       
       Product information was last updated: ${new Date(lastCacheUpdate).toLocaleString()}
+    `;
+    
+    // Add personalization if user preferences exist
+    if (userPreferences) {
+      systemPrompt += `
+      
+      USER PREFERENCES INFORMATION:
+      The user has viewed products in the following categories: ${
+        Object.entries(userPreferences.preferredCategories || {})
+          .sort(([, a], [, b]) => (b as number) - (a as number))
+          .slice(0, 5)
+          .map(([category]) => category)
+          .join(", ") || "None yet"
+      }
+      
+      The user's preferred styles: ${
+        userPreferences.preferredStyles?.length ? 
+          userPreferences.preferredStyles.join(", ") : 
+          "Not specified yet"
+      }
+      
+      The user's preferred seasons: ${
+        userPreferences.preferredSeasons?.length ? 
+          userPreferences.preferredSeasons.join(", ") : 
+          "Not specified yet"
+      }
+      
+      The user's preferred occasions: ${
+        userPreferences.preferredOccasions?.length ? 
+          userPreferences.preferredOccasions.join(", ") : 
+          "Not specified yet"
+      }
+      
+      Use this preference information when recommending products. Prioritize products that match the user's preferences.
+      If the user mentions wanting personalized recommendations, focus on these preferences heavily.
+      `;
+    }
+    
+    // Add outfit recommendation capabilities
+    systemPrompt += `
       
       When answering:
       1. Be conversational and helpful

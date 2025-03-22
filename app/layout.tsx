@@ -5,6 +5,7 @@ import "./globals.css";
 import { CartProvider } from "./context/CartContext";
 import { WishlistProvider } from "./context/WishlistContext";
 import { AuthProvider } from "./context/AuthContext";
+import { UserPreferencesProvider } from "./context/UserPreferencesContext";
 import { Toaster } from "react-hot-toast";
 import CloudinaryProvider from "./components/CloudinaryProvider";
 import ChatbotWrapper from "./components/ChatbotWrapper"; // Changed from Chatbot to ChatbotWrapper
@@ -37,13 +38,15 @@ export default function RootLayout({
         <AuthProvider>
           <WishlistProvider>
             <CartProvider>
-              <CloudinaryProvider>
-                <Providers>
-                  {children}
-                </Providers>
-                <Toaster position="bottom-right" />
-                <ChatbotWrapper /> {/* Using the wrapper instead of direct Chatbot */}
-              </CloudinaryProvider>
+              <UserPreferencesProvider>
+                <CloudinaryProvider>
+                  <Providers>
+                    {children}
+                  </Providers>
+                  <Toaster position="bottom-right" />
+                  <ChatbotWrapper /> {/* Using the wrapper instead of direct Chatbot */}
+                </CloudinaryProvider>
+              </UserPreferencesProvider>
             </CartProvider>
           </WishlistProvider>
         </AuthProvider>
