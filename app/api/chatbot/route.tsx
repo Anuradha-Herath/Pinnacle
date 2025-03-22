@@ -1,7 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenerativeAI, GenerativeModel, GenerateContentResult } from "@google/generative-ai";
 import Product from "@/models/Product";
+
+// Define interfaces for type safety
+interface ProductContextItem {
+  id: string;
+  name: string;
+  normalizedName: string;
+  price: string;
+  category: string;
+  subCategory: string;
+  sizes: string[];
+  colors: string[];
+  image: string | null;
+  description: string;
+  keywords: string;
+  tag: string | null;
+  createdAt: Date;
+}
+
+interface ProductMatch {
+  product: ProductContextItem;
+  similarity: number;
+  method: string;
+}
 
 // Connect to MongoDB
 const connectDB = async () => {
@@ -113,7 +136,7 @@ const fetchFreshProductData = async (forceRefresh: boolean = false): Promise<any
 export { productCache, lastCacheUpdate, fetchFreshProductData, knownCategories, knownSubCategories };
 
 // Enhanced function to prepare product context with more detailed information
-const prepareProductContext = (products: any[]) => {
+const prepareProductContext = (products: any[]): ProductContextItem[] => {
   return products.map(product => {
     // Extract colors from gallery items
     const colors = Array.isArray(product.gallery) 
@@ -121,7 +144,8 @@ const prepareProductContext = (products: any[]) => {
       : [];
     
     // Create a unique set of colors (no duplicates)
-    const uniqueColors = [...new Set(colors)];
+    // Add type assertion to specify that uniqueColors is a string array
+    const uniqueColors = [...new Set(colors)] as string[];
     
     // Add normalized name for better matching
     const normalizedName = product.productName.toLowerCase().trim();
@@ -159,15 +183,15 @@ const prepareProductContext = (products: any[]) => {
 };
 
 // Improved product matching algorithm with multiple strategies
-const findRecommendedProducts = (responseText: string, productContext: any[], userQuery: string) => {
+const findRecommendedProducts = (responseText: string, productContext: ProductContextItem[], userQuery: string): ProductContextItem[] => {
   console.log(`Finding product recommendations for: "${userQuery.substring(0, 50)}..."`);
-  const recommendedProducts = [];
+  const recommendedProducts: ProductContextItem[] = [];
   const debug = { strategies: {} as any };
   
   // Strategy 1: Look for explicit product recommendations in format "product_name ($price)"
   const productPriceRegex = /([A-Za-z0-9\s\-&']+)(\s+\(\$\d+(\.\d+)?\))/g;
-  let matches;
-  const explicitProductMatches = [];
+  let matches: RegExpExecArray | null;
+  const explicitProductMatches: string[] = [];
   
   while ((matches = productPriceRegex.exec(responseText)) !== null) {
     const potentialProductName = matches[1].trim();
@@ -178,7 +202,7 @@ const findRecommendedProducts = (responseText: string, productContext: any[], us
   // Strategy 2: Extract potential product names using more flexible patterns
   // This regex looks for capitalized phrases that might be product names
   const potentialProductRegex = /\b([A-Z][A-Za-z0-9\s\-&']{2,})\b/g;
-  const potentialProductMatches = [];
+  const potentialProductMatches: string[] = [];
   
   while ((matches = potentialProductRegex.exec(responseText)) !== null) {
     const potentialProduct = matches[1].trim();
@@ -201,7 +225,7 @@ const findRecommendedProducts = (responseText: string, productContext: any[], us
   debug.strategies.queryTerms = { terms: relevantQueryTerms };
   
   // Strategy 4: Look for specific categories or types of products in user query
-  const categoryMatches = [];
+  const categoryMatches: string[] = [];
   const productCategories = [
     'hoodie', 'hoody', 'hoodies', 'sweater', 'jacket', 'tshirt', 't-shirt', 'shirt', 
     'pants', 'jeans', 'shorts', 'dress', 'skirt', 'blouse', 'coat', 'shoes', 'sneakers', 
@@ -216,7 +240,7 @@ const findRecommendedProducts = (responseText: string, productContext: any[], us
   debug.strategies.categoryMatches = { found: categoryMatches };
   
   // Function to calculate string similarity (improved version)
-  const stringSimilarity = (str1: string, str2: string) => {
+  const stringSimilarity = (str1: string, str2: string): number => {
     const a = str1.toLowerCase();
     const b = str2.toLowerCase();
     
@@ -257,7 +281,7 @@ const findRecommendedProducts = (responseText: string, productContext: any[], us
   
   // Match products based on explicit recommendations (highest priority)
   if (explicitProductMatches.length > 0) {
-    const matches = [];
+    const matches: ProductMatch[] = [];
     explicitProductMatches.forEach(productName => {
       for (const product of productContext) {
         // Look for strong matches with product name
@@ -282,7 +306,7 @@ const findRecommendedProducts = (responseText: string, productContext: any[], us
   // If specific product mentioned in query, try direct matching (high priority)
   // Important for specific product names like "Calypso Hoody"
   if (recommendedProducts.length === 0) {
-    const matches = [];
+    const matches: ProductMatch[] = [];
     for (const product of productContext) {
       const queryLower = userQuery.toLowerCase();
       const productNameLower = product.normalizedName;
@@ -336,7 +360,7 @@ const findRecommendedProducts = (responseText: string, productContext: any[], us
   
   // If we still don't have recommendations, try using potential product names
   if (recommendedProducts.length === 0 && potentialProductMatches.length > 0) {
-    const matches = [];
+    const matches: ProductMatch[] = [];
     potentialProductMatches.forEach(productName => {
       for (const product of productContext) {
         // Check if the product name or keywords contains the potential product name
@@ -415,13 +439,13 @@ const findRecommendedProducts = (responseText: string, productContext: any[], us
   // If we still don't have recommendations but specific colors are mentioned
   if (recommendedProducts.length === 0) {
     const colorRegex = /\b(red|blue|green|black|white|yellow|purple|pink|orange|brown|grey|gray)\b/gi;
-    const mentionedColors = [];
+    const mentionedColors: string[] = [];
     while ((matches = colorRegex.exec(userQuery + ' ' + responseText)) !== null) {
       mentionedColors.push(matches[1].toLowerCase());
     }
     
     if (mentionedColors.length > 0) {
-      const colorMatches = [];
+      const colorMatches: ProductContextItem[] = [];
       productContext.forEach(product => {
         if (Array.isArray(product.colors)) {
           const hasMatchingColor = product.colors.some((color: string) => 
@@ -467,7 +491,7 @@ const findRecommendedProducts = (responseText: string, productContext: any[], us
 };
 
 // Process AI response to inject product cards with improved matching
-const processResponseWithProductCards = async (responseText: string, productContext: any[], userQuery: string) => {
+const processResponseWithProductCards = async (responseText: string, productContext: ProductContextItem[], userQuery: string) => {
   // Find recommended products using our improved algorithm
   const recommendedProducts = findRecommendedProducts(responseText, productContext, userQuery);
   
@@ -600,7 +624,7 @@ export async function POST(request: NextRequest) {
             },
           }),
           timeoutPromise(15000) // 15 second timeout
-        ]);
+        ]) as GenerateContentResult;
 
         // If we get here, the model worked
         const responseText = result.response.text();

@@ -175,11 +175,11 @@ const Chatbot: React.FC = () => {
         }]);
         console.error("Chatbot error:", data.error);
       }
-    } catch (error) {
+    } catch (error: unknown) {  // Explicitly type the error as unknown
       console.error("Error calling chatbot API:", error);
       
-      // Check if it was an abort error (timeout)
-      if (error.name === 'AbortError') {
+      // Check if it was an abort error (timeout) - Add proper type checking
+      if (error instanceof Error && error.name === 'AbortError') {
         setChatHistory(prev => [...prev, {
           isUser: false,
           text: "Sorry, the request took too long to process. Please try a shorter question or try again later.",
