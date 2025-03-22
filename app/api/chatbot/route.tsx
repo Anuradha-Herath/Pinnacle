@@ -534,8 +534,8 @@ export async function POST(request: NextRequest) {
     // Connect to the database
     await connectDB();
 
-    // Get the message and chat history from the request
-    const { message, chatHistory } = await request.json();
+    // Get the message, chat history and user preferences from the request
+    const { message, chatHistory, userPreferences } = await request.json();
 
     // Check if API key is defined
     const apiKey = process.env.GEMINI_API_KEY;
@@ -565,7 +565,7 @@ export async function POST(request: NextRequest) {
     const genAI = new GoogleGenerativeAI(apiKey);
     
     // Enhanced system prompt with better outfit recommendation instructions
-    const systemPrompt = `
+    let systemPrompt = `
       You are Pinnacle Assistant, a helpful chatbot for the Pinnacle fashion store.
       
       Here's information about our products that you can use to answer customer questions:
@@ -593,6 +593,33 @@ export async function POST(request: NextRequest) {
       "For a summer wedding, I recommend our Elegant Floral Dress ($79.99) in blue, paired with our Strappy Heels ($59.99) in silver. 
       Complete the look with a Crystal Pendant Necklace ($29.99) and our Small Clutch Bag ($45.99) in silver."
     `;
+
+    // Add user preferences to system prompt if available
+    if (userPreferences && Object.keys(userPreferences).length > 0) {
+      const topCategories = Object.entries(userPreferences.categories || {})
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 3)
+        .map(([category]) => category);
+        
+      const topColors = Object.entries(userPreferences.colors || {})
+        .sort(([, a], [, b]) => b - a)
+        .slice(0, 3)
+        .map(([color]) => color);
+      
+      systemPrompt += `
+      
+      PERSONALIZED RECOMMENDATIONS:
+      This user has shown interest in the following:
+      - Categories: ${topCategories.length > 0 ? topCategories.join(", ") : "No strong category preferences yet"}
+      - Colors: ${topColors.length > 0 ? topColors.join(", ") : "No strong color preferences yet"}
+      ${userPreferences.priceRange?.count > 0 ? 
+        `- Price range: $${userPreferences.priceRange.min} to $${userPreferences.priceRange.max}` : 
+        '- No price range preferences yet'}
+      
+      When appropriate, tailor your product recommendations to align with these preferences,
+      but still be responsive to their specific query which may indicate different needs.
+      `;
+    }
 
     // Format the conversation for the API
     const formattedChatHistory = chatHistory.map((msg: any) => ({

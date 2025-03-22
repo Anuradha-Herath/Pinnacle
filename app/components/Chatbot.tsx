@@ -21,6 +21,18 @@ interface ProductRecommendation {
   subCategory: string;
 }
 
+interface UserPreference {
+  categories: Record<string, number>;  // Category name -> interest score
+  products: Record<string, number>;    // Product ID -> interest score
+  colors: Record<string, number>;      // Color name -> interest score
+  priceRange: {
+    min: number;
+    max: number;
+    count: number;
+  };
+  lastUpdated: number;
+}
+
 const Chatbot: React.FC = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [message, setMessage] = useState('');
@@ -32,10 +44,117 @@ const Chatbot: React.FC = () => {
     }
   ]);
   const [isLoading, setIsLoading] = useState(false);
+  const [userPreferences, setUserPreferences] = useState<UserPreference>({
+    categories: {},
+    products: {},
+    colors: {},
+    priceRange: { min: 0, max: 1000, count: 0 },
+    lastUpdated: Date.now()
+  });
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [personalizedRecommendations, setPersonalizedRecommendations] = useState<ProductRecommendation[]>([]);
+  const [showPersonalizedRecs, setShowPersonalizedRecs] = useState(false);
 
   const toggleChat = () => {
     setIsChatOpen(!isChatOpen);
+    if (!isChatOpen) {
+      // Load personalized recommendations when opening chat
+      loadPersonalizedRecommendations();
+    }
+  };
+
+  // Load user preferences from localStorage on component mount
+  useEffect(() => {
+    const savedPreferences = localStorage.getItem('pinnacle_user_preferences');
+    if (savedPreferences) {
+      try {
+        const parsedPreferences = JSON.parse(savedPreferences);
+        setUserPreferences(parsedPreferences);
+      } catch (e) {
+        console.error("Error parsing saved preferences:", e);
+      }
+    }
+    
+    // Also load browsing history into local state
+    loadBrowsingHistory();
+  }, []);
+
+  // Load browsing history from localStorage
+  const loadBrowsingHistory = () => {
+    try {
+      // Get recently viewed products
+      const recentlyViewed = JSON.parse(localStorage.getItem('recentlyViewed') || '[]');
+      
+      // Update user preferences based on browsing history
+      const updatedPreferences = { ...userPreferences };
+      
+      recentlyViewed.forEach((product: any) => {
+        // Increment interest in this product
+        if (product.id) {
+          updatedPreferences.products[product.id] = (updatedPreferences.products[product.id] || 0) + 1;
+        }
+        
+        // If product has category information, update category preferences
+        if (product.category) {
+          updatedPreferences.categories[product.category] = 
+            (updatedPreferences.categories[product.category] || 0) + 1;
+        }
+        
+        // Track price ranges viewed
+        if (product.price) {
+          const price = parseFloat(product.price);
+          if (!isNaN(price)) {
+            updatedPreferences.priceRange.min = Math.min(updatedPreferences.priceRange.min, price);
+            updatedPreferences.priceRange.max = Math.max(updatedPreferences.priceRange.max, price);
+            updatedPreferences.priceRange.count++;
+          }
+        }
+      });
+      
+      // Save updated preferences back to state and localStorage
+      updatedPreferences.lastUpdated = Date.now();
+      setUserPreferences(updatedPreferences);
+      localStorage.setItem('pinnacle_user_preferences', JSON.stringify(updatedPreferences));
+      
+    } catch (e) {
+      console.error("Error processing browsing history:", e);
+    }
+  };
+
+  // Fetch personalized recommendations based on user preferences
+  const loadPersonalizedRecommendations = async () => {
+    try {
+      // Skip if we don't have enough preference data
+      const hasPreferences = Object.keys(userPreferences.categories).length > 0 || 
+                             Object.keys(userPreferences.products).length > 0;
+      
+      if (!hasPreferences) {
+        console.log("Not enough preference data for personalized recommendations");
+        return;
+      }
+
+      // Call API to get recommendations based on preferences
+      const response = await fetch('/api/recommendations/personalized', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ preferences: userPreferences })
+      });
+      
+      if (!response.ok) {
+        throw new Error("Failed to fetch personalized recommendations");
+      }
+      
+      const data = await response.json();
+      
+      if (data.recommendations && data.recommendations.length > 0) {
+        setPersonalizedRecommendations(data.recommendations);
+        setShowPersonalizedRecs(true);
+      }
+    } catch (e) {
+      console.error("Error loading personalized recommendations:", e);
+    }
   };
 
   // Process the response to extract product recommendations
@@ -99,6 +218,20 @@ const Chatbot: React.FC = () => {
       return true; // Command was processed
     }
     
+    // New command to show personalized recommendations
+    if (msg.toLowerCase() === '/recommendations' || 
+        msg.toLowerCase().includes("show me recommendations") || 
+        msg.toLowerCase().includes("recommend for me")) {
+      loadPersonalizedRecommendations();
+      setChatHistory(prev => [...prev, {
+        isUser: false,
+        text: "Here are some personalized recommendations based on your preferences and browsing history!",
+        timestamp: new Date()
+      }]);
+      setShowPersonalizedRecs(true);
+      return true;
+    }
+    
     return false; // No special command detected
   };
 
@@ -131,7 +264,7 @@ const Chatbot: React.FC = () => {
         text: msg.text
       }));
       
-      // Call the chatbot API with a timeout
+      // Call the chatbot API with a timeout and include user preferences
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 second timeout
       
@@ -142,7 +275,8 @@ const Chatbot: React.FC = () => {
         },
         body: JSON.stringify({
           message: userMessage.text,
-          chatHistory: apiChatHistory
+          chatHistory: apiChatHistory,
+          userPreferences: userPreferences  // Include user preferences in the request
         }),
         signal: controller.signal
       });
@@ -162,10 +296,14 @@ const Chatbot: React.FC = () => {
           productRecommendations: processedResponse.productRecommendations
         }]);
         
-        // If response includes metadata about product count, show it (optional)
-        if (data.productCount && data.cacheAge) {
-          console.log(`Chatbot knows about ${data.productCount} products. Cache age: ${data.cacheAge} seconds`);
+        // If the response includes recommendations, hide personalized recommendations panel
+        if (processedResponse.productRecommendations?.length > 0) {
+          setShowPersonalizedRecs(false);
         }
+        
+        // Track user interests based on their query
+        updateUserPreferencesFromQuery(userMessage.text, processedResponse.productRecommendations);
+        
       } else {
         // Add fallback response or error message to chat history
         setChatHistory(prev => [...prev, {
@@ -195,6 +333,56 @@ const Chatbot: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Update user preferences based on chat queries and recommended products
+  const updateUserPreferencesFromQuery = (query: string, recommendations?: ProductRecommendation[]) => {
+    const updatedPreferences = { ...userPreferences };
+    const queryLower = query.toLowerCase();
+    
+    // Extract mentioned categories from query
+    const categoryKeywords = [
+      'men', 'women', 'accessories', 'shoes', 'shirts', 'pants', 'dresses',
+      'hoodies', 'jackets', 'sweaters', 't-shirts', 'jeans'
+    ];
+    
+    categoryKeywords.forEach(category => {
+      if (queryLower.includes(category)) {
+        updatedPreferences.categories[category] = (updatedPreferences.categories[category] || 0) + 1;
+      }
+    });
+    
+    // Extract color preferences from query
+    const colorKeywords = [
+      'red', 'blue', 'green', 'black', 'white', 'yellow', 'purple', 
+      'pink', 'orange', 'brown', 'gray', 'grey'
+    ];
+    
+    colorKeywords.forEach(color => {
+      if (queryLower.includes(color)) {
+        updatedPreferences.colors[color] = (updatedPreferences.colors[color] || 0) + 1;
+      }
+    });
+    
+    // Register interest in recommended products
+    if (recommendations && recommendations.length > 0) {
+      recommendations.forEach(product => {
+        if (product.id) {
+          updatedPreferences.products[product.id] = (updatedPreferences.products[product.id] || 0) + 1;
+        }
+        if (product.category) {
+          updatedPreferences.categories[product.category] = 
+            (updatedPreferences.categories[product.category] || 0) + 1;
+        }
+      });
+    }
+    
+    // Update lastUpdated timestamp
+    updatedPreferences.lastUpdated = Date.now();
+    
+    // Save updated preferences
+    setUserPreferences(updatedPreferences);
+    localStorage.setItem('pinnacle_user_preferences', JSON.stringify(updatedPreferences));
   };
 
   // Render product recommendations as cards
@@ -243,7 +431,78 @@ const Chatbot: React.FC = () => {
   // Auto-scroll to the latest message
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [chatHistory]);
+  }, [chatHistory, showPersonalizedRecs]);
+
+  // New component for personalized recommendations section
+  const PersonalizedRecommendationsPanel = () => {
+    if (!showPersonalizedRecs || personalizedRecommendations.length === 0) return null;
+    
+    return (
+      <div className="mb-4 p-3 rounded-2xl bg-gradient-to-br from-gray-800 to-gray-900 border border-orange-500/20">
+        <h3 className="text-orange-500 font-medium mb-2">Your Personalized Recommendations</h3>
+        <div className="grid grid-cols-1 gap-3">
+          {personalizedRecommendations.map((product, idx) => (
+            <ProductCard key={idx} product={product} />
+          ))}
+        </div>
+        <button 
+          onClick={() => setShowPersonalizedRecs(false)}
+          className="mt-2 text-xs text-gray-400 hover:text-white"
+        >
+          Hide recommendations
+        </button>
+      </div>
+    );
+  };
+
+  // Add suggested prompts based on user preferences
+  const getSuggestedPrompts = () => {
+    if (!userPreferences) return occasionPrompts;
+    
+    const prompts = [];
+    
+    // Get top categories
+    const topCategories = Object.entries(userPreferences.categories)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 2)
+      .map(([category]) => category);
+    
+    // Get top colors
+    const topColors = Object.entries(userPreferences.colors)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 2)
+      .map(([color]) => color);
+    
+    // Generate personalized prompts
+    if (topCategories.length > 0) {
+      prompts.push(`Show me the latest ${topCategories[0]} items`);
+      
+      if (topColors.length > 0) {
+        prompts.push(`Do you have ${topColors[0]} ${topCategories[0]}?`);
+      }
+    }
+    
+    // Add more personalized prompts if we have enough data
+    if (Object.keys(userPreferences.products).length > 0) {
+      prompts.push("Recommend similar products to what I've viewed");
+    }
+    
+    // Always include "Show personalized recommendations" if we have preferences
+    if (Object.keys(userPreferences.categories).length > 0 || 
+        Object.keys(userPreferences.products).length > 0) {
+      prompts.push("Show me personalized recommendations");
+    }
+    
+    // Fill in with default prompts if needed
+    while (prompts.length < 3) {
+      const randomOccasionPrompt = occasionPrompts[Math.floor(Math.random() * occasionPrompts.length)];
+      if (!prompts.includes(randomOccasionPrompt)) {
+        prompts.push(randomOccasionPrompt);
+      }
+    }
+    
+    return prompts.slice(0, 3);
+  };
 
   // Add suggested prompts related to occasions
   const occasionPrompts = [
@@ -253,6 +512,9 @@ const Chatbot: React.FC = () => {
     "What's trending for beach parties this season?",
     "Build me an outfit for a formal dinner"
   ];
+
+  // Get personalized prompts
+  const suggestedPrompts = getSuggestedPrompts();
 
   return (
     <>
@@ -309,6 +571,9 @@ const Chatbot: React.FC = () => {
         
         {/* Chat messages - redesigned bubbles */}
         <div className="p-4 overflow-y-auto bg-gray-900" style={{ maxHeight: '60vh', backgroundImage: 'radial-gradient(circle at top right, #1f2937 0%, #111827 100%)' }}>
+          {/* Personalized recommendations panel */}
+          <PersonalizedRecommendationsPanel />
+          
           {chatHistory.map((msg, idx) => (
             <div
               key={idx}
@@ -371,6 +636,22 @@ const Chatbot: React.FC = () => {
             </div>
           )}
           <div ref={messagesEndRef} />
+        </div>
+        
+        {/* Quick suggested prompts */}
+        <div className="border-t border-gray-800 px-3 pt-2 pb-0 bg-gray-900 flex flex-wrap gap-1">
+          {suggestedPrompts.map((prompt, index) => (
+            <button
+              key={index}
+              onClick={() => {
+                setMessage(prompt);
+                document.querySelector('input')?.focus();
+              }}
+              className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 hover:text-white px-2 py-1 rounded-full border border-gray-700 mb-2 transition-colors"
+            >
+              {prompt}
+            </button>
+          ))}
         </div>
         
         {/* Fix: Form tag should wrap all form content */}
