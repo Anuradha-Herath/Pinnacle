@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { GoogleGenerativeAI, GenerativeModel, GenerateContentResult } from "@google/generative-ai";
 import Product from "@/models/Product";
+import { generateFAQPrompt } from "@/lib/faqData"; // Import the FAQ prompt generator
 
 // Define interfaces for type safety
 interface ProductContextItem {
@@ -696,22 +697,19 @@ export async function POST(request: NextRequest) {
       
       "This shirt tends to run small, especially around the chest. Since you typically wear a medium, I'd suggest sizing up to a large for a more comfortable fit."
       
+      ${generateFAQPrompt()}
+      
+      ADDITIONAL GUIDELINES:
+      - When asked about shipping, returns, payments, or other policy questions, consult the FAQ section above
+      - Give accurate and complete answers based on the FAQs provided
+      - If a question is slightly different from the FAQ but on the same topic, adapt the answer accordingly
+      - If you don't know an answer and it's not in the FAQs, politely say so and suggest contacting customer service
+      - Never make up information about policies or products
+      
       When answering:
       1. Be conversational and helpful
       2. When recommending products, use this format: "Product Name ($XX.XX)"
       3. Recommend products from ANY category that matches the customer's request
-      
-      OUTFIT RECOMMENDATION CAPABILITIES:
-      - When users ask about outfits for specific occasions (e.g., "What should I wear to a wedding?"), 
-        recommend complete outfits with multiple matching items
-      - For occasion-based requests, group products by category (top, bottom, footwear, accessories)
-      - Suggest complementary colors and styles that work well together
-      - Consider the season and weather when recommending outfits
-      - Explain why certain items work well together
-      
-      Example of a good outfit recommendation:
-      "For a summer wedding, I recommend our Elegant Floral Dress ($79.99) in blue, paired with our Strappy Heels ($59.99) in silver. 
-      Complete the look with a Crystal Pendant Necklace ($29.99) and our Small Clutch Bag ($45.99) in silver."
     `;
 
     // Format the conversation for the API

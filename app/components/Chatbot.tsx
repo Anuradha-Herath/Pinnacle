@@ -250,14 +250,44 @@ const Chatbot: React.FC = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatHistory]);
 
-  // Add suggested prompts related to occasions
-  const occasionPrompts = [
-    "What should I wear to a summer wedding?",
-    "Help me find an outfit for a job interview",
-    "Suggest a casual outfit for a weekend brunch",
-    "What's trending for beach parties this season?",
-    "Build me an outfit for a formal dinner"
+  // Replace the existing occasion prompts with a mix of occasion + FAQ prompts
+  const suggestedPrompts = [
+    {
+      text: "What's your return policy?",
+      category: "faq"
+    },
+    {
+      text: "How long does shipping take?",
+      category: "faq"
+    },
+    {
+      text: "What should I wear to a summer wedding?",
+      category: "outfit"
+    },
+    {
+      text: "Do you offer free shipping?",
+      category: "faq"
+    },
+    {
+      text: "How do I find my size?",
+      category: "faq"
+    },
+    {
+      text: "Build me a casual weekend outfit",
+      category: "outfit"
+    }
   ];
+
+  // Helper function to handle clicking suggested prompts
+  const handleSuggestedPrompt = (prompt: string) => {
+    // Set the message
+    setMessage(prompt);
+    
+    // Submit the form with a small delay to show the message first
+    setTimeout(() => {
+      handleSubmit(new Event('submit') as any);
+    }, 100);
+  };
 
   return (
     <>
@@ -314,6 +344,27 @@ const Chatbot: React.FC = () => {
         
         {/* Chat messages - redesigned bubbles */}
         <div className="p-4 overflow-y-auto bg-gray-900" style={{ maxHeight: '60vh', backgroundImage: 'radial-gradient(circle at top right, #1f2937 0%, #111827 100%)' }}>
+          {/* Intro message with suggested questions/prompts - show only at start */}
+          {chatHistory.length === 1 && (
+            <div className="mb-6 p-3 bg-gray-800/50 rounded-lg border border-gray-700">
+              <p className="text-xs text-gray-400 mb-2">Suggested questions:</p>
+              <div className="flex flex-wrap gap-2">
+                {suggestedPrompts.map((prompt, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => handleSuggestedPrompt(prompt.text)}
+                    className={`text-xs py-1.5 px-2.5 rounded-full border ${
+                      prompt.category === 'faq' 
+                        ? 'border-blue-500/30 text-blue-500 hover:bg-blue-500/20' 
+                        : 'border-orange-500/30 text-orange-400 hover:bg-orange-500/20'
+                    } transition-colors`}
+                  >
+                    {prompt.text}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
           {chatHistory.map((msg, idx) => (
             <div
               key={idx}
