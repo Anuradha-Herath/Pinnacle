@@ -12,16 +12,32 @@ export default function ChatbotWrapper() {
   // Check for admin routes - need to modify the check to match actual URL patterns
   // Admin pages use URL patterns like /productcreate, /customerlist, etc.
   const adminRoutes = [
-    '/productcreate',
-    '/productlist',
-    '/productdetails',
-    '/customerlist',
-    '/discountedit',
-    '/couponedit',
-    '/categorydetails',
-    '/adminprofile',
-    '/adminlogin',
-    '/dashboard'
+    "/productcreate",
+    "/productlist",
+    "/productdetails",
+    "/customerlist",
+    "/discountedit",
+    "/couponedit",
+    "/categorydetails",
+    "/adminprofile",
+    "/adminlogin",
+    "/dashboard",
+    "/categorylist",
+    "/categorycreate",
+    "/categoryedit",
+    "/categorydelete",
+    "/productedit",
+    "/productdelete",
+    "/customeredit",
+    "/customerdelete",
+    "/discountlist",
+    "/discountcreate",
+    "/discountdelete",
+    "/couponlist",
+    "/couponcreate",
+    "/coupondelete",
+    "/adminlist",
+    "/orderlist",
   ];
   
   // Check if the current path is an admin route
