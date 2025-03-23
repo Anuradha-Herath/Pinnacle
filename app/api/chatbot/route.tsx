@@ -183,7 +183,7 @@ const prepareProductContext = (products: any[]): ProductContextItem[] => {
 };
 
 // Improved product matching algorithm with multiple strategies
-const findRecommendedProducts = (responseText: string, productContext: ProductContextItem[], userQuery: string): ProductContextItem[] => {
+const findRecommendedProducts = (responseText: string, productContext: ProductContextItem[], userQuery: string, userPreferences?: any): ProductContextItem[] => {
   console.log(`Finding product recommendations for: "${userQuery.substring(0, 50)}..."`);
   const recommendedProducts: ProductContextItem[] = [];
   const debug = { strategies: {} as any };
@@ -480,6 +480,71 @@ const findRecommendedProducts = (responseText: string, productContext: ProductCo
     debug.strategies.fallback = { used: true };
   }
 
+  // New strategy: Use user preferences for personalized recommendations
+  if (recommendedProducts.length < 3 && userPreferences) {
+    console.log("Using user preferences for recommendations");
+    
+    const preferenceMatches: ProductMatch[] = [];
+    
+    // Calculate a preference score for each product based on user history
+    for (const product of productContext) {
+      let score = 0;
+      
+      // Check if product matches user's preferred categories
+      if (product.category && userPreferences.topCategories.includes(product.category.toLowerCase())) {
+        score += 3; // Higher weight for category match
+      }
+      
+      // Check if product matches user's preferred colors
+      if (product.colors && userPreferences.topColors) {
+        for (const color of product.colors) {
+          if (userPreferences.topColors.some((c: string) => color.toLowerCase().includes(c.toLowerCase()))) {
+            score += 2;
+            break;
+          }
+        }
+      }
+      
+      // Check if product matches user's preferred sizes
+      if (product.sizes && userPreferences.topSizes) {
+        for (const size of product.sizes) {
+          if (userPreferences.topSizes.includes(size)) {
+            score += 1;
+            break;
+          }
+        }
+      }
+      
+      // Check if product is something the user recently viewed
+      if (userPreferences.recentlyViewed && 
+          userPreferences.recentlyViewed.some((name: string) => 
+            product.name.toLowerCase().includes(name.toLowerCase()) || 
+            name.toLowerCase().includes(product.name.toLowerCase()))) {
+        score += 2; // Boost score for previously viewed items
+      }
+      
+      // Only include products with some preference match
+      if (score > 0) {
+        preferenceMatches.push({
+          product,
+          similarity: score / 8, // Normalize score between 0-1
+          method: 'preferences'
+        });
+      }
+    }
+    
+    // Sort by preference score and add unique products
+    preferenceMatches.sort((a, b) => b.similarity - a.similarity);
+    for (const match of preferenceMatches) {
+      if (!recommendedProducts.some(p => p.id === match.product.id)) {
+        recommendedProducts.push(match.product);
+        if (recommendedProducts.length >= 3) break;
+      }
+    }
+    
+    debug.strategies.preferences = { found: preferenceMatches.length };
+  }
+
   console.log("Recommendation debug info:", JSON.stringify(debug, null, 2));
   console.log(`Found ${recommendedProducts.length} recommended products`);
   if (recommendedProducts.length > 0) {
@@ -491,9 +556,19 @@ const findRecommendedProducts = (responseText: string, productContext: ProductCo
 };
 
 // Process AI response to inject product cards with improved matching
-const processResponseWithProductCards = async (responseText: string, productContext: ProductContextItem[], userQuery: string) => {
-  // Find recommended products using our improved algorithm
-  const recommendedProducts = findRecommendedProducts(responseText, productContext, userQuery);
+const processResponseWithProductCards = async (
+  responseText: string, 
+  productContext: ProductContextItem[], 
+  userQuery: string,
+  userPreferences?: any
+) => {
+  // Find recommended products using our improved algorithm with user preferences
+  const recommendedProducts = findRecommendedProducts(
+    responseText, 
+    productContext, 
+    userQuery, 
+    userPreferences
+  );
   
   // If we found matching products, add structured product data to the response
   if (recommendedProducts.length > 0) {
@@ -535,7 +610,7 @@ export async function POST(request: NextRequest) {
     await connectDB();
 
     // Get the message and chat history from the request
-    const { message, chatHistory } = await request.json();
+    const { message, chatHistory, userContext } = await request.json();
 
     // Check if API key is defined
     const apiKey = process.env.GEMINI_API_KEY;
@@ -564,7 +639,7 @@ export async function POST(request: NextRequest) {
     // Initialize the Gemini API client
     const genAI = new GoogleGenerativeAI(apiKey);
     
-    // Enhanced system prompt with better outfit recommendation instructions
+    // Enhanced system prompt with user preferences
     const systemPrompt = `
       You are Pinnacle Assistant, a helpful chatbot for the Pinnacle fashion store.
       
@@ -575,6 +650,19 @@ export async function POST(request: NextRequest) {
       And these subcategories: ${Array.from(knownSubCategories).join(", ")}
       
       Product information was last updated: ${new Date(lastCacheUpdate).toLocaleString()}
+      
+      ${userContext ? `
+      USER PREFERENCES:
+      Recently viewed products: ${userContext.recentlyViewed?.join(", ") || "None"}
+      Preferred categories: ${userContext.topCategories?.join(", ") || "None"}
+      Preferred colors: ${userContext.topColors?.join(", ") || "None"}
+      Preferred sizes: ${userContext.topSizes?.join(", ") || "None"}
+      Preferred price ranges: ${userContext.topPriceRanges?.join(", ") || "None"}
+      
+      When making recommendations, prioritize products that match the user's preferences,
+      especially for categories and colors they've shown interest in.
+      If they haven't specified a preference in their query, use their browsing history as a guide.
+      ` : ''}
       
       When answering:
       1. Be conversational and helpful
@@ -629,8 +717,13 @@ export async function POST(request: NextRequest) {
         // If we get here, the model worked
         const responseText = result.response.text();
         
-        // Process the response to inject product cards with improved matching
-        const processedResponse = await processResponseWithProductCards(responseText, productContext, message);
+        // Process the response to inject product cards with improved matching and user preferences
+        const processedResponse = await processResponseWithProductCards(
+          responseText, 
+          productContext, 
+          message,
+          userContext // Pass user preferences to the processor
+        );
         
         return NextResponse.json({
           success: true,

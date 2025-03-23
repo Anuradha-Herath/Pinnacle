@@ -8,6 +8,7 @@ import { useWishlist } from "../context/WishlistContext";
 import { useCart } from "../context/CartContext";
 import { toast } from "react-hot-toast";
 import { cartNotifications, wishlistNotifications } from "@/lib/notificationService";
+import { trackProductView } from "@/lib/userPreferenceService";
 
 interface Product {
   id: string; 
@@ -16,11 +17,13 @@ interface Product {
   image: string;
   colors: string[];
   sizes: string[];
+  category?: string;       // Added missing property
+  subCategory?: string;    // Added missing property
   discount?: {
     percentage: number;
     discountedPrice: number;
   };
-  tag?: string | null; // Add tag field to the interface
+  tag?: string | null;
 }
 
 interface ProductCardProps {
@@ -119,6 +122,17 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
   };
   
   const navigateToProductDetail = () => {
+    // Track the product view before navigating
+    trackProductView({
+      id: product.id,
+      name: product.name,
+      category: product.category || "",
+      subCategory: product.subCategory || "",
+      colors: product.colors || [],
+      sizes: product.sizes || [],
+      price: product.price
+    });
+    
     router.push(`/product/${product.id}`);
   };
 

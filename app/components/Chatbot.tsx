@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { FaRobot, FaUser, FaTimes, FaCommentDots, FaSync } from 'react-icons/fa';
 import { FiSend } from 'react-icons/fi';
 import Link from 'next/link';
+import { getChatbotUserContext } from '@/lib/userPreferenceService';
 
 interface ChatMessage {
   isUser: boolean;
@@ -131,6 +132,9 @@ const Chatbot: React.FC = () => {
         text: msg.text
       }));
       
+      // Get user preferences for personalization
+      const userContext = getChatbotUserContext();
+      
       // Call the chatbot API with a timeout
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 second timeout
@@ -142,7 +146,8 @@ const Chatbot: React.FC = () => {
         },
         body: JSON.stringify({
           message: userMessage.text,
-          chatHistory: apiChatHistory
+          chatHistory: apiChatHistory,
+          userContext // Pass user preferences to API
         }),
         signal: controller.signal
       });

@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import { useAuth } from "./AuthContext";
 import { toast } from "react-hot-toast";
 import { getValidImageUrl } from "@/lib/imageUtils"; // Import this utility
+import { trackProductAction } from '@/lib/userPreferenceService';
 
 // Define types
 export interface CartItem {
@@ -14,6 +15,9 @@ export interface CartItem {
   size?: string;
   color?: string;
   quantity: number;
+  // Add missing properties that are used in trackProductAction
+  category?: string;
+  subCategory?: string;
 }
 
 export interface CartContextType {
@@ -179,6 +183,15 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       quantity: itemQuantity
     });
     
+    // Track this action for personalization
+    trackProductAction({
+      id: item.id,
+      name: item.name,
+      category: item.category,
+      subCategory: item.subCategory,
+      price: item.price
+    }, 'cart');
+
     setCart(prevCart => {
       // Check if item already exists in cart with same ID, size, and color
       const existingItemIndex = prevCart.findIndex(

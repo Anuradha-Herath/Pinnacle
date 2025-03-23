@@ -14,13 +14,14 @@ import { useWishlist } from "@/app/context/WishlistContext";
 import { toast } from "react-hot-toast";
 import { Heart, ShoppingBag } from "lucide-react";
 import { cartNotifications, wishlistNotifications } from "@/lib/notificationService";
+import { trackProductView, trackProductAction } from "@/lib/userPreferenceService";
 
-// Add debounce utility
+// Fix the debounce utility to properly handle 'this' context using arrow function
 const debounce = (func: Function, delay: number) => {
   let timeoutId: NodeJS.Timeout;
-  return function(...args: any[]) {
+  return (...args: any[]) => {
     clearTimeout(timeoutId);
-    timeoutId = setTimeout(() => func.apply(this, args), delay);
+    timeoutId = setTimeout(() => func(...args), delay);
   };
 };
 
@@ -114,6 +115,17 @@ export default function EnhancedProductDetailPage() {
           sizes: data.product.sizes || [],
           rating: 0, // Initialize with 0, will be updated with real rating from reviews
         };
+        
+        // Track this product view
+        trackProductView({
+          id: data.product._id,
+          name: data.product.productName,
+          category: data.product.category,
+          subCategory: data.product.subCategory,
+          colors: data.product.gallery?.map((item: any) => item.color) || [],
+          sizes: data.product.sizes || [],
+          price: data.product.regularPrice
+        });
         
         // Store raw data for API interactions
         setProduct({
@@ -232,8 +244,8 @@ export default function EnhancedProductDetailPage() {
       price: productData.price,
       image: selectedImg,
       quantity: quantity,
-      size: selectedSize,
-      color: selectedColor // Store the original color identifier
+      size: selectedSize || undefined, // Convert null to undefined
+      color: selectedColor || undefined // Convert null to undefined
     }, false); // Pass false to prevent duplicate notification
     
     // Use notification service
@@ -267,11 +279,20 @@ export default function EnhancedProductDetailPage() {
       name: product.name,
       price: product.price,
     });
+    
+    // Track this action for preferences (if product exists)
+    if (product) {
+      trackProductAction(product, 'cart');
+    }
   };
   
   // Toggle wishlist handler
   const toggleWishlist = () => {
     if (!product) return;
+    
+    // Track wishlist action
+    trackProductAction(product, 'wishlist');
+    
     debouncedToggleWishlist(product._id, isProductInWishlist);
   };
   
