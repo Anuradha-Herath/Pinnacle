@@ -4,9 +4,10 @@ import { Providers } from './providers';
 import "./globals.css";
 import { CartProvider } from "./context/CartContext";
 import { WishlistProvider } from "./context/WishlistContext";
-import { AuthProvider } from "./context/AuthContext"; // Add this import
+import { AuthProvider } from "./context/AuthContext";
 import { Toaster } from "react-hot-toast";
 import CloudinaryProvider from "./components/CloudinaryProvider";
+import ChatbotWrapper from "./components/ChatbotWrapper"; // Changed from Chatbot to ChatbotWrapper
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -33,7 +34,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <AuthProvider> {/* Add AuthProvider here */}
+        <AuthProvider>
           <WishlistProvider>
             <CartProvider>
               <CloudinaryProvider>
@@ -41,6 +42,7 @@ export default function RootLayout({
                   {children}
                 </Providers>
                 <Toaster position="bottom-right" />
+                <ChatbotWrapper /> {/* Using the wrapper instead of direct Chatbot */}
               </CloudinaryProvider>
             </CartProvider>
           </WishlistProvider>

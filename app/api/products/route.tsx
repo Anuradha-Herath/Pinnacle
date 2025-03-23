@@ -145,7 +145,12 @@ export async function POST(request: Request) {
       regularPrice: Number(body.regularPrice),
       tag: body.tag,
       sizes: body.sizes,
-      gallery: processedGallery
+      gallery: processedGallery,
+      
+      // Add new occasion-related fields
+      occasions: body.occasions || [],
+      style: body.style || [],
+      season: body.season || [],
     });
     
     await newProduct.save();

@@ -23,7 +23,8 @@ export async function GET(
   try {
     await connectDB();
     
-    const { productId } = params;
+    // Properly await the params object before accessing productId
+    const { productId } = await params;
     
     // Find any active discounts for this specific product
     // Also get category-based discounts that apply to this product's category

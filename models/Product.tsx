@@ -17,6 +17,12 @@ const ProductSchema = new Schema({
   tag: { type: String },
   sizes: [{ type: String }],
   gallery: [GalleryItemSchema],
+  
+  // New fields for occasion-based shopping
+  occasions: [{ type: String }], // e.g., "Formal", "Casual", "Wedding", "Business", "Party"
+  style: [{ type: String }],     // e.g., "Classic", "Modern", "Vintage", "Bohemian"
+  season: [{ type: String }],    // e.g., "Summer", "Winter", "Spring", "Fall"
+  
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 });

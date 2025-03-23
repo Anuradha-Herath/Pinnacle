@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
+import { trackProductAction } from '@/lib/userPreferenceService';
 
 interface WishlistContextType {
   wishlist: string[];
@@ -98,6 +99,22 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [wishlist, user, initialized]);
 
   const addToWishlist = (productId: string) => {
+    // Track action in userPreferenceService
+    fetch(`/api/products/${productId}`)
+      .then(response => response.json())
+      .then(data => {
+        if (data.success && data.product) {
+          trackProductAction({
+            id: productId,
+            name: data.product.productName,
+            category: data.product.category,
+            subCategory: data.product.subCategory,
+            price: data.product.regularPrice
+          }, 'wishlist');
+        }
+      })
+      .catch(err => console.error('Error fetching product for preference tracking:', err));
+    
     setWishlist(prevWishlist => {
       if (!prevWishlist.includes(productId)) {
         return [...prevWishlist, productId];
