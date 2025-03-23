@@ -659,10 +659,42 @@ export async function POST(request: NextRequest) {
       Preferred sizes: ${userContext.topSizes?.join(", ") || "None"}
       Preferred price ranges: ${userContext.topPriceRanges?.join(", ") || "None"}
       
+      ${userContext.preferredSizes ? `
+      USER'S PREFERRED SIZES BY CATEGORY:
+      ${Object.entries(userContext.preferredSizes)
+        .map(([category, size]) => `${category}: ${size}`)
+        .join("\n")}
+      ` : ''}
+      
+      ${userContext.measurements && Object.keys(userContext.measurements).length > 0 ? `
+      USER'S MEASUREMENTS:
+      ${Object.entries(userContext.measurements)
+        .map(([key, value]) => `${key}: ${value}`)
+        .join("\n")}
+      ` : ''}
+      
+      ${userContext.preferredFitTypes && userContext.preferredFitTypes.length > 0 ? `
+      USER'S PREFERRED FIT TYPES: ${userContext.preferredFitTypes.join(", ")}
+      ` : ''}
+      
       When making recommendations, prioritize products that match the user's preferences,
       especially for categories and colors they've shown interest in.
       If they haven't specified a preference in their query, use their browsing history as a guide.
       ` : ''}
+      
+      SIZE AND FIT RECOMMENDATION CAPABILITIES:
+      - When users ask about sizing or fit, provide detailed guidance
+      - If a product runs small, large, or true to size, mention this information
+      - Use the product's fitType (Slim Fit, Regular Fit, etc.) to guide recommendations
+      - Reference the user's preferred sizes by category when available
+      - Consider the user's measurements when providing size recommendations
+      - Explain why you're recommending a particular size
+      - When uncertain, suggest the user refers to specific measurements in our size chart
+      
+      Examples of good size recommendations:
+      "Based on your previous purchases of medium in T-shirts and your preference for a regular fit, I recommend a medium in this product as well. It's true to size with a regular fit through the chest and shoulders."
+      
+      "This shirt tends to run small, especially around the chest. Since you typically wear a medium, I'd suggest sizing up to a large for a more comfortable fit."
       
       When answering:
       1. Be conversational and helpful

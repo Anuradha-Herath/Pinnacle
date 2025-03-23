@@ -31,6 +31,10 @@ export default function ProductCreate() {
     occasions: string[]; // New field for occasions
     style: string[];     // New field for style attributes
     season: string[];    // New field for seasons
+    fitType: string;
+    sizingTrend: number;
+    sizingNotes: string;
+    sizeChart: Record<string, { chest?: number, waist?: number, hips?: number, length?: number }>;
   }>({
     productName: "",
     description: "",
@@ -43,6 +47,10 @@ export default function ProductCreate() {
     occasions: [], // Initialize empty occasions array
     style: [],     // Initialize empty style array
     season: [],    // Initialize empty season array
+    fitType: "Regular Fit",
+    sizingTrend: 0,
+    sizingNotes: "",
+    sizeChart: {},
   });
 
   // State for storing all categories fetched from the API
@@ -422,6 +430,81 @@ export default function ProductCreate() {
                     )
                   )}
                 </div>
+              </div>
+
+              {/* Add new Fit Type selector */}
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Fit Type
+                </label>
+                <select
+                  name="fitType"
+                  value={formData.fitType}
+                  onChange={handleChange}
+                  className="w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="Slim Fit">Slim Fit</option>
+                  <option value="Regular Fit">Regular Fit</option>
+                  <option value="Relaxed Fit">Relaxed Fit</option>
+                  <option value="Oversized">Oversized</option>
+                  <option value="Tailored">Tailored</option>
+                </select>
+              </div>
+              
+              {/* Sizing Trend Selector */}
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Size Accuracy
+                </label>
+                <div className="flex space-x-4">
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="sizingTrend"
+                      value={-1}
+                      checked={formData.sizingTrend === -1}
+                      onChange={() => setFormData(prev => ({ ...prev, sizingTrend: -1 }))}
+                      className="mr-2"
+                    />
+                    <span>Runs Small</span>
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="sizingTrend"
+                      value={0}
+                      checked={formData.sizingTrend === 0}
+                      onChange={() => setFormData(prev => ({ ...prev, sizingTrend: 0 }))}
+                      className="mr-2"
+                    />
+                    <span>True to Size</span>
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="sizingTrend"
+                      value={1}
+                      checked={formData.sizingTrend === 1}
+                      onChange={() => setFormData(prev => ({ ...prev, sizingTrend: 1 }))}
+                      className="mr-2"
+                    />
+                    <span>Runs Large</span>
+                  </label>
+                </div>
+              </div>
+              
+              {/* Sizing Notes */}
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Sizing Notes
+                </label>
+                <textarea
+                  name="sizingNotes"
+                  value={formData.sizingNotes}
+                  onChange={handleChange}
+                  placeholder="E.g.: This shirt has a slim fit through the chest and shoulders. We recommend sizing up if you prefer a looser fit."
+                  className="w-full p-3 border rounded-md h-32 focus:ring-2 focus:ring-blue-500"
+                ></textarea>
               </div>
             </form>
             <div className="space-y-6">

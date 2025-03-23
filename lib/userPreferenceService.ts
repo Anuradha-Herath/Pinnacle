@@ -11,6 +11,16 @@ interface UserPreferences {
   colors: Record<string, number>;
   sizes: Record<string, number>;
   priceRanges: Record<string, number>;
+  purchasedSizes: Record<string, Record<string, number>>; // Category -> Size -> Count
+  preferredFitTypes: Record<string, number>;
+  userMeasurements?: {
+    height?: number;
+    weight?: number;
+    chest?: number;
+    waist?: number;
+    hips?: number;
+    preferredFit?: string;
+  };
 }
 
 const STORAGE_KEY = 'pinnacle_user_preferences';
@@ -24,6 +34,9 @@ const createEmptyPreferences = (): UserPreferences => ({
   colors: {},
   sizes: {},
   priceRanges: {},
+  purchasedSizes: {},
+  preferredFitTypes: {},
+  userMeasurements: {},
 });
 
 // Load preferences from storage with better error handling
@@ -44,6 +57,9 @@ export const loadUserPreferences = (): UserPreferences => {
           colors: typeof parsedPreferences.colors === 'object' ? parsedPreferences.colors : {},
           sizes: typeof parsedPreferences.sizes === 'object' ? parsedPreferences.sizes : {},
           priceRanges: typeof parsedPreferences.priceRanges === 'object' ? parsedPreferences.priceRanges : {},
+          purchasedSizes: typeof parsedPreferences.purchasedSizes === 'object' ? parsedPreferences.purchasedSizes : {},
+          preferredFitTypes: typeof parsedPreferences.preferredFitTypes === 'object' ? parsedPreferences.preferredFitTypes : {},
+          userMeasurements: typeof parsedPreferences.userMeasurements === 'object' ? parsedPreferences.userMeasurements : {},
         };
         
         return validatedPreferences;
@@ -245,11 +261,28 @@ export const getChatbotUserContext = (): {
   topColors: string[];
   topSizes: string[];
   topPriceRanges: string[];
+  preferredSizes: Record<string, string>;
+  measurements: any;
+  preferredFitTypes: string[];
 } => {
   try {
     const preferences = loadUserPreferences();
     
     // Add null checks to handle potentially undefined values
+    const preferredSizes: Record<string, string> = {};
+    if (preferences.purchasedSizes) {
+      Object.keys(preferences.purchasedSizes).forEach(category => {
+        const topSize = getPreferredSizeForCategory(category);
+        if (topSize) preferredSizes[category] = topSize;
+      });
+    }
+    
+    // Get top preferred fit types
+    const preferredFitTypes = Object.entries(preferences.preferredFitTypes || {})
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 2)
+      .map(item => item[0]);
+    
     return {
       recentlyViewed: Array.isArray(preferences.viewedProducts) 
         ? preferences.viewedProducts.slice(0, 5).map(p => p.name || 'Product')
@@ -258,6 +291,9 @@ export const getChatbotUserContext = (): {
       topColors: getTopPreferences('colors', 3),
       topSizes: getTopPreferences('sizes', 3),
       topPriceRanges: getTopPreferences('priceRanges', 2),
+      preferredSizes,
+      measurements: preferences.userMeasurements || {},
+      preferredFitTypes
     };
   } catch (error) {
     console.error('Error getting chatbot user context:', error);
@@ -267,7 +303,10 @@ export const getChatbotUserContext = (): {
       topCategories: [],
       topColors: [],
       topSizes: [],
-      topPriceRanges: []
+      topPriceRanges: [],
+      preferredSizes: {},
+      measurements: {},
+      preferredFitTypes: []
     };
   }
 };
@@ -276,5 +315,87 @@ export const getChatbotUserContext = (): {
 export const clearUserPreferences = () => {
   if (typeof window !== 'undefined') {
     localStorage.removeItem(STORAGE_KEY);
+  }
+};
+
+// Track an order with size information (called after order completion)
+export const trackOrderWithSize = (orderItems: any[]) => {
+  try {
+    const preferences = loadUserPreferences();
+    
+    // Ensure purchasedSizes exists
+    if (!preferences.purchasedSizes) preferences.purchasedSizes = {};
+    
+    // Process each ordered item
+    orderItems.forEach(item => {
+      if (item.category && item.size) {
+        // Initialize category if needed
+        if (!preferences.purchasedSizes[item.category]) {
+          preferences.purchasedSizes[item.category] = {};
+        }
+        
+        // Increment size count for this category
+        preferences.purchasedSizes[item.category][item.size] = 
+          (preferences.purchasedSizes[item.category][item.size] || 0) + 1;
+      }
+      
+      // Track fit type preferences
+      if (item.fitType) {
+        preferences.preferredFitTypes[item.fitType] = 
+          (preferences.preferredFitTypes[item.fitType] || 0) + 1;
+      }
+    });
+    
+    saveUserPreferences(preferences);
+  } catch (error) {
+    console.error('Error tracking order with sizes:', error);
+  }
+};
+
+// Save user measurements
+export const saveUserMeasurements = (measurements: {
+  height?: number;
+  weight?: number;
+  chest?: number;
+  waist?: number;
+  hips?: number;
+  preferredFit?: string;
+}) => {
+  try {
+    const preferences = loadUserPreferences();
+    
+    // Update user measurements
+    preferences.userMeasurements = {
+      ...preferences.userMeasurements,
+      ...measurements
+    };
+    
+    saveUserPreferences(preferences);
+    return true;
+  } catch (error) {
+    console.error('Error saving user measurements:', error);
+    return false;
+  }
+};
+
+// Get user's preferred size for a category
+export const getPreferredSizeForCategory = (category: string): string | null => {
+  try {
+    const preferences = loadUserPreferences();
+    
+    if (!preferences.purchasedSizes || !preferences.purchasedSizes[category]) {
+      return null;
+    }
+    
+    // Find the most frequently purchased size in this category
+    const sizeEntries = Object.entries(preferences.purchasedSizes[category]);
+    if (sizeEntries.length === 0) return null;
+    
+    // Sort by purchase count descending and get the top one
+    const [topSize] = sizeEntries.sort((a, b) => b[1] - a[1])[0];
+    return topSize;
+  } catch (error) {
+    console.error('Error getting preferred size:', error);
+    return null;
   }
 };
