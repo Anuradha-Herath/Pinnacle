@@ -1,9 +1,10 @@
 "use client";
 
 import React, { useState } from "react";
-import { Star, Minus, Plus } from "lucide-react";
+import { Star, Minus, Plus, Truck } from "lucide-react";
 import Image from "next/image";
 import SizeGuideModal from "./SizeGuideModal";
+import { X, Ruler  } from "lucide-react";
 
 interface ProductInformationProps {
   product: {
@@ -96,7 +97,11 @@ const ProductInformation: React.FC<ProductInformationProps> = ({
       
       {/* Price */}
       <p className="text-2xl font-semibold mb-4">${product.price.toFixed(2)}</p>
-      
+      <div className="flex items-center text-[#24b248]">
+        <Truck color="#24b248" />
+        <span className="text-sm ml-2">Free Shipping</span>
+      </div>
+      <div className="border-t border-gray-300 my-4"></div>
       {/* Description */}
       <p className="text-gray-700 mb-6">{product.description}</p>
       
@@ -130,13 +135,25 @@ const ProductInformation: React.FC<ProductInformationProps> = ({
       {product.sizes && product.sizes.length > 0 && (
         <div className="mb-6">
           <div className="flex justify-between items-center mb-2">
-            <h2 className="text-sm font-medium">Size</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-medium">Size</h2>
+              {selectedSize && (
+                <>
+                  <span className="text-gray-400">:</span>
+                  <span className="text-base font-semibold bg-gray-100 text-gray-700 px-3 py-1.5 rounded">
+                    {selectedSize}
+                  </span>
+                </>
+              )}
+            </div>
             <button 
               onClick={() => setIsSizeGuideOpen(true)} 
-              className="text-xs text-blue-600 underline hover:text-blue-800"
+              className="text-md text-gray-600 underline bold hover:text-gray-800 flex items-center gap-1 ml-auto"
             >
+              <Ruler size={18} />
               Size Guide
             </button>
+            
           </div>
           <div className="flex flex-wrap gap-2">
             {product.sizes.map((size) => (
