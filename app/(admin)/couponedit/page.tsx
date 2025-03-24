@@ -1,27 +1,167 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { BellIcon, Cog6ToothIcon, ClockIcon } from "@heroicons/react/24/solid";
 import Sidebar from "../../components/Sidebar";
 
-export default function CouponCreate() {
+export default function CouponEdit() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const couponId = searchParams.get('id');
+
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+  
   const [formData, setFormData] = useState({
-    couponCode: "",
-    productId: "",
+    code: "",
+    product: "",
+    price: "",
+    discount: "",
     limit: "",
     customerEligibility: "new user",
-    discountValue: "",
+    description: "",
     oneTimeUse: false,
     couponStatus: "active",
     startDate: "",
     endDate: ""
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Fetch coupon data on page load
+  useEffect(() => {
+    if (!couponId) {
+      setError("No coupon ID provided");
+      setLoading(false);
+      return;
+    }
+
+    const fetchCouponData = async () => {
+      try {
+        const response = await fetch(`/api/coupons/${couponId}`);
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch coupon data');
+        }
+        
+        const { coupon } = await response.json();
+        
+        // Map API status to form status
+        let couponStatus = "active";
+        if (coupon.status === "Inactive") couponStatus = "inactive";
+        if (coupon.status === "Future") couponStatus = "future plan";
+        
+        setFormData({
+          code: coupon.code || "",
+          product: coupon.product || "",
+          price: coupon.price || "",
+          discount: coupon.discount || "",
+          limit: coupon.limit || "",
+          customerEligibility: coupon.customerEligibility || "new user",
+          description: coupon.description || "",
+          oneTimeUse: coupon.oneTimeUse || false,
+          couponStatus,
+          startDate: coupon.startDate || "",
+          endDate: coupon.endDate || ""
+        });
+        
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An unknown error occurred');
+        console.error('Error fetching coupon:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCouponData();
+  }, [couponId]);
+
+  // Handle form submission
+  interface FormData {
+    code: string;
+    product: string;
+    price: string;
+    discount: string;
+    limit: string;
+    customerEligibility: "new user" | "loyalty customers" | "all";
+    description: string;
+    oneTimeUse: boolean;
+    couponStatus: "active" | "inactive" | "future plan";
+    startDate: string;
+    endDate: string;
+  }
+
+  interface StatusMap {
+    [key: string]: string;
+  }
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    console.log("Coupon Data:", formData);
-    // API integration or logic for handling form submission
+    setSubmitting(true);
+    setError("");
+    
+    try {
+      // Map form status values to API expected format
+      const statusMap: StatusMap = {
+        "active": "Active",
+        "inactive": "Inactive",
+        "future plan": "Future"
+      };
+      
+      const couponData = {
+        ...formData,
+        status: statusMap[formData.couponStatus] || formData.couponStatus
+      };
+      } catch (err) {
+        if (err instanceof Error) {
+          setError(err instanceof Error ? err.message : 'An unknown error occurred');
+          console.error('Error updating coupon:', err);
+        } else {
+          setError('An unknown error occurred');
+          console.error('Unknown error:', err);
+        }
+    } finally {
+      setSubmitting(false);
+    }
   };
+
+  // Handle delete
+  const handleDelete = async () => {
+    if (!confirm('Are you sure you want to delete this coupon?')) {
+      return;
+    }
+    
+    try {
+      setSubmitting(true);
+      const response = await fetch(`/api/coupons/${couponId}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete coupon');
+      }
+      
+      alert('Coupon deleted successfully!');
+      router.push('/couponlist');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An unknown error occurred');
+      console.error('Error deleting coupon:', err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen bg-gray-100">
+        <Sidebar />
+        <div className="flex-1 flex items-center justify-center">
+          <div>Loading coupon data...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-gray-100">
@@ -56,6 +196,12 @@ export default function CouponCreate() {
             <h1 className="text-xl font-semibold">Coupons Edit</h1>
             <p className="text-sm text-gray-500">Home &gt; Coupons &gt; Edit</p>
           </div>
+
+          {error && (
+            <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md">
+              Error: {error}
+            </div>
+          )}
 
           <form onSubmit={handleSubmit}>
             <div className="grid grid-cols-5 gap-6">
@@ -107,8 +253,7 @@ export default function CouponCreate() {
                   <div className="mb-4">
                   <label className="block text-sm mb-1">Start Date</label>
                   <input 
-                    type="text" 
-                    placeholder="DD - MM - YYYY" 
+                    type="date" 
                     className="block w-full border border-gray-300 p-2 rounded-xl" 
                     value={formData.startDate}
                     onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
@@ -117,8 +262,7 @@ export default function CouponCreate() {
                   <div>
                   <label className="block text-sm mb-1">End Date</label>
                   <input 
-                    type="text" 
-                    placeholder="DD - MM - YYYY" 
+                    type="date" 
                     className="block w-full border border-gray-300 p-2 rounded-xl" 
                     value={formData.endDate}
                     onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
@@ -141,21 +285,43 @@ export default function CouponCreate() {
                     type="text"
                     placeholder="Code Enter"
                     className="block w-full border border-gray-300 p-2 rounded-xl"
-                    value={formData.couponCode}
-                    onChange={(e) => setFormData({ ...formData, couponCode: e.target.value })}
+                    value={formData.code}
+                    onChange={(e) => setFormData({ ...formData, code: e.target.value })}
                     />
                   </div>
                   <div className="ml-auto pr-4 w-1/3">
-                    <label className="block text-sm mb-1 ">Product ID</label>
+                    <label className="block text-sm mb-1">Product Name</label>
                     <input 
                     type="text"
-                    placeholder="Enter Product ID"
+                    placeholder="Enter Product Name"
                     className="block w-full border border-gray-300 p-2 rounded-xl"
-                    value={formData.productId}
-                    onChange={(e) => setFormData({ ...formData, productId: e.target.value })}
+                    value={formData.product}
+                    onChange={(e) => setFormData({ ...formData, product: e.target.value })}
                     />
                   </div>
-                  <div className="mt-4 "></div>
+                  </div>
+                  
+                  <div className="mb-4 flex items-center gap-4">
+                    <div>
+                      <label className="block text-sm mb-1">Price</label>
+                      <input
+                        type="text"
+                        placeholder="Enter Price"
+                        className="block w-full border border-gray-300 p-2 rounded-xl"
+                        value={formData.price}
+                        onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm mb-1">Discount</label>
+                      <input
+                        type="text"
+                        placeholder="Enter Discount"
+                        className="block w-full border border-gray-300 p-2 rounded-xl"
+                        value={formData.discount}
+                        onChange={(e) => setFormData({ ...formData, discount: e.target.value })}
+                      />
+                    </div>
                   </div>
                   
                   <div className="mb-4">
@@ -202,19 +368,19 @@ export default function CouponCreate() {
                   </label>
                   </div>
                   <div className="mb-4">
-                  <label className="block text-sm mb-1">Discount Values</label>
-                  <input
-                  type="text"
-                  placeholder="Discount Value"
-                  className="block w-2/3 border border-gray-300 p-2 rounded-xl"
-                  value={formData.discountValue}
-                  onChange={(e) => setFormData({ ...formData, discountValue: e.target.value })}
+                  <label className="block text-sm mb-1">Description</label>
+                  <textarea
+                    placeholder="Enter description"
+                    className="block w-full border border-gray-300 p-2 rounded-xl"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    rows={3}
                   />
                   </div>
                   <div>
                   <label className="flex items-center gap-2">
                   <input
-                  type="radio"
+                  type="checkbox"
                   checked={formData.oneTimeUse}
                   onChange={() => setFormData({ ...formData, oneTimeUse: !formData.oneTimeUse })}
                   className="w-4 h-4"
@@ -226,27 +392,35 @@ export default function CouponCreate() {
                   <hr className="mb-4" />
                   {/* Action Buttons */}
               <div className="flex justify-end gap-2 mt-6">
-              <button type="button" className="bg-gray-200 px-8 py-2 rounded">
-                UPDATE
-                </button>
-                <button type="submit" className="bg-red-500 text-white px-8 py-2 rounded">
-                DELETE
-                </button>
-                <button type="button" className="bg-white border border-gray-300 px-8 py-2 rounded">
+              <button 
+                type="submit" 
+                className="bg-gray-200 px-8 py-2 rounded"
+                disabled={submitting}
+              >
+                {submitting ? 'Updating...' : 'UPDATE'}
+              </button>
+              <button 
+                type="button" 
+                className="bg-red-500 text-white px-8 py-2 rounded"
+                onClick={handleDelete}
+                disabled={submitting}
+              >
+                {submitting ? 'Processing...' : 'DELETE'}
+              </button>
+              <button 
+                type="button" 
+                className="bg-white border border-gray-300 px-8 py-2 rounded"
+                onClick={() => router.push('/couponlist')}
+              >
                 CANCEL
-                </button>
-                
-
+              </button>
               </div>
                 </div>
               </div>
-              
               </div>
-
-            
           </form>
         </div>
       </div>
     </div>
   );
-}  
+}
