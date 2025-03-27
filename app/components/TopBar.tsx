@@ -10,7 +10,7 @@ const TopBar: React.FC<TopBarProps> = ({ title }) => {
   const router = useRouter();
 
   return (
-    <div className="bg-white p-4 flex justify-between items-center">
+    <div className="bg-gray-50 p-4 flex justify-between items-center">
       {/* Page Title - Passed as a prop */}
       <h1 className="text-2xl font-semibold">{title}</h1>
 

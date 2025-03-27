@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { EyeIcon, PencilIcon, TrashIcon, BellIcon, Cog6ToothIcon, ClockIcon, ArrowUpIcon, UserIcon } from "@heroicons/react/24/solid";
 import Sidebar from "../../components/Sidebar";
+import TopBar from "../../components/TopBar";
 import Image from "next/image";
 import { Crown } from "lucide-react";
 {/*import { Card, CardContent } from "@/components/ui/card";*/}
@@ -109,33 +110,17 @@ export default function CustomerList() {
   return (
     <div className="flex">
       <Sidebar />
-      <div className="min-h-screen bg-gray-50 p-6 flex-1">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-semibold">Customers List</h1>
-          <div className="flex items-center gap-2">
-            <button onClick={() => router.push("/notifications")} className="p-2 hover:bg-gray-200 rounded-lg">
-              <BellIcon className="h-6 w-6 text-gray-600" />
-            </button>
-            <button onClick={() => router.push("/settings")} className="p-2 hover:bg-gray-200 rounded-lg">
-              <Cog6ToothIcon className="h-6 w-6 text-gray-600" />
-            </button>
-            <button onClick={() => router.push("/history")} className="p-2 hover:bg-gray-200 rounded-lg">
-              <ClockIcon className="h-6 w-6 text-gray-600" />
-            </button>
-            
-            <input
-              type="text"
-              placeholder="🔍 Search"
-              className="border px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-            />
+      <div className="min-h-screen bg-gray-50 p-4 flex-1">
+        <TopBar title="Customers List" />
 
-          </div>
-        </div>
+        
 
         {/* Customer Card */}
-        <div className="w-64 p-4 rounded-2xl shadow-md bg-white">
+        <div className="w-64 p-4 rounded-2xl shadow-md bg-white ">
           <div className="flex justify-between items-center">
-            <h3 className="text-sm font-semibold text-gray-600">Total Customers</h3>
+            <h3 className="text-sm font-semibold text-gray-600">
+              Total Customers
+            </h3>
             <button className="text-gray-400">&#x22EE;</button>
           </div>
           <div className="flex items-center justify-between mt-2">
@@ -150,16 +135,20 @@ export default function CustomerList() {
               </div>
             </div>
           </div>
-          <p className="text-xs text-gray-400 text-right mt-1">Compared to Oct 2024</p>
+          <p className="text-xs text-gray-400 text-right mt-1">
+            Compared to Oct 2024
+          </p>
         </div>
 
         {/* Customer List Table */}
         <div className="bg-white p-6 rounded-lg shadow-lg mt-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold">All Customer List</h2>
-            <button className="px-4 py-2 border rounded-lg text-gray-600">This Month ▼</button>
+            <button className="px-4 py-2 border rounded-lg text-gray-600">
+              This Month ▼
+            </button>
           </div>
-          
+
           {loading ? (
             <div className="flex justify-center items-center p-10">
               <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-orange-500"></div>
@@ -178,19 +167,39 @@ export default function CustomerList() {
               </thead>
               <tbody>
                 {displayedCustomers.map((customer) => (
-                  <tr 
+                  <tr
                     key={customer._id}
                     className="border-t cursor-pointer hover:bg-gray-50"
-                    onClick={() => router.push(`/customerdetails?id=${customer._id}`)}
+                    onClick={() =>
+                      router.push(`/customerdetails?id=${customer._id}`)
+                    }
                   >
                     <td className="p-3 flex items-center gap-3">
-                      <Image src={defaultImage} alt={`${customer.firstName} ${customer.lastName}`} width={30} height={30} className="rounded-full" />
+                      <Image
+                        src={defaultImage}
+                        alt={`${customer.firstName} ${customer.lastName}`}
+                        width={30}
+                        height={30}
+                        className="rounded-full"
+                      />
                       {`${customer.firstName} ${customer.lastName}`}
                     </td>
                     <td className="p-3">#{customer._id.substring(0, 5)}</td>
-                    <td className="p-3">{customer.createdAt ? formatDate(customer.createdAt) : 'N/A'}</td>
+                    <td className="p-3">
+                      {customer.createdAt
+                        ? formatDate(customer.createdAt)
+                        : "N/A"}
+                    </td>
                     <td className="p-3 text-center">
-                      <Crown className={`w-5 h-5 inline ${getCustomerType(customer.role) === 'black' ? 'text-black' : getCustomerType(customer.role) === 'gray' ? 'text-gray-400' : 'text-orange-500'}`} />
+                      <Crown
+                        className={`w-5 h-5 inline ${
+                          getCustomerType(customer.role) === "black"
+                            ? "text-black"
+                            : getCustomerType(customer.role) === "gray"
+                            ? "text-gray-400"
+                            : "text-orange-500"
+                        }`}
+                      />
                     </td>
                   </tr>
                 ))}
@@ -198,14 +207,16 @@ export default function CustomerList() {
             </table>
           )}
         </div>
-        
+
         {/* Pagination */}
         {!loading && !error && customers.length > 0 && (
           <div className="flex justify-center mt-6">
             <div className="flex items-center gap-2">
-              <button 
+              <button
                 className={`px-4 py-2 rounded-md ${
-                  currentPage === 1 ? 'bg-orange-200 text-gray-700 cursor-not-allowed' : 'bg-orange-500 text-white hover:bg-orange-600'
+                  currentPage === 1
+                    ? "bg-orange-200 text-gray-700 cursor-not-allowed"
+                    : "bg-orange-500 text-white hover:bg-orange-600"
                 }`}
                 onClick={handlePreviousPage}
                 disabled={currentPage === 1}
@@ -215,9 +226,11 @@ export default function CustomerList() {
               <span className="mx-2 text-gray-600">
                 Page {currentPage} of {totalPages}
               </span>
-              <button 
+              <button
                 className={`px-4 py-2 rounded-md ${
-                  currentPage === totalPages ? 'bg-orange-200 text-gray-700 cursor-not-allowed' : 'bg-orange-500 text-white hover:bg-orange-600'
+                  currentPage === totalPages
+                    ? "bg-orange-200 text-gray-700 cursor-not-allowed"
+                    : "bg-orange-500 text-white hover:bg-orange-600"
                 }`}
                 onClick={handleNextPage}
                 disabled={currentPage === totalPages}

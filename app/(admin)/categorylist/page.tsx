@@ -134,7 +134,9 @@ export default function CategoryList() {
           {!loading && !error && categories.length === 0 && (
             <div className="text-center py-12 bg-white rounded-lg shadow">
               <h2 className="text-xl font-medium mb-2">No categories found</h2>
-              <p className="text-gray-500 mb-6">Create a new category to get started.</p>
+              <p className="text-gray-500 mb-6">
+                Create a new category to get started.
+              </p>
               <button
                 onClick={() => router.push("/categorycreate")}
                 className="bg-orange-500 text-white px-4 py-2 rounded hover:bg-orange-600 transition-colors"
@@ -180,7 +182,8 @@ export default function CategoryList() {
                             alt={category.title}
                             className="w-full h-full object-cover"
                             onError={(e) => {
-                              (e.target as HTMLImageElement).src = "/placeholder.png";
+                              (e.target as HTMLImageElement).src =
+                                "/placeholder.png";
                             }}
                           />
                         </div>
@@ -190,18 +193,22 @@ export default function CategoryList() {
                       </td>
                       {/* Add Main Category cell */}
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 rounded-full text-xs ${
-                          category.mainCategory === 'Men' 
-                            ? 'bg-blue-100 text-blue-800' 
-                            : category.mainCategory === 'Women' 
-                            ? 'bg-pink-100 text-pink-800' 
-                            : 'bg-purple-100 text-purple-800'
-                        }`}>
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs ${
+                            category.mainCategory === "Men"
+                              ? "bg-blue-100 text-blue-800"
+                              : category.mainCategory === "Women"
+                              ? "bg-pink-100 text-pink-800"
+                              : "bg-purple-100 text-purple-800"
+                          }`}
+                        >
                           {category.mainCategory}
                         </span>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="max-w-xs truncate">{category.description || "—"}</div>
+                        <div className="max-w-xs truncate">
+                          {category.description || "—"}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>{category.priceRange || "—"}</div>
@@ -209,24 +216,28 @@ export default function CategoryList() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex space-x-2">
                           <button
-                            onClick={() => router.push(`/categorydetail/${category._id}`)}
-                            className="p-2 bg-blue-100 text-blue-600 rounded-full hover:bg-blue-200"
+                            onClick={() =>
+                              router.push(`/categorydetail/${category._id}`)
+                            }
+                            className="p-2 bg-orange-500 text-white rounded-md shadow-md hover:bg-orange-600"
                           >
-                            <EyeIcon className="h-4 w-4" />
+                            <EyeIcon className="h-5 w-5" />
                           </button>
                           <button
-                            onClick={() => router.push(`/categoryedit/${category._id}`)}
-                            className="p-2 bg-orange-100 text-orange-600 rounded-full hover:bg-orange-200"
+                            onClick={() =>
+                              router.push(`/categoryedit/${category._id}`)
+                            }
+                            className="p-2 bg-orange-500 text-white rounded-md shadow-md hover:bg-orange-600"
                             aria-label={`Edit ${category.title}`}
                           >
-                            <PencilIcon className="h-4 w-4" />
+                            <PencilIcon className="h-5 w-5" />
                           </button>
                           <button
                             onClick={() => handleDeleteCategory(category._id)}
-                            className="p-2 bg-red-100 text-red-600 rounded-full hover:bg-red-200"
+                            className="p-2 bg-orange-500 text-white rounded-md shadow-md hover:bg-orange-600"
                             aria-label={`Delete ${category.title}`}
                           >
-                            <TrashIcon className="h-4 w-4" />
+                            <TrashIcon className="h-5 w-5" />
                           </button>
                         </div>
                       </td>

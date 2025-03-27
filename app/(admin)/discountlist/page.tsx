@@ -15,6 +15,7 @@ import {
   CalendarIcon
 } from "@heroicons/react/24/solid";
 import Sidebar from "../../components/Sidebar";
+import TopBar from "../../components/TopBar";
 
 export default function DiscountList() {
   const router = useRouter();
@@ -368,26 +369,14 @@ export default function DiscountList() {
   return (
     <div className="flex">
       <Sidebar />
-      <div className="min-h-screen bg-gray-50 p-6 flex-1">
-        {/* Top Bar */}
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-semibold text-gray-600">Discount List</h1>
-          <div className="flex items-center gap-2">
-            <button className="p-2 hover:bg-gray-200 rounded-lg"><BellIcon className="h-6 w-6 text-gray-600" /></button>
-            <button className="p-2 hover:bg-gray-200 rounded-lg"><Cog6ToothIcon className="h-6 w-6 text-gray-600" /></button>
-            <button className="p-2 hover:bg-gray-200 rounded-lg"><ClockIcon className="h-6 w-6 text-gray-600" /></button>
-            <button onClick={() => router.push("/profile")} className="p-1 rounded-full border-2 border-gray-300">
-              <img src="/p9.webp" alt="Profile" className="h-8 w-8 rounded-full object-cover" />
-            </button>
-            <input type="text" placeholder="🔍 Search" className="border px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500" />
-          </div>
-        </div>
+      <div className="min-h-screen bg-gray-50 p-4 flex-1">
+        <TopBar title="Discount List" />
 
         {/* Add Discount Button */}
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center">
             {statusFilter && (
-              <button 
+              <button
                 onClick={() => setStatusFilter(null)}
                 className="flex items-center gap-2 bg-orange-100 text-orange-800 px-3 py-1 rounded-md mr-2"
               >
@@ -396,8 +385,8 @@ export default function DiscountList() {
               </button>
             )}
           </div>
-          <button 
-            onClick={() => router.push("/discountcreate")} 
+          <button
+            onClick={() => router.push("/discountcreate")}
             className="bg-orange-500 text-white px-4 py-2 rounded-md flex items-center gap-2 shadow-md hover:bg-orange-600"
           >
             <PlusIcon className="h-5 w-5" /> Create a Discount
@@ -406,35 +395,47 @@ export default function DiscountList() {
 
         {/* Discount Stats - Updated to include Future Plans with icons and clickable functionality */}
         <div className="grid grid-cols-3 gap-6 mb-6">
-          <div 
+          <div
             className={getCardStyle("Active")}
             onClick={() => handleFilterByStatus("Active")}
           >
             <div>
-              <p className="text-gray-700 text-lg font-semibold">Active Discounts</p>
-              <p className="text-gray-900 text-2xl font-bold">{activeDiscounts}</p>
+              <p className="text-gray-700 text-lg font-semibold">
+                Active Discounts
+              </p>
+              <p className="text-gray-900 text-2xl font-bold">
+                {activeDiscounts}
+              </p>
             </div>
             <CheckCircleIcon className="h-10 w-10 text-green-500" />
           </div>
-          
-          <div 
+
+          <div
             className={getCardStyle("Inactive")}
             onClick={() => handleFilterByStatus("Inactive")}
           >
             <div>
-              <p className="text-gray-700 text-lg font-semibold">Expired Discounts</p>
-              <p className="text-gray-900 text-2xl font-bold">{expiredDiscounts}</p>
+              <p className="text-gray-700 text-lg font-semibold">
+                Expired Discounts
+              </p>
+              <p className="text-gray-900 text-2xl font-bold">
+                {expiredDiscounts}
+              </p>
             </div>
             <XCircleIcon className="h-10 w-10 text-red-500" />
           </div>
-          
-          <div 
+
+          <div
             className={getCardStyle("Future Plan")}
             onClick={() => handleFilterByStatus("Future Plan")}
           >
             <div>
-              <p className="text-gray-700 text-lg font-semibold">Future Plan Discounts</p>
-              <p className="text-gray-900 text-2xl font-bold">{futurePlanDiscounts}</p>
+              <p className="text-gray-700 text-lg font-semibold">
+                Future Plan Discounts
+              </p>
+              <p className="text-gray-900 text-2xl font-bold">
+                {futurePlanDiscounts}
+              </p>
             </div>
             <CalendarIcon className="h-10 w-10 text-blue-500" />
           </div>
@@ -442,31 +443,45 @@ export default function DiscountList() {
 
         {/* Discount Table */}
         <div className="bg-white p-6 rounded-lg shadow-lg">
-        <div className="flex justify-between items-center mb-4">
+          <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg text-gray-600 font-semibold">
-              All Discount List 
+              All Discount List
               <span className="text-sm ml-2 text-gray-500">
                 ({filteredDiscounts.length} of {discounts.length} total)
               </span>
             </h2>
             <div className="relative">
-              <button 
-                className="w-40 py-2 border rounded-lg text-gray-600" 
+              <button
+                className="w-40 py-2 border rounded-lg text-gray-600"
                 onClick={() => setShowDropdown(!showDropdown)}
               >
                 {currentFilter} ▼
               </button>
               {showDropdown && (
                 <div className="absolute right-0 mt-2 w-40 bg-white border rounded-lg shadow-lg z-10">
-                  <button onClick={() => handleFilterSelect("This Month")} className="w-full py-2 text-gray-600 hover:bg-gray-100">This Month</button>
-                  <button onClick={() => handleFilterSelect("Last Month")} className="w-full py-2 text-gray-600 hover:bg-gray-100">Last Month</button>
-                  <button onClick={() => handleFilterSelect("Last 3 Months")} className="w-full py-2 text-gray-600 hover:bg-gray-100">Last 3 Months</button>
+                  <button
+                    onClick={() => handleFilterSelect("This Month")}
+                    className="w-full py-2 text-gray-600 hover:bg-gray-100"
+                  >
+                    This Month
+                  </button>
+                  <button
+                    onClick={() => handleFilterSelect("Last Month")}
+                    className="w-full py-2 text-gray-600 hover:bg-gray-100"
+                  >
+                    Last Month
+                  </button>
+                  <button
+                    onClick={() => handleFilterSelect("Last 3 Months")}
+                    className="w-full py-2 text-gray-600 hover:bg-gray-100"
+                  >
+                    Last 3 Months
+                  </button>
                 </div>
               )}
             </div>
           </div>
 
-          
           <table className="w-full border-collapse text-gray-600">
             <thead>
               <tr className="bg-gray-100 text-left text-gray-600">
@@ -495,7 +510,9 @@ export default function DiscountList() {
                                 className="h-full w-full object-cover"
                               />
                             </div>
-                            <span className="font-medium">{itemDetails[discount.product].name}</span>
+                            <span className="font-medium">
+                              {itemDetails[discount.product].name}
+                            </span>
                           </>
                         ) : (
                           <span>{discount.product}</span>
@@ -507,27 +524,33 @@ export default function DiscountList() {
                     <td className="p-3">{discount.startDate}</td>
                     <td className="p-3">{discount.endDate}</td>
                     <td className="p-3">
-                      <span className={`inline-block px-3 py-1 rounded-full text-sm font-semibold 
-                        ${discount.status === "Active" ? "bg-green-300 text-green-800" : 
-                          discount.status === "Future Plan" ? "bg-blue-300 text-blue-800" : 
-                          "bg-orange-300 text-orange-800"}`}>
+                      <span
+                        className={`inline-block px-3 py-1 rounded-full text-sm font-semibold 
+                        ${
+                          discount.status === "Active"
+                            ? "bg-green-300 text-green-800"
+                            : discount.status === "Future Plan"
+                            ? "bg-blue-300 text-blue-800"
+                            : "bg-orange-300 text-orange-800"
+                        }`}
+                      >
                         {discount.status}
                       </span>
                     </td>
                     <td className="p-3 flex gap-2 justify-end">
-                      <button 
+                      <button
                         onClick={() => handleViewDiscount(discount._id)}
                         className="p-2 bg-orange-400 text-white rounded-md hover:bg-orange-600"
                       >
                         <EyeIcon className="h-5 w-5" />
                       </button>
-                      <button 
+                      <button
                         onClick={() => handleEditDiscount(discount._id)}
                         className="p-2 bg-orange-400 text-white rounded-md hover:bg-orange-600"
                       >
                         <PencilIcon className="h-5 w-5" />
                       </button>
-                      <button 
+                      <button
                         onClick={() => handleDeleteDiscount(discount._id)}
                         className="p-2 bg-orange-400 text-white rounded-md hover:bg-orange-600"
                       >
@@ -551,14 +574,16 @@ export default function DiscountList() {
               )}
             </tbody>
           </table>
-          
+
           {/* Pagination */}
           {filteredDiscounts.length > 0 && (
             <div className="flex justify-center mt-6">
               <div className="flex items-center gap-2">
-                <button 
+                <button
                   className={`px-4 py-2 rounded-md ${
-                    currentPage === 1 ? 'bg-orange-200 text-gray-700 cursor-not-allowed' : 'bg-orange-500 text-white hover:bg-orange-600'
+                    currentPage === 1
+                      ? "bg-orange-200 text-gray-700 cursor-not-allowed"
+                      : "bg-orange-500 text-white hover:bg-orange-600"
                   }`}
                   onClick={handlePreviousPage}
                   disabled={currentPage === 1}
@@ -568,9 +593,11 @@ export default function DiscountList() {
                 <span className="mx-2 text-gray-600">
                   Page {currentPage} of {totalPages}
                 </span>
-                <button 
+                <button
                   className={`px-4 py-2 rounded-md ${
-                    currentPage === totalPages ? 'bg-orange-200 text-gray-700 cursor-not-allowed' : 'bg-orange-500 text-white hover:bg-orange-600'
+                    currentPage === totalPages
+                      ? "bg-orange-200 text-gray-700 cursor-not-allowed"
+                      : "bg-orange-500 text-white hover:bg-orange-600"
                   }`}
                   onClick={handleNextPage}
                   disabled={currentPage === totalPages}
