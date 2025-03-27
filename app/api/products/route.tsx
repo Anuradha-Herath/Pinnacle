@@ -168,10 +168,13 @@ export async function POST(request: Request) {
     
     await newProduct.save();
     
+    // Define a variable for the new inventory that will be set in either branch
+    let newInventory;
+    
     // Create a new inventory entry for this product
     // For accessories without sizes, create a simpler inventory
     if (body.category === "Accessories" && (!body.sizes || body.sizes.length === 0)) {
-      const newInventory = new Inventory({
+      newInventory = new Inventory({
         productId: newProduct._id,
         productName: newProduct.productName,
         stock: 0, // Initialize with zero stock
@@ -180,11 +183,9 @@ export async function POST(request: Request) {
         // For accessories without sizes, use a single stock count
         sizeStock: { "Default": 0 }
       });
-      
-      await newInventory.save();
     } else {
       // For products with sizes
-      const newInventory = new Inventory({
+      newInventory = new Inventory({
         productId: newProduct._id,
         productName: newProduct.productName,
         stock: 0, // Initialize with zero stock
@@ -196,9 +197,10 @@ export async function POST(request: Request) {
           return acc;
         }, {})
       });
-      
-      await newInventory.save();
     }
+    
+    // Save the inventory record
+    await newInventory.save();
     
     return NextResponse.json({ 
       message: "Product created and added to inventory", 

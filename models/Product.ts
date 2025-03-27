@@ -1,10 +1,37 @@
-import mongoose from 'mongoose';
+import mongoose, { Schema } from 'mongoose';
 
-// Add these new fields to your Product schema
-const ProductSchema = new mongoose.Schema({
-  // ...existing code...
+// Define Gallery item schema
+const GalleryItemSchema = new Schema({
+  src: { type: String, required: true },
+  name: { type: String, required: true },
+  color: { type: String, required: true },
+});
+
+// Define main product schema
+const ProductSchema = new Schema({
+  // Basic product information
+  productName: { type: String, required: true },
+  description: { type: String },
+  category: { type: String, required: true },
+  subCategory: { type: String, required: true },
+  regularPrice: { type: Number, required: true },
+  tag: { type: String },
+  sizes: [{ type: String }],
+  gallery: [GalleryItemSchema],
   
-  // Add detailed sizing information
+  // Target audience fields
+  targetAudience: { 
+    type: String, 
+    enum: ['Men', 'Women', 'Unisex'],
+    default: 'Men' 
+  },
+  
+  // Style and occasion fields
+  occasions: [{ type: String }], // e.g., "Formal", "Casual", "Wedding", "Business", "Party"
+  style: [{ type: String }],     // e.g., "Classic", "Modern", "Vintage", "Bohemian"
+  season: [{ type: String }],    // e.g., "Summer", "Winter", "Spring", "Fall"
+  
+  // Sizing and fit information
   fitType: {
     type: String,
     enum: ['Slim Fit', 'Regular Fit', 'Relaxed Fit', 'Oversized', 'Tailored'],
@@ -37,14 +64,18 @@ const ProductSchema = new mongoose.Schema({
     maxlength: 500
   },
   
-  // Add targetAudience field to support unisex products
-  targetAudience: { 
-    type: String, 
-    enum: ['Men', 'Women', 'Unisex'],
-    default: 'Men' 
-  },
-  
-  // ...existing code...
+  // Timestamps
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now },
 });
 
-export default mongoose.models.Product || mongoose.model('Product', ProductSchema);
+// Add a pre-save hook to update the 'updatedAt' timestamp on every save
+ProductSchema.pre('save', function(next) {
+  this.updatedAt = new Date();
+  next();
+});
+
+// Check if the model is already defined to prevent overwriting during hot reloads
+const Product = mongoose.models.Product || mongoose.model('Product', ProductSchema);
+
+export default Product;
