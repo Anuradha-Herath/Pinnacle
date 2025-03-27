@@ -12,6 +12,7 @@ import {
 } from "@heroicons/react/24/solid";
 import Link from "next/link";
 import Sidebar from "../../components/Sidebar";
+import TopBar from "../../components/TopBar";
 
 export default function CategoryDetails() {
   const router = useRouter();
@@ -34,51 +35,15 @@ export default function CategoryDetails() {
   return (
     <div className="flex">
       <Sidebar />
-      <div className="min-h-screen bg-gray-50 p-6 flex-1">
-        {/* Top Bar with Icons and Search Bar */}
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-semibold">Category Details</h1>
-
-          {/* Icons + Search Bar + Profile */}
-          <div className="flex items-center gap-2">
-            {/* Search Bar */}
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Search..."
-                className="border border-gray-300 rounded-md py-1 pl-8 pr-3 w-48 focus:outline-none focus:ring-2 focus:ring-orange-500"
-              />
-              <MagnifyingGlassIcon className="h-5 w-5 text-gray-500 absolute left-2 top-2" />
-            </div>
-
-            {/* Notifications */}
-            <button onClick={() => router.push("/notifications")} className="p-2 hover:bg-gray-200 rounded-lg">
-              <BellIcon className="h-6 w-6 text-gray-600" />
-            </button>
-
-            {/* Settings */}
-            <button onClick={() => router.push("/settings")} className="p-2 hover:bg-gray-200 rounded-lg">
-              <Cog6ToothIcon className="h-6 w-6 text-gray-600" />
-            </button>
-
-            {/* Clock Icon (History) */}
-            <button onClick={() => router.push("/history")} className="p-2 hover:bg-gray-200 rounded-lg">
-              <ClockIcon className="h-6 w-6 text-gray-600" />
-            </button>
-
-            {/* Profile */}
-            <button
-              onClick={() => router.push("../../profilepage")}
-              className="p-1 rounded-full border-2 border-gray-300 hover:shadow-lg"
-            >
-              <img src="/p9.webp" alt="Profile" className="h-8 w-8 rounded-full object-cover" />
-            </button>
-          </div>
-        </div>
+      <div className="min-h-screen bg-gray-50 p-4 flex-1">
+        <TopBar title="Category Details" />
 
         {/* Breadcrumb / Page Path with Links */}
         <div className="text-sm text-gray-500 mb-4">
-          <Link href="../admincategory1" className="text-gray-600 font-semibold hover:text-orange-500">
+          <Link
+            href="../admincategory1"
+            className="text-gray-600 font-semibold hover:text-orange-500"
+          >
             Category
           </Link>
           &gt;
@@ -125,7 +90,11 @@ export default function CategoryDetails() {
 
           {/* CATEGORY IMAGE */}
           <div className="bg-white p-6 rounded-lg shadow-md flex justify-center items-center">
-            <img src="/shopmen.webp" alt="Men’s T-Shirts" className="h-72 w-full object-cover rounded-md" />
+            <img
+              src="/shopmen.webp"
+              alt="Men’s T-Shirts"
+              className="h-72 w-full object-cover rounded-md"
+            />
           </div>
         </div>
 
@@ -133,8 +102,15 @@ export default function CategoryDetails() {
         <div className="mt-8 bg-white p-6 rounded-lg shadow-md">
           <div className="grid grid-cols-3 gap-6">
             {products.map((product, index) => (
-              <div key={index} className="bg-gray-100 p-4 rounded-lg shadow-md relative">
-                <img src={product.image} alt={product.name} className="h-36 w-3/4 object-cover rounded-md" />
+              <div
+                key={index}
+                className="bg-gray-100 p-4 rounded-lg shadow-md relative"
+              >
+                <img
+                  src={product.image}
+                  alt={product.name}
+                  className="h-36 w-3/4 object-cover rounded-md"
+                />
                 <p className="mt-2 text-sm font-semibold">{product.name}</p>
                 <p className="text-gray-500 text-sm">{product.price}</p>
 

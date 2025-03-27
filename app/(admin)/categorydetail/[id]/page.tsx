@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import Sidebar from "../../../components/Sidebar";
 import TopBar from "../../../components/TopBar";
+import AdminProductCart from "../../../components/AdminProductCard";
 import { PencilIcon, EyeIcon, TrashIcon } from "@heroicons/react/24/solid";
 
 interface Category {
@@ -115,6 +116,16 @@ export default function CategoryDetail() {
       alert(error instanceof Error ? error.message : "Failed to delete product");
     }
   };
+
+  // Transform database products to the format expected by AdminProductCart
+  const formattedProducts = products.map(product => ({
+    id: product._id,
+    name: product.productName,
+    image: product.gallery && product.gallery.length > 0 ? product.gallery[0].src : '/placeholder.png',
+    price: product.regularPrice,
+    sales: 0,  // Default since we don't have sales data in the current structure
+    remaining: 100  // Default since we don't have inventory data in the current structure
+  }));
 
   // Loading states
   if (loading) {
@@ -256,10 +267,10 @@ export default function CategoryDetail() {
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-semibold">Products in this Category</h2>
               <Link 
-                href={`/productcreate?category=${category.mainCategory}&subcategory=${category.title}`} 
+                href={`/productcreate?category=${category?.mainCategory}&subcategory=${category?.title}`} 
                 className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors"
               >
-                Add Product
+                Add New Product
               </Link>
             </div>
 
@@ -290,65 +301,15 @@ export default function CategoryDetail() {
               </div>
             )}
 
-            {/* Products Grid */}
+            {/* Updated Products Grid that matches productlist page */}
             {!productsLoading && !productsError && products.length > 0 && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                {products.map((product) => (
-                  <div key={product._id} className="bg-white rounded-lg shadow-md overflow-hidden group hover:shadow-lg transition-shadow">
-                    {/* Product Image */}
-                    <div className="relative h-48 bg-gray-100 overflow-hidden">
-                      <img 
-                        src={product.gallery && product.gallery.length > 0 ? product.gallery[0].src : "/placeholder.png"}
-                        alt={product.productName}
-                        className="w-full h-full object-cover object-center"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = "/placeholder.png";
-                        }}
-                      />
-                      
-                      {/* Action buttons - only visible on hover */}
-                      <div className="absolute top-2 right-2 flex flex-col space-y-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={() => router.push(`/productdetail/${product._id}`)}
-                          className="p-2 bg-white bg-opacity-80 rounded-full hover:bg-opacity-100 transition-all"
-                          title="View product"
-                        >
-                          <EyeIcon className="h-4 w-4 text-gray-700" />
-                        </button>
-                        <button
-                          onClick={() => router.push(`/productedit/${product._id}`)}
-                          className="p-2 bg-white bg-opacity-80 rounded-full hover:bg-opacity-100 transition-all"
-                          title="Edit product"
-                        >
-                          <PencilIcon className="h-4 w-4 text-orange-600" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteProduct(product._id)}
-                          className="p-2 bg-white bg-opacity-80 rounded-full hover:bg-opacity-100 transition-all"
-                          title="Delete product"
-                        >
-                          <TrashIcon className="h-4 w-4 text-red-600" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Product Details */}
-                    <div className="p-4">
-                      <h3 className="font-medium text-gray-800 mb-1 truncate">{product.productName}</h3>
-                      <p className="text-gray-600">${product.regularPrice.toFixed(2)}</p>
-                      <div className="mt-2 flex justify-between items-center">
-                        <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                          product.category === 'Men' 
-                            ? 'bg-blue-100 text-blue-800' 
-                            : product.category === 'Women' 
-                            ? 'bg-pink-100 text-pink-800' 
-                            : 'bg-purple-100 text-purple-800'
-                        }`}>
-                          {product.category}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {formattedProducts.map((product) => (
+                  <AdminProductCart 
+                    key={product.id} 
+                    product={product} 
+                    onDelete={handleDeleteProduct}
+                  />
                 ))}
               </div>
             )}

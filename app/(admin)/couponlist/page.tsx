@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { EyeIcon, PencilIcon, TrashIcon, BellIcon, Cog6ToothIcon, ClockIcon, PlusIcon } from "@heroicons/react/24/solid";
 import Sidebar from "../../components/Sidebar";
+import TopBar from "../../components/TopBar";
 
 export default function CouponsList() {
   const router = useRouter();
@@ -87,29 +88,13 @@ export default function CouponsList() {
   return (
     <div className="flex">
       <Sidebar />
-      <div className="min-h-screen bg-gray-50 p-6 flex-1">
-        {/* Top Bar */}
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-semibold text-gray-600">Coupons List</h1>
-          <div className="flex items-center gap-2">
-            <button className="p-2 hover:bg-gray-200 rounded-lg"><BellIcon className="h-6 w-6 text-gray-600" /></button>
-            <button className="p-2 hover:bg-gray-200 rounded-lg"><Cog6ToothIcon className="h-6 w-6 text-gray-600" /></button>
-            <button className="p-2 hover:bg-gray-200 rounded-lg"><ClockIcon className="h-6 w-6 text-gray-600" /></button>
-            <button className="p-1 rounded-full border-2 border-gray-300">
-              <img src="/p9.webp" alt="Profile" className="h-8 w-8 rounded-full object-cover" />
-            </button>
-            <input
-              type="text"
-              placeholder="🔍 Search"
-              className="border px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-            />
-          </div>
-        </div>
+      <div className="min-h-screen bg-gray-50 p-4 flex-1">
+        <TopBar title="Coupons List" />
 
         {/* Add Coupon Button */}
         <div className="flex justify-end mb-6">
-          <button 
-            onClick={() => router.push('/couponcreate')}
+          <button
+            onClick={() => router.push("/couponcreate")}
             className="bg-orange-500 text-white px-4 py-2 rounded-md flex items-center gap-2 shadow-md hover:bg-orange-600"
           >
             <PlusIcon className="h-5 w-5" /> Create a Coupon
@@ -121,22 +106,34 @@ export default function CouponsList() {
           {/* Active Coupons */}
           <div className="bg-white p-6 rounded-lg shadow-lg flex items-center justify-between w-1/2 mx-auto">
             <div>
-              <p className="text-gray-700 text-lg font-semibold">Active Coupons</p>
+              <p className="text-gray-700 text-lg font-semibold">
+                Active Coupons
+              </p>
               <p className="text-gray-900 text-2xl font-bold">{activeCount}</p>
             </div>
             <div className="bg-orange-100 p-4 rounded-xl">
-              <img src="/active coupon.png" alt="Active Coupons" className="h-10 w-10" />
+              <img
+                src="/active coupon.png"
+                alt="Active Coupons"
+                className="h-10 w-10"
+              />
             </div>
           </div>
 
           {/* Expired Coupons */}
           <div className="bg-white p-6 rounded-lg shadow-lg flex items-center justify-between w-1/2 mx-auto">
             <div>
-              <p className="text-gray-700 text-lg font-semibold">Expired Coupons</p>
+              <p className="text-gray-700 text-lg font-semibold">
+                Expired Coupons
+              </p>
               <p className="text-gray-900 text-2xl font-bold">{expiredCount}</p>
             </div>
             <div className="bg-orange-100 p-4 rounded-xl">
-              <img src="/expired coupon.png" alt="Expired Coupons" className="h-10 w-10" />
+              <img
+                src="/expired coupon.png"
+                alt="Expired Coupons"
+                className="h-10 w-10"
+              />
             </div>
           </div>
         </div>
@@ -144,10 +141,14 @@ export default function CouponsList() {
         {/* Coupon Table */}
         <div className="bg-white p-6 rounded-lg shadow-lg">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg text-gray-600 font-semibold">All Coupons List</h2>
-            <button className="px-4 py-2 border rounded-lg text-gray-600">This Month ▼</button>
+            <h2 className="text-lg text-gray-600 font-semibold">
+              All Coupons List
+            </h2>
+            <button className="px-4 py-2 border rounded-lg text-gray-600">
+              This Month ▼
+            </button>
           </div>
-          
+
           {loading ? (
             <div className="text-center py-4">Loading coupons...</div>
           ) : error ? (
@@ -169,7 +170,9 @@ export default function CouponsList() {
               <tbody>
                 {coupons.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="text-center py-4">No coupons found</td>
+                    <td colSpan={8} className="text-center py-4">
+                      No coupons found
+                    </td>
                   </tr>
                 ) : (
                   coupons.map((coupon) => (
@@ -196,20 +199,20 @@ export default function CouponsList() {
                         </span>
                       </td>
                       <td className="p-3 flex gap-2 justify-end">
-                        <button 
-                          onClick={() => handleView(coupon._id)} 
+                        <button
+                          onClick={() => handleView(coupon._id)}
                           className="p-2 bg-orange-400 text-white rounded-md hover:bg-orange-600"
                         >
                           <EyeIcon className="h-5 w-5" />
                         </button>
-                        <button 
-                          onClick={() => handleEdit(coupon._id)} 
+                        <button
+                          onClick={() => handleEdit(coupon._id)}
                           className="p-2 bg-orange-400 text-white rounded-md hover:bg-orange-600"
                         >
                           <PencilIcon className="h-5 w-5" />
                         </button>
-                        <button 
-                          onClick={() => handleDelete(coupon._id)} 
+                        <button
+                          onClick={() => handleDelete(coupon._id)}
                           className="p-2 bg-orange-400 text-white rounded-md hover:bg-orange-600"
                         >
                           <TrashIcon className="h-5 w-5" />
@@ -223,10 +226,18 @@ export default function CouponsList() {
           )}
           <div className="flex justify-end mt-6 pr-4">
             <div className="flex items-center border rounded-md overflow-hidden shadow-md">
-              <button className="px-4 py-2 border-r bg-white hover:bg-gray-200">Previous</button>
-              <button className="px-4 py-2 bg-orange-500 text-white font-semibold">1</button>
-              <button className="px-4 py-2 border-l bg-white hover:bg-gray-200">2</button>
-              <button className="px-4 py-2 border-l bg-white hover:bg-gray-200">Next</button>
+              <button className="px-4 py-2 border-r bg-white hover:bg-gray-200">
+                Previous
+              </button>
+              <button className="px-4 py-2 bg-orange-500 text-white font-semibold">
+                1
+              </button>
+              <button className="px-4 py-2 border-l bg-white hover:bg-gray-200">
+                2
+              </button>
+              <button className="px-4 py-2 border-l bg-white hover:bg-gray-200">
+                Next
+              </button>
             </div>
           </div>
         </div>
