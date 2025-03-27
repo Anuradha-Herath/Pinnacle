@@ -1,26 +1,101 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { BellIcon, Cog6ToothIcon, ClockIcon } from "@heroicons/react/24/solid";
 import Sidebar from "../../components/Sidebar";
 
 export default function CouponCreate() {
-  const [formData, setFormData] = useState({
-    couponCode: "",
-    productId: "",
+  const router = useRouter();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  
+  interface FormData {
+    code: string;
+    product: string;
+    price: string;
+    discount: string;
+    limit: string;
+    customerEligibility: string;
+    description: string;
+    oneTimeUse: boolean;
+    status: string;
+    startDate: string;
+    endDate: string;
+    couponStatus: "active" | "inactive" | "future plan";
+  }
+
+  const statusMap = {
+    "active": "Active",
+    "inactive": "Inactive",
+    "future plan": "Future"
+  };
+
+  const [formData, setFormData] = useState<FormData>({
+    code: "",
+    product: "",
+    price: "",
+    discount: "",
     limit: "",
     customerEligibility: "new user",
-    discountValue: "",
+    description: "",
     oneTimeUse: false,
-    couponStatus: "active",
+    status: statusMap["active"], // Default to "Active"
     startDate: "",
-    endDate: ""
+    endDate: "",
+    couponStatus: "active",
   });
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    console.log("Coupon Data:", formData);
-    // API integration or logic for handling form submission
+    setLoading(true);
+    setError("");
+    
+    try {
+      // Map form status values to API expected format
+      const statusMap = {
+        "active": "Active",
+        "inactive": "Inactive",
+        "future plan": "Future"
+      };
+      
+      const couponData = {
+        ...formData,
+        status: statusMap[formData.couponStatus] || formData.couponStatus
+      };
+      
+      // Remove any undefined or null values
+      Object.keys(couponData).forEach(key => {
+        if (couponData[key as keyof FormData] === undefined || couponData[key as keyof FormData] === null) {
+          delete couponData[key as keyof FormData];
+        }
+      });
+      
+      const response = await fetch('/api/coupons', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(couponData),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create coupon');
+      }
+      
+      const result = await response.json();
+      alert('Coupon created successfully!');
+      router.push('/couponlist');
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError('An unknown error occurred');
+      }
+      console.error('Error creating coupon:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -57,10 +132,16 @@ export default function CouponCreate() {
             <p className="text-sm text-gray-500">Home &gt; Coupons &gt; Create</p>
           </div>
 
+          {error && (
+            <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md">
+              Error: {error}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit}>
             <div className="grid grid-cols-5 gap-6">
               {/* Left Column */}
-                <div className="col-span-2 ">
+              <div className="col-span-2 ">
                 {/* Coupon Status */}
                 <div className="bg-white p-4 rounded-lg shadow-md mb-6">
                   <h2 className="text-md font-medium mb-4">Coupon Status</h2>
@@ -107,21 +188,21 @@ export default function CouponCreate() {
                   <div className="mb-4">
                   <label className="block text-sm mb-1">Start Date</label>
                   <input 
-                    type="text" 
-                    placeholder="DD - MM - YYYY" 
+                    type="date" 
                     className="block w-full border border-gray-300 p-2 rounded-xl" 
                     value={formData.startDate}
                     onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                    required
                   />
                   </div>
                   <div>
                   <label className="block text-sm mb-1">End Date</label>
                   <input 
-                    type="text" 
-                    placeholder="DD - MM - YYYY" 
+                    type="date" 
                     className="block w-full border border-gray-300 p-2 rounded-xl" 
                     value={formData.endDate}
                     onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                    required
                   />
                   </div>
                 </div>
@@ -141,21 +222,47 @@ export default function CouponCreate() {
                     type="text"
                     placeholder="Code Enter"
                     className="block w-full border border-gray-300 p-2 rounded-xl"
-                    value={formData.couponCode}
-                    onChange={(e) => setFormData({ ...formData, couponCode: e.target.value })}
+                    value={formData.code}
+                    onChange={(e) => setFormData({ ...formData, code: e.target.value })}
+                    required
                     />
                   </div>
                   <div className="ml-auto pr-4 w-1/3">
-                    <label className="block text-sm mb-1 ">Product ID</label>
+                    <label className="block text-sm mb-1">Product Name</label>
                     <input 
                     type="text"
-                    placeholder="Enter Product ID"
+                    placeholder="Enter Product Name"
                     className="block w-full border border-gray-300 p-2 rounded-xl"
-                    value={formData.productId}
-                    onChange={(e) => setFormData({ ...formData, productId: e.target.value })}
+                    value={formData.product}
+                    onChange={(e) => setFormData({ ...formData, product: e.target.value })}
+                    required
                     />
                   </div>
-                  <div className="mt-4 "></div>
+                  </div>
+                  
+                  <div className="mb-4 flex items-center gap-4">
+                    <div>
+                      <label className="block text-sm mb-1">Price</label>
+                      <input
+                        type="text"
+                        placeholder="Enter Price"
+                        className="block w-full border border-gray-300 p-2 rounded-xl"
+                        value={formData.price}
+                        onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm mb-1">Discount</label>
+                      <input
+                        type="text"
+                        placeholder="Enter Discount"
+                        className="block w-full border border-gray-300 p-2 rounded-xl"
+                        value={formData.discount}
+                        onChange={(e) => setFormData({ ...formData, discount: e.target.value })}
+                        required
+                      />
+                    </div>
                   </div>
                   
                   <div className="mb-4">
@@ -202,19 +309,19 @@ export default function CouponCreate() {
                   </label>
                   </div>
                   <div className="mb-4">
-                  <label className="block text-sm mb-1">Discount Values</label>
-                  <input
-                  type="text"
-                  placeholder="Discount Value"
-                  className="block w-2/3 border border-gray-300 p-2 rounded-xl"
-                  value={formData.discountValue}
-                  onChange={(e) => setFormData({ ...formData, discountValue: e.target.value })}
+                  <label className="block text-sm mb-1">Description</label>
+                  <textarea
+                    placeholder="Enter description"
+                    className="block w-full border border-gray-300 p-2 rounded-xl"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    rows={3}
                   />
                   </div>
                   <div>
                   <label className="flex items-center gap-2">
                   <input
-                  type="radio"
+                  type="checkbox"
                   checked={formData.oneTimeUse}
                   onChange={() => setFormData({ ...formData, oneTimeUse: !formData.oneTimeUse })}
                   className="w-4 h-4"
@@ -226,24 +333,27 @@ export default function CouponCreate() {
                   <hr className="mb-4" />
                   {/* Action Buttons */}
               <div className="flex justify-end gap-2 mt-6">
-                <button type="submit" className="bg-red-500 text-white px-8 py-2 rounded">
-                CREATE
+                <button 
+                  type="submit" 
+                  className="bg-red-500 text-white px-8 py-2 rounded"
+                  disabled={loading}
+                >
+                  {loading ? 'Creating...' : 'CREATE'}
                 </button>
-                <button type="button" className="bg-gray-200 px-8 py-2 rounded">
-                CANCEL
+                <button 
+                  type="button" 
+                  className="bg-gray-200 px-8 py-2 rounded"
+                  onClick={() => router.push('/couponlist')}
+                >
+                  CANCEL
                 </button>
-                
-
               </div>
                 </div>
               </div>
-              
-              </div>
-
-            
+            </div>
           </form>
         </div>
       </div>
     </div>
   );
-}  
+}
