@@ -35,6 +35,7 @@ export default function ProductCreate() {
     sizingTrend: number;
     sizingNotes: string;
     sizeChart: Record<string, { chest?: number, waist?: number, hips?: number, length?: number }>;
+    targetAudience: string; // Add new field for audience/gender
   }>({
     productName: "",
     description: "",
@@ -51,6 +52,7 @@ export default function ProductCreate() {
     sizingTrend: 0,
     sizingNotes: "",
     sizeChart: {},
+    targetAudience: "Men", // Default value
   });
 
   // State for storing all categories fetched from the API
@@ -261,6 +263,23 @@ export default function ProductCreate() {
                   <option value="Men">Men</option>
                   <option value="Women">Women</option>
                   <option value="Accessories">Accessories</option>
+                </select>
+              </div>
+
+              {/* Add the Target Audience field after the Main Category dropdown */}
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Target Audience <span className="text-red-500">*</span>
+                </label>
+                <select
+                  name="targetAudience"
+                  value={formData.targetAudience}
+                  onChange={handleChange}
+                  className="w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="Men">Men</option>
+                  <option value="Women">Women</option>
+                  <option value="Unisex">Unisex</option>
                 </select>
               </div>
               

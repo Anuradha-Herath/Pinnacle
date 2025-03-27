@@ -37,6 +37,13 @@ const ProductSchema = new mongoose.Schema({
     maxlength: 500
   },
   
+  // Add targetAudience field to support unisex products
+  targetAudience: { 
+    type: String, 
+    enum: ['Men', 'Women', 'Unisex'],
+    default: 'Men' 
+  },
+  
   // ...existing code...
 });
 

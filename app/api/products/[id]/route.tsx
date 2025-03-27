@@ -122,7 +122,9 @@ export async function PUT(
         regularPrice: Number(body.regularPrice),
         tag: body.tag,
         sizes: body.sizes,
-        gallery: processedGallery
+        gallery: processedGallery,
+        // Add targetAudience field
+        targetAudience: body.targetAudience || undefined,
       }, 
       { new: true }
     );

@@ -63,9 +63,19 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    // Add category filter if provided
+    // Enhanced category filtering to include unisex products
     if (category) {
-      query.category = category;
+      if (category === 'Men' || category === 'Women') {
+        // If looking for Men's or Women's products, also include Unisex products
+        query.$or = [
+          { category: category },
+          { targetAudience: category },
+          { targetAudience: 'Unisex' }  // Include Unisex products
+        ];
+      } else {
+        // For non-gender specific categories (like 'Accessories')
+        query.category = category;
+      }
     }
 
     // Add subCategory filter if provided
@@ -151,6 +161,9 @@ export async function POST(request: Request) {
       occasions: body.occasions || [],
       style: body.style || [],
       season: body.season || [],
+      
+      // Add targetAudience field
+      targetAudience: body.targetAudience || 'Men', // Default to Men if not specified
     });
     
     await newProduct.save();

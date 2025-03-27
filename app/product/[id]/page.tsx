@@ -109,6 +109,7 @@ export default function EnhancedProductDetailPage() {
           details: [
             `Category: ${data.product.category}`,
             `Sub-Category: ${data.product.subCategory}`,
+            `For: ${data.product.targetAudience || 'All'}`, // Add target audience to details
             data.product.description ? `Description: ${data.product.description}` : null,
           ].filter(Boolean),
           colors: data.product.gallery?.map((item: any) => item.color) || [],
