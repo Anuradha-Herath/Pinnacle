@@ -17,8 +17,8 @@ interface Product {
   image: string;
   colors: string[];
   sizes: string[];
-  category?: string;       // Added missing property
-  subCategory?: string;    // Added missing property
+  category?: string;       
+  subCategory?: string;    
   discount?: {
     percentage: number;
     discountedPrice: number;
@@ -98,8 +98,11 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
     e.preventDefault();
     e.stopPropagation();
     
-    // Don't allow adding to cart without selecting a size if product has sizes
-    if (productWithDefaults.sizes.length > 0 && !selectedSize) {
+    // Don't require size selection for accessories
+    const isAccessory = product.category === "Accessories";
+    
+    // Only validate size selection for non-accessories with available sizes
+    if (!isAccessory && productWithDefaults.sizes.length > 0 && !selectedSize) {
       toast.error("Please select a size");
       return;
     }
@@ -270,8 +273,8 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
         </div>
       )}
       
-      {/* Sizes with selection indicator */}
-      {productWithDefaults.sizes.length > 0 && (
+      {/* Sizes with selection indicator - Only show for non-accessories */}
+      {productWithDefaults.sizes.length > 0 && product.category !== "Accessories" && (
         <div className="flex gap-2 mt-2">
           {productWithDefaults.sizes.slice(0, 5).map((size, index) => (
             <button

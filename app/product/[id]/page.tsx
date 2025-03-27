@@ -269,7 +269,9 @@ export default function EnhancedProductDetailPage() {
   const handleAddToCart = () => {
     if (!product) return;
     
-    if (!selectedSize && product.sizes.length > 0) {
+    // Only validate size selection for non-accessories with available sizes
+    const isAccessories = product.rawData?.category === "Accessories";
+    if (!isAccessories && product.sizes.length > 0 && !selectedSize) {
       toast.error("Please select a size");
       return;
     }

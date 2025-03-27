@@ -154,7 +154,7 @@ export async function POST(request: Request) {
       subCategory: body.subCategory,
       regularPrice: Number(body.regularPrice),
       tag: body.tag,
-      sizes: body.sizes,
+      sizes: body.sizes || [], // Make sure sizes is at least an empty array
       gallery: processedGallery,
       
       // Add new occasion-related fields
@@ -169,20 +169,36 @@ export async function POST(request: Request) {
     await newProduct.save();
     
     // Create a new inventory entry for this product
-    const newInventory = new Inventory({
-      productId: newProduct._id,
-      productName: newProduct.productName,
-      stock: 0, // Initialize with zero stock
-      status: 'Newly Added', // Set initial status
-      image: processedGallery.length > 0 ? processedGallery[0].src : '',
-      // Initialize size stock with zeros
-      sizeStock: body.sizes.reduce((acc: any, size: string) => {
-        acc[size] = 0;
-        return acc;
-      }, {})
-    });
-    
-    await newInventory.save();
+    // For accessories without sizes, create a simpler inventory
+    if (body.category === "Accessories" && (!body.sizes || body.sizes.length === 0)) {
+      const newInventory = new Inventory({
+        productId: newProduct._id,
+        productName: newProduct.productName,
+        stock: 0, // Initialize with zero stock
+        status: 'Newly Added', // Set initial status
+        image: processedGallery.length > 0 ? processedGallery[0].src : '',
+        // For accessories without sizes, use a single stock count
+        sizeStock: { "Default": 0 }
+      });
+      
+      await newInventory.save();
+    } else {
+      // For products with sizes
+      const newInventory = new Inventory({
+        productId: newProduct._id,
+        productName: newProduct.productName,
+        stock: 0, // Initialize with zero stock
+        status: 'Newly Added', // Set initial status
+        image: processedGallery.length > 0 ? processedGallery[0].src : '',
+        // Initialize size stock with zeros
+        sizeStock: body.sizes.reduce((acc: any, size: string) => {
+          acc[size] = 0;
+          return acc;
+        }, {})
+      });
+      
+      await newInventory.save();
+    }
     
     return NextResponse.json({ 
       message: "Product created and added to inventory", 

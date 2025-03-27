@@ -159,20 +159,25 @@ export default function ProductCreate() {
   };
 
   const handleSave = async () => {
+    // Check if required fields are filled
+    // Make size requirement conditional based on category
+    const isSizeRequired = formData.category !== "Accessories";
+    const missingSizeInfo = isSizeRequired && formData.sizes.length === 0;
+    
     if (
       !formData.productName ||
       !formData.category ||
       !formData.regularPrice ||
       !formData.subCategory ||
-      !(formData.sizes.length > 0) ||
+      missingSizeInfo ||
       formData.gallery.length === 0
     ) {
       alert(
-        "Please fill in all required fields (Product Name, Sizes, Category, Sub-Category, Regular Price) and add at least one product image with color!"
+        `Please fill in all required fields (Product Name, ${isSizeRequired ? 'Sizes, ' : ''}Category, Sub-Category, Regular Price) and add at least one product image with color!`
       );
       return;
     }
-
+  
     // Validate that all gallery items have color information
     const missingColorItems = formData.gallery.filter(item => !item.color || item.color.trim() === '');
     if (missingColorItems.length > 0) {
@@ -549,7 +554,7 @@ export default function ProductCreate() {
               />
               <div>
                 <label className="block text-sm font-medium mb-2">
-                  Size <span className="text-red-500">*</span>
+                  Size {formData.category !== "Accessories" ? <span className="text-red-500">*</span> : <span className="text-gray-400">(optional for accessories)</span>}
                 </label>
                 <div className="flex flex-wrap gap-2">
                   {["NS", "XS", "S", "M", "L", "XL", "2XL", "3XL"].map(
@@ -574,6 +579,11 @@ export default function ProductCreate() {
                     )
                   )}
                 </div>
+                {formData.category === "Accessories" && formData.sizes.length === 0 && (
+                  <p className="text-sm text-gray-500 mt-2">
+                    No sizes selected. This is okay for accessories.
+                  </p>
+                )}
               </div>
             </div>
           </div>

@@ -13,6 +13,9 @@ interface ProductInformationProps {
     images: string[]; // Use images array instead of colors array
     sizes: string[];
     rating: number;
+    rawData?: {
+      category?: string;
+    };
   };
   quantity: number;
   updateQuantity: (value: number) => void;
@@ -77,6 +80,12 @@ const ProductInformation: React.FC<ProductInformationProps> = ({
   // Placeholder image for error handling
   const placeholderImage = '/placeholder.png';
 
+  // Only show size selector if:
+  // 1. The product has sizes defined AND
+  // 2. The product is not in the Accessories category
+  const isAccessories = product.rawData?.category === "Accessories";
+  const showSizeSelector = product.sizes && product.sizes.length > 0 && !isAccessories;
+
   return (
     <div>
       {/* Product Name */}
@@ -127,26 +136,18 @@ const ProductInformation: React.FC<ProductInformationProps> = ({
       )}
       
       {/* Sizes */}
-      {product.sizes && product.sizes.length > 0 && (
-        <div className="mb-6">
-          <div className="flex justify-between items-center mb-2">
-            <h2 className="text-sm font-medium">Size</h2>
-            <button 
-              onClick={() => setIsSizeGuideOpen(true)} 
-              className="text-xs text-blue-600 underline hover:text-blue-800"
-            >
-              Size Guide
-            </button>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {product.sizes.map((size) => (
+      {showSizeSelector && (
+        <div className="mt-6">
+          <h3 className="text-sm font-medium text-gray-900">Size</h3>
+          <div className="flex items-center space-x-2 mt-2">
+            {product.sizes.map((size: string) => (
               <button
                 key={size}
                 onClick={() => setSelectedSize(size)}
-                className={`px-4 py-2 border text-sm transition-colors ${
+                className={`px-3 py-1 border rounded-md transition ${
                   selectedSize === size
                     ? "border-black bg-black text-white"
-                    : "border-gray-300 hover:border-gray-500"
+                    : "border-gray-300 hover:border-gray-700"
                 }`}
               >
                 {size}
