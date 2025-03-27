@@ -46,13 +46,44 @@ const Header = () => {
   const [categoriesLoading, setCategoriesLoading] = useState(false);
   const { user, logout } = useAuth();
   const [showUserDropdown, setShowUserDropdown] = useState(false);
+  
+  // New state variables for scroll behavior
+  const [prevScrollPos, setPrevScrollPos] = useState(0);
+  const [visible, setVisible] = useState(true);
+  const [atTop, setAtTop] = useState(true);
+  
   let userDropdownTimeout: NodeJS.Timeout;
+  let timeout: NodeJS.Timeout;
   
   // Refs for click outside detection
   const searchRef = useRef<HTMLDivElement>(null!);
   const dropdownRef = useRef(null);
-  
-  let timeout: NodeJS.Timeout;
+
+  // Handle scroll events to show/hide header
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollPos = window.scrollY;
+      const isScrolledUp = prevScrollPos > currentScrollPos;
+      const isAtPageTop = currentScrollPos < 10;
+      
+      setAtTop(isAtPageTop);
+      
+      // Only change visibility when scrolling more than 10px to prevent small movements
+      if (currentScrollPos < 10) {
+        setVisible(true); // Always visible at the top
+      } else if (Math.abs(prevScrollPos - currentScrollPos) > 10) {
+        setVisible(isScrolledUp);
+      }
+      
+      setPrevScrollPos(currentScrollPos);
+    };
+    
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, [prevScrollPos]);
 
   // Handle search form submission
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -195,8 +226,20 @@ const Header = () => {
     router.push('/login');
   };
 
+  // Add function to properly validate the wishlist
+  const getValidWishlistCount = () => {
+    // Filter out any null, undefined, or invalid items
+    if (!Array.isArray(wishlist)) return 0;
+    
+    const validItems = wishlist.filter(item => 
+      item && typeof item === 'string' && item.trim().length > 0
+    );
+    
+    return validItems.length;
+  };
+
   return (
-    <header className="bg-black text-white relative z-50">
+    <header className={`bg-black text-white w-full transition-all duration-300 ${!atTop ? 'fixed top-0 left-0 right-0 z-50' : 'relative z-50'} ${visible ? 'translate-y-0 opacity-100 shadow-lg' : '-translate-y-full opacity-0'}`}>
       {/* Top Bar */}
       <div className="max-w-7xl mx-auto px-4 py-3">
         <div className="flex items-center justify-between">
@@ -307,6 +350,9 @@ const Header = () => {
                         Dashboard
                       </Link>
                     )}
+                    <Link href="/faq" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                      FAQ & Help
+                    </Link>
                     <button 
                       onClick={handleLogout}
                       className="w-full text-left px-4 py-2 hover:bg-gray-100 border-t border-gray-200"
@@ -325,9 +371,9 @@ const Header = () => {
             
             <Link href="/wishlist" className="hover:text-gray-300 relative">
               <Heart className="h-6 w-6" />
-              {wishlist.length > 0 && (
+              {getValidWishlistCount() > 0 && (
                 <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                  {wishlist.length}
+                  {getValidWishlistCount()}
                 </span>
               )}
             </Link>

@@ -44,8 +44,8 @@ export async function GET(
   try {
     await connectDB();
     
-    // Extract id directly from the destructured params
-    const { id } = params;
+    // Properly await the params object before accessing id
+    const { id } = await params;
     
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json({ error: "Invalid product ID" }, { status: 400 });
@@ -78,8 +78,8 @@ export async function PUT(
   try {
     await connectDB();
     
-    // Extract id directly from the destructured params
-    const { id } = params;
+    // Properly await the params object before accessing id
+    const { id } = await params;
     
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json({ error: "Invalid product ID" }, { status: 400 });
@@ -151,8 +151,8 @@ export async function DELETE(
   try {
     await connectDB();
     
-    // Extract id directly from the destructured params
-    const { id } = params;
+    // Properly await the params object before accessing id
+    const { id } = await params;
     
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json({ error: "Invalid product ID" }, { status: 400 });

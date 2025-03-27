@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Heart } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -8,14 +8,22 @@ import { useWishlist } from "../context/WishlistContext";
 import { useCart } from "../context/CartContext";
 import { toast } from "react-hot-toast";
 import { cartNotifications, wishlistNotifications } from "@/lib/notificationService";
+import { trackProductView } from "@/lib/userPreferenceService";
 
 interface Product {
-  id: string; // Changed from number to string to match MongoDB _id
+  id: string; 
   name: string;
   price: number;
   image: string;
   colors: string[];
   sizes: string[];
+  category?: string;       // Added missing property
+  subCategory?: string;    // Added missing property
+  discount?: {
+    percentage: number;
+    discountedPrice: number;
+  };
+  tag?: string | null;
 }
 
 interface ProductCardProps {
@@ -28,11 +36,40 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
   const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist();
   const { addToCart } = useCart();
   const isWishlisted = isInWishlist(product.id);
+  const [hasDiscount, setHasDiscount] = useState(false);
+  const [discountedPrice, setDiscountedPrice] = useState<number | null>(null);
+  const [discountPercentage, setDiscountPercentage] = useState<number | null>(null);
   
   // Add state for currently displayed image & selected variants
   const [currentImage, setCurrentImage] = useState(product.image);
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
+
+  // Check for discounts when component mounts
+  useEffect(() => {
+    const checkForDiscounts = async () => {
+      try {
+        const response = await fetch(`/api/discounts/product/${product.id}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.discount && data.discount.active) {
+            // Calculate the discounted price
+            const percentage = data.discount.percentage;
+            const discountAmount = (product.price * percentage) / 100;
+            const discounted = product.price - discountAmount;
+            
+            setHasDiscount(true);
+            setDiscountedPrice(discounted);
+            setDiscountPercentage(percentage);
+          }
+        }
+      } catch (error) {
+        console.error("Error checking discounts:", error);
+      }
+    };
+    
+    checkForDiscounts();
+  }, [product.id, product.price]);
 
   // Ensure we have valid data with defaults
   const productWithDefaults = {
@@ -85,6 +122,17 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
   };
   
   const navigateToProductDetail = () => {
+    // Track the product view before navigating
+    trackProductView({
+      id: product.id,
+      name: product.name,
+      category: product.category || "",
+      subCategory: product.subCategory || "",
+      colors: product.colors || [],
+      sizes: product.sizes || [],
+      price: product.price
+    });
+    
     router.push(`/product/${product.id}`);
   };
 
@@ -147,6 +195,13 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
       className="w-[300px] min-w-[300px] bg-white shadow-md rounded-lg p-4 relative cursor-pointer hover:shadow-lg transition-shadow"
       onClick={navigateToProductDetail}
     >
+      {/* Tag display - NEW tag stays at top-left */}
+      {product.tag && (
+        <div className="absolute top-3 left-3 z-10 bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded">
+          {product.tag}
+        </div>
+      )}
+      
       {!hideWishlist && (
         <button 
           onClick={handleWishlistToggle}
@@ -155,6 +210,14 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
           <Heart size={20} fill={isWishlisted ? "currentColor" : "none"} />
         </button>
       )}
+
+      {/* Discount Badge - Moved to top right below wishlist heart */}
+      {hasDiscount && discountPercentage && (
+        <div className="absolute top-12 right-3 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full z-10">
+          -{discountPercentage}%
+        </div>
+      )}
+
       <div className="w-full h-60 flex items-center justify-center">
         <Image
           src={productImage}
@@ -168,7 +231,18 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
         />
       </div>
       <h3 className="mt-2 font-semibold">{product.name}</h3>
-      <p className="text-gray-600">${product.price.toFixed(2)}</p>
+      
+      {/* Price display with discount if available */}
+      <div className="flex items-baseline">
+        {hasDiscount && discountedPrice !== null ? (
+          <>
+            <p className="text-red-600 font-semibold">${discountedPrice.toFixed(2)}</p>
+            <p className="text-gray-500 text-sm line-through ml-2">${product.price.toFixed(2)}</p>
+          </>
+        ) : (
+          <p className="text-gray-600">${product.price.toFixed(2)}</p>
+        )}
+      </div>
       
       {/* Color images with selection indicator */}
       {validColorImages.length > 0 && (

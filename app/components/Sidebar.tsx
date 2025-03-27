@@ -1,29 +1,31 @@
 "use client";
 
-import React, { useState } from "react";
-import Link from "next/link"; // Import Link component
-import { usePathname } from "next/navigation"; // Import usePathname for active route detection
+import React, { useState, useEffect } from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
-    AiOutlineHome,
-    AiOutlineShoppingCart,
-    AiOutlineFolderOpen,
-    AiOutlineStock,
-    AiOutlineDollar,
-    AiOutlineUser,
-    AiOutlinePercentage,
     AiOutlineLogout,
     AiOutlineMenu,
 } from "react-icons/ai";
-import { BsChevronDown } from "react-icons/bs";
+import { MdDashboard, MdInventory } from "react-icons/md";
+import { FaBoxOpen, FaShoppingBag, FaTag, FaUsers } from "react-icons/fa";
+import { BiCategoryAlt } from "react-icons/bi";
+import { RiCoupon3Line } from "react-icons/ri";
+import { CgProfile } from "react-icons/cg";
+import { TbDiscount } from "react-icons/tb";
 
 const Sidebar: React.FC = () => {
-    const [openProducts, setOpenProducts] = useState(false);
-    const [openInventory, setOpenInventory] = useState(false);
-    const [openCustomers, setOpenCustomers] = useState(false);
-    const [openCoupons, setOpenCoupons] = useState(false);
-    const [collapsed, setCollapsed] = useState(false);
+    // Use useState with an explicit boolean type to avoid hydration issues
+    const [collapsed, setCollapsed] = useState<boolean>(false);
+    // Client-side only state
+    const [mounted, setMounted] = useState<boolean>(false);
     
-    const pathname = usePathname(); // Get current path to determine active links
+    const pathname = usePathname();
+    
+    // Use useEffect to handle client-side operations
+    useEffect(() => {
+        setMounted(true);
+    }, []);
     
     const isActive = (path: string) => pathname === path;
 
@@ -32,10 +34,14 @@ const Sidebar: React.FC = () => {
     };
 
     // Helper function for Link or collapsed icon-only button
-    const NavLink = ({ href, children, onClick }: { href: string, children: React.ReactNode, onClick?: () => void }) => (
+    const NavLink = ({ href, children, onClick }: { 
+        href: string, 
+        children: React.ReactNode, 
+        onClick?: (e: React.MouseEvent<HTMLAnchorElement>) => void 
+    }) => (
         <Link
             href={href}
-            className={`flex items-center p-2 rounded hover:bg-gray-700 ${isActive(href) ? 'bg-gray-700' : ''}`}
+            className={`flex items-center p-2 rounded hover:bg-gray-700 ${mounted && isActive(href) ? 'bg-gray-700' : ''}`}
             onClick={onClick}
         >
             {children}
@@ -62,198 +68,62 @@ const Sidebar: React.FC = () => {
                 <ul className="space-y-2">
                     <li>
                         <NavLink href="/dashboard">
-                            <AiOutlineHome className="text-xl w-6 flex-shrink-0" />
+                            <MdDashboard className="text-xl w-6 flex-shrink-0" />
                             {!collapsed && <span className="ml-2">Dashboard</span>}
                         </NavLink>
                     </li>
                     <li>
-                        <button
-                            className={`flex items-center p-2 rounded hover:bg-gray-700 w-full text-left ${
-                                pathname.includes('/product') ? 'bg-gray-700' : ''
-                            }`}
-                            onClick={() => setOpenProducts(!openProducts)}
-                        >
-                            <AiOutlineShoppingCart className="text-xl w-6 flex-shrink-0" />
-                            {!collapsed && (
-                                <>
-                                    <span className="ml-2">Products</span>
-                                    <BsChevronDown
-                                        className={`ml-auto transition-transform ${
-                                            openProducts ? "rotate-180" : ""
-                                        }`}
-                                    />
-                                </>
-                            )}
-                        </button>
-                        {openProducts && !collapsed && (
-                            <ul className="pl-4 mt-2 space-y-1">
-                                <li>
-                                    <Link 
-                                        href="/productlist" 
-                                        className={`p-2 rounded hover:bg-gray-700 block ${
-                                            isActive('/productlist') ? 'bg-gray-700' : ''
-                                        }`}
-                                    >
-                                        Product List
-                                    </Link>
-                                </li>
-                                <li>
-                                    <Link 
-                                        href="/productcreate"
-                                        className={`p-2 rounded hover:bg-gray-700 block ${
-                                            isActive('/productcreate') ? 'bg-gray-700' : ''
-                                        }`}
-                                    >
-                                        Add Product
-                                    </Link>
-                                </li>
-                            </ul>
-                        )}
+                        <NavLink href="/productlist">
+                            <FaBoxOpen className="text-xl w-6 flex-shrink-0" />
+                            {!collapsed && <span className="ml-2">Products</span>}
+                        </NavLink>
                     </li>
                     <li>
-                        <button
-                            className={`flex items-center p-2 rounded hover:bg-gray-700 w-full text-left ${
-                                pathname.includes('/category') ? 'bg-gray-700' : ''
-                            }`}
-                            onClick={() => setOpenProducts(!openProducts)}
-                        >
-                            <AiOutlineFolderOpen className="text-xl w-6 flex-shrink-0" />
-                            {!collapsed && (
-                                <>
-                                    <span className="ml-2">Categories</span>
-                                    <BsChevronDown
-                                        className={`ml-auto transition-transform ${
-                                            openProducts ? "rotate-180" : ""
-                                        }`}
-                                    />
-                                </>
-                            )}
-                        </button>
-                        {openProducts && !collapsed && (
-                            <ul className="pl-4 mt-2 space-y-1">
-                                <li>
-                                    <Link 
-                                        href="/categorylist" 
-                                        className={`p-2 rounded hover:bg-gray-700 block ${
-                                            isActive('/categorylist') ? 'bg-gray-700' : ''
-                                        }`}
-                                    >
-                                        Category List
-                                    </Link>
-                                </li>
-                                <li>
-                                    <Link 
-                                        href="/categorycreate"
-                                        className={`p-2 rounded hover:bg-gray-700 block ${
-                                            isActive('/categorycreate') ? 'bg-gray-700' : ''
-                                        }`}
-                                    >
-                                        Add Category
-                                    </Link>
-                                </li>
-                            </ul>
-                        )}
+                        <NavLink href="/categorylist">
+                            <BiCategoryAlt className="text-xl w-6 flex-shrink-0" />
+                            {!collapsed && <span className="ml-2">Categories</span>}
+                        </NavLink>
                     </li>
                     <li>
-                        <button
-                            className={`flex items-center p-2 rounded hover:bg-gray-700 w-full text-left ${
-                                pathname.includes('/inventory') ? 'bg-gray-700' : ''
-                            }`}
-                            onClick={() => setOpenInventory(!openInventory)}
-                        >
-                            <AiOutlineStock className="text-xl w-6 flex-shrink-0" />
-                            {!collapsed && (
-                                <>
-                                    <span className="ml-2">Inventory</span>
-                                    <BsChevronDown
-                                        className={`ml-auto transition-transform ${
-                                            openInventory ? "rotate-180" : ""
-                                        }`}
-                                    />
-                                </>
-                            )}
-                        </button>
-                        {openInventory && !collapsed && (
-                            <ul className="pl-4 mt-2 space-y-1">
-                                <li>
-                                    <Link 
-                                        href="/inventory" 
-                                        className="p-2 rounded hover:bg-gray-700 block"
-                                    >
-                                        Stock List
-                                    </Link>
-                                </li>
-                                <li>
-                                    <Link 
-                                        href="/inventory/add" 
-                                        className="p-2 rounded hover:bg-gray-700 block"
-                                    >
-                                        Stock In
-                                    </Link>
-                                </li>
-                            </ul>
-                        )}
+                        <NavLink href="/inventorylist">
+                            <MdInventory className="text-xl w-6 flex-shrink-0" />
+                            {!collapsed && <span className="ml-2">Inventory</span>}
+                        </NavLink>
                     </li>
                     <li>
-                        <NavLink href="/orders">
-                            <AiOutlineDollar className="text-xl w-6 flex-shrink-0" />
+                        <NavLink href="/orderlist">
+                            <FaShoppingBag className="text-xl w-6 flex-shrink-0" />
                             {!collapsed && <span className="ml-2">Orders</span>}
                         </NavLink>
                     </li>
                     <li>
-                        <button
-                            className={`flex items-center p-2 rounded hover:bg-gray-700 w-full text-left ${
-                                pathname.includes('/customer') ? 'bg-gray-700' : ''
-                            }`}
-                            onClick={() => setOpenCustomers(!openCustomers)}
-                        >
-                            <AiOutlineUser className="text-xl w-6 flex-shrink-0" />
-                            {!collapsed && (
-                                <>
-                                    <span className="ml-2">Customers</span>
-                                    <BsChevronDown
-                                        className={`ml-auto transition-transform ${
-                                            openCustomers ? "rotate-180" : ""
-                                        }`}
-                                    />
-                                </>
-                            )}
-                        </button>
-                        {openCustomers && !collapsed && (
-                            <ul className="pl-4 mt-2 space-y-1">
-                                <li>
-                                    <Link 
-                                        href="/customers" 
-                                        className="p-2 rounded hover:bg-gray-700 block"
-                                    >
-                                        Customer List
-                                    </Link>
-                                </li>
-                            </ul>
-                        )}
+                        <NavLink href="/customerlist">
+                            <FaUsers className="text-xl w-6 flex-shrink-0" />
+                            {!collapsed && <span className="ml-2">Customers</span>}
+                        </NavLink>
                     </li>
                     <li>
-                        <NavLink href="/coupons">
-                            <AiOutlinePercentage className="text-xl w-6 flex-shrink-0" />
+                        <NavLink href="/couponlist">
+                            <RiCoupon3Line className="text-xl w-6 flex-shrink-0" />
                             {!collapsed && <span className="ml-2">Coupons</span>}
                         </NavLink>
                     </li>
                     <li>
-                        <NavLink href="/discounts">
-                            <AiOutlinePercentage className="text-xl w-6 flex-shrink-0" />
+                        <NavLink href="/discountlist">
+                            <TbDiscount className="text-xl w-6 flex-shrink-0" />
                             {!collapsed && <span className="ml-2">Discounts</span>}
                         </NavLink>
                     </li>
                     <li>
-                        <NavLink href="/profile">
-                            <AiOutlineUser className="text-xl w-6 flex-shrink-0" />
+                        <NavLink href="/adminprofile">
+                            <CgProfile className="text-xl w-6 flex-shrink-0" />
                             {!collapsed && <span className="ml-2">Profile</span>}
                         </NavLink>
                     </li>
                     <li>
                         <NavLink 
                             href="/logout"
-                            onClick={(e) => {
+                            onClick={(e: React.MouseEvent<HTMLAnchorElement>) => {
                                 e.preventDefault();
                                 // Add your logout logic here, e.g.:
                                 // logout();

@@ -31,6 +31,10 @@ const DiscountSchema = new Schema({
     type: String,
     default: ''
   },
+  applyToAllProducts: {
+    type: Boolean,
+    default: false
+  }
 }, { timestamps: true });
 
 // Check if model is already defined to avoid overwrite errors

@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
       name: product.productName,
       price: product.regularPrice,
       image: product.gallery && product.gallery.length > 0 ? product.gallery[0].src : '/placeholder.png',
-      colors: product.gallery?.map(item => item.src) || [],
+      colors: product.gallery?.map((item: {src: string, name: string, color: string}) => item.src) || [],
       sizes: product.sizes || [],
       category: product.category,
       subCategory: product.subCategory,

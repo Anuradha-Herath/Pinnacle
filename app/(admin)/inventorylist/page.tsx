@@ -29,10 +29,16 @@ export default function InventoryList() {
   
   // States
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [allInventory, setAllInventory] = useState<InventoryItem[]>([]); // Store all items for client-side pagination
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
+  
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10); // Show 10 inventory items per page
+  const [totalPages, setTotalPages] = useState(1);
   
   // Stats for inventory counts
   const [stats, setStats] = useState({
@@ -44,8 +50,13 @@ export default function InventoryList() {
 
   // Fetch inventory data
   useEffect(() => {
-    fetchInventory();
-  }, []);
+    fetchInventory(activeFilter);
+  }, [activeFilter]); // Remove currentPage dependency to prevent refetching on page change
+
+  // Update displayed inventory when page changes
+  useEffect(() => {
+    applyClientSidePagination();
+  }, [currentPage, allInventory]);
 
   const fetchInventory = async (status: string | null = null) => {
     try {
@@ -62,8 +73,6 @@ export default function InventoryList() {
       
       const response = await fetch(url);
       
-      console.log("Response status:", response.status);
-      
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         console.error("Error response:", errorData);
@@ -73,7 +82,11 @@ export default function InventoryList() {
       const data = await response.json();
       console.log("Received inventory data:", data);
       
-      setInventory(data.inventory || []);
+      // Store all inventory items
+      setAllInventory(data.inventory || []);
+      
+      // Apply client-side pagination
+      applyClientSidePagination(data.inventory || []);
       
       // Update stats from API response
       if (data.counts) {
@@ -88,19 +101,53 @@ export default function InventoryList() {
     }
   };
 
+  // Apply client-side pagination to the inventory
+  const applyClientSidePagination = (items = allInventory) => {
+    // Calculate total number of pages
+    const total = Math.ceil(items.length / itemsPerPage);
+    setTotalPages(total > 0 ? total : 1);
+    
+    // Get items for current page
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    const paginatedItems = items.slice(startIndex, endIndex);
+    
+    console.log(`Showing page ${currentPage} of ${total} (${startIndex}-${endIndex} of ${items.length} items)`);
+    
+    setInventory(paginatedItems);
+  };
+
+  // Handle pagination navigation
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
   // Handle search
   const handleSearch = () => {
     if (searchQuery.trim() === '') {
-      fetchInventory(activeFilter || null);
+      // Reset search, show all items with the current filter
+      applyClientSidePagination(allInventory);
       return;
     }
     
-    // Filter locally for simplicity
-    // In a real app, you might want to send the search query to the API
-    const filtered = inventory.filter(item => 
+    // Filter locally
+    const filtered = allInventory.filter(item => 
       item.productName.toLowerCase().includes(searchQuery.toLowerCase())
     );
-    setInventory(filtered);
+    
+    // Update current page to 1 when searching
+    setCurrentPage(1);
+    
+    // Apply pagination to filtered results
+    applyClientSidePagination(filtered);
   };
 
   // Handle filter by status
@@ -108,11 +155,15 @@ export default function InventoryList() {
     // Toggle filter if clicking the same status again
     if (status === activeFilter) {
       setActiveFilter(null);
-      fetchInventory();
     } else {
       setActiveFilter(status);
-      fetchInventory(status);
     }
+    
+    // Reset to first page when filter changes
+    setCurrentPage(1);
+    
+    // Fetch inventory with the new filter
+    fetchInventory(status === activeFilter ? null : status);
   };
 
   // Handle view item
@@ -450,12 +501,29 @@ export default function InventoryList() {
           
           {/* Pagination */}
           {inventory.length > 0 && (
-            <div className="flex justify-end mt-6 pr-4">
-              <div className="flex items-center border rounded-md overflow-hidden shadow-md">
-                <button className="px-4 py-2 border-r bg-white hover:bg-gray-200">Previous</button>
-                <button className="px-4 py-2 bg-orange-500 text-white font-semibold">1</button>
-                <button className="px-4 py-2 border-l bg-white hover:bg-gray-200">2</button>
-                <button className="px-4 py-2 border-l bg-white hover:bg-gray-200">Next</button>
+            <div className="flex justify-center mt-6">
+              <div className="flex items-center gap-2">
+                <button 
+                  className={`px-4 py-2 rounded-md ${
+                    currentPage === 1 ? 'bg-orange-200 text-gray-700 cursor-not-allowed' : 'bg-orange-500 text-white hover:bg-orange-600'
+                  }`}
+                  onClick={handlePreviousPage}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </button>
+                <span className="mx-2 text-gray-600">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button 
+                  className={`px-4 py-2 rounded-md ${
+                    currentPage === totalPages ? 'bg-orange-200 text-gray-700 cursor-not-allowed' : 'bg-orange-500 text-white hover:bg-orange-600'
+                  }`}
+                  onClick={handleNextPage}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                </button>
               </div>
             </div>
           )}

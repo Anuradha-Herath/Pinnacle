@@ -28,6 +28,13 @@ export default function ProductCreate() {
     tag: string;
     sizes: string[];
     gallery: GalleryItem[];
+    occasions: string[]; // New field for occasions
+    style: string[];     // New field for style attributes
+    season: string[];    // New field for seasons
+    fitType: string;
+    sizingTrend: number;
+    sizingNotes: string;
+    sizeChart: Record<string, { chest?: number, waist?: number, hips?: number, length?: number }>;
   }>({
     productName: "",
     description: "",
@@ -37,6 +44,13 @@ export default function ProductCreate() {
     tag: "",
     sizes: [],
     gallery: [],
+    occasions: [], // Initialize empty occasions array
+    style: [],     // Initialize empty style array
+    season: [],    // Initialize empty season array
+    fitType: "Regular Fit",
+    sizingTrend: 0,
+    sizingNotes: "",
+    sizeChart: {},
   });
 
   // State for storing all categories fetched from the API
@@ -106,10 +120,30 @@ export default function ProductCreate() {
   };
 
   const handleGalleryChange = (newGallery: GalleryItem[]) => {
-    setFormData((prev) => ({ ...prev, gallery: newGallery }));
-    if (newGallery.length > 0 && !mainProductImage) {
-      setMainProductImage(newGallery[0].src);
-    } else if (newGallery.length === 0) {
+    // Ensure each gallery item has valid color information
+    const galleryWithColors = newGallery.map(item => {
+      // If color is empty, set a default value based on the file name
+      // This helps the chatbot recognize colors even if admin didn't set them explicitly
+      if (!item.color || item.color.trim() === '') {
+        const colorKeywords = ['red', 'blue', 'green', 'black', 'white', 'yellow', 
+                              'purple', 'pink', 'orange', 'brown', 'grey', 'gray'];
+        
+        // Check if the filename contains any color keywords
+        const fileName = item.name.toLowerCase();
+        const detectedColor = colorKeywords.find(color => fileName.includes(color));
+        
+        return {
+          ...item,
+          color: detectedColor || 'default' // Use detected color or set to 'default'
+        };
+      }
+      return item;
+    });
+    
+    setFormData((prev) => ({ ...prev, gallery: galleryWithColors }));
+    if (galleryWithColors.length > 0 && !mainProductImage) {
+      setMainProductImage(galleryWithColors[0].src);
+    } else if (galleryWithColors.length === 0) {
       setMainProductImage(null);
     }
   };
@@ -134,6 +168,13 @@ export default function ProductCreate() {
       alert(
         "Please fill in all required fields (Product Name, Sizes, Category, Sub-Category, Regular Price) and add at least one product image with color!"
       );
+      return;
+    }
+
+    // Validate that all gallery items have color information
+    const missingColorItems = formData.gallery.filter(item => !item.color || item.color.trim() === '');
+    if (missingColorItems.length > 0) {
+      alert("Please specify a color for all product images. Colors help customers identify products and improve search results.");
       return;
     }
 
@@ -278,6 +319,192 @@ export default function ProductCreate() {
                   onChange={handleChange}
                   className="w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500"
                 />
+              </div>
+
+              {/* Add occasion selector after the Tag input field */}
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Suitable Occasions
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {["Casual", "Formal", "Business", "Party", "Wedding", "Beach", "Outdoor", "Sportswear"].map(
+                    (occasion) => (
+                      <label key={occasion} className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={formData.occasions.includes(occasion)}
+                          onChange={() => {
+                            setFormData((prev) => ({
+                              ...prev,
+                              occasions: prev.occasions.includes(occasion)
+                                ? prev.occasions.filter((o) => o !== occasion)
+                                : [...prev.occasions, occasion],
+                            }));
+                          }}
+                          className="hidden"
+                        />
+                        <span
+                          className={`inline-flex items-center justify-center px-3 py-1 text-sm font-medium rounded-md border border-gray-300 cursor-pointer ${
+                            formData.occasions.includes(occasion)
+                              ? "bg-blue-500 text-white"
+                              : "bg-gray-100"
+                          }`}
+                        >
+                          {occasion}
+                        </span>
+                      </label>
+                    )
+                  )}
+                </div>
+              </div>
+
+              {/* Style attributes selector */}
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Style Attributes
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {["Classic", "Modern", "Vintage", "Bohemian", "Minimalist", "Elegant", "Casual", "Trendy"].map(
+                    (style) => (
+                      <label key={style} className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={formData.style.includes(style)}
+                          onChange={() => {
+                            setFormData((prev) => ({
+                              ...prev,
+                              style: prev.style.includes(style)
+                                ? prev.style.filter((s) => s !== style)
+                                : [...prev.style, style],
+                            }));
+                          }}
+                          className="hidden"
+                        />
+                        <span
+                          className={`inline-flex items-center justify-center px-3 py-1 text-sm font-medium rounded-md border border-gray-300 cursor-pointer ${
+                            formData.style.includes(style)
+                              ? "bg-purple-500 text-white"
+                              : "bg-gray-100"
+                          }`}
+                        >
+                          {style}
+                        </span>
+                      </label>
+                    )
+                  )}
+                </div>
+              </div>
+
+              {/* Season selector */}
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Suitable Seasons
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {["Spring", "Summer", "Fall", "Winter", "All Seasons"].map(
+                    (season) => (
+                      <label key={season} className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={formData.season.includes(season)}
+                          onChange={() => {
+                            setFormData((prev) => ({
+                              ...prev,
+                              season: prev.season.includes(season)
+                                ? prev.season.filter((s) => s !== season)
+                                : [...prev.season, season],
+                            }));
+                          }}
+                          className="hidden"
+                        />
+                        <span
+                          className={`inline-flex items-center justify-center px-3 py-1 text-sm font-medium rounded-md border border-gray-300 cursor-pointer ${
+                            formData.season.includes(season)
+                              ? "bg-green-500 text-white"
+                              : "bg-gray-100"
+                          }`}
+                        >
+                          {season}
+                        </span>
+                      </label>
+                    )
+                  )}
+                </div>
+              </div>
+
+              {/* Add new Fit Type selector */}
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Fit Type
+                </label>
+                <select
+                  name="fitType"
+                  value={formData.fitType}
+                  onChange={handleChange}
+                  className="w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="Slim Fit">Slim Fit</option>
+                  <option value="Regular Fit">Regular Fit</option>
+                  <option value="Relaxed Fit">Relaxed Fit</option>
+                  <option value="Oversized">Oversized</option>
+                  <option value="Tailored">Tailored</option>
+                </select>
+              </div>
+              
+              {/* Sizing Trend Selector */}
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Size Accuracy
+                </label>
+                <div className="flex space-x-4">
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="sizingTrend"
+                      value={-1}
+                      checked={formData.sizingTrend === -1}
+                      onChange={() => setFormData(prev => ({ ...prev, sizingTrend: -1 }))}
+                      className="mr-2"
+                    />
+                    <span>Runs Small</span>
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="sizingTrend"
+                      value={0}
+                      checked={formData.sizingTrend === 0}
+                      onChange={() => setFormData(prev => ({ ...prev, sizingTrend: 0 }))}
+                      className="mr-2"
+                    />
+                    <span>True to Size</span>
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="sizingTrend"
+                      value={1}
+                      checked={formData.sizingTrend === 1}
+                      onChange={() => setFormData(prev => ({ ...prev, sizingTrend: 1 }))}
+                      className="mr-2"
+                    />
+                    <span>Runs Large</span>
+                  </label>
+                </div>
+              </div>
+              
+              {/* Sizing Notes */}
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Sizing Notes
+                </label>
+                <textarea
+                  name="sizingNotes"
+                  value={formData.sizingNotes}
+                  onChange={handleChange}
+                  placeholder="E.g.: This shirt has a slim fit through the chest and shoulders. We recommend sizing up if you prefer a looser fit."
+                  className="w-full p-3 border rounded-md h-32 focus:ring-2 focus:ring-blue-500"
+                ></textarea>
               </div>
             </form>
             <div className="space-y-6">
