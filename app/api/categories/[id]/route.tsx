@@ -81,6 +81,13 @@ export async function PUT(
     
     const body = await request.json();
     
+    // Validate mainCategory is an array with at least one value
+    if (!body.mainCategory || !Array.isArray(body.mainCategory) || body.mainCategory.length === 0) {
+      return NextResponse.json({ 
+        error: "Please select at least one main category" 
+      }, { status: 400 });
+    }
+    
     // Upload new thumbnail image if provided
     if (body.thumbnailImage && body.thumbnailImage.startsWith('data:')) {
       body.thumbnailImage = await uploadToCloudinary(body.thumbnailImage);
@@ -92,7 +99,7 @@ export async function PUT(
         title: body.title,
         description: body.description,
         priceRange: body.priceRange,
-        mainCategory: body.mainCategory, // Add mainCategory field
+        mainCategory: body.mainCategory, // Now handled as an array
         ...(body.thumbnailImage && { thumbnailImage: body.thumbnailImage })
       },
       { new: true }

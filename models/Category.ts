@@ -5,7 +5,7 @@ export interface ICategory extends Document {
   description: string;
   priceRange: string;
   thumbnailImage: string;
-  mainCategory: string; // New field for main category
+  mainCategory: string[]; // Changed from string to array of strings
   createdAt: Date;
   updatedAt: Date;
 }
@@ -31,9 +31,15 @@ const CategorySchema: Schema = new Schema(
       default: '', // Empty string if no image is uploaded
     },
     mainCategory: {
-      type: String,
-      enum: ['Men', 'Women', 'Accessories'], // Limit to these three options
-      required: [true, 'Please select a main category'],
+      type: [String], // Changed to array of strings
+      enum: ['Men', 'Women', 'Accessories'], // These are still the only valid values
+      required: [true, 'Please select at least one main category'],
+      validate: {
+        validator: function(v: string[]) {
+          return v && v.length > 0; // Make sure at least one category is selected
+        },
+        message: 'Please select at least one main category'
+      }
     },
   },
   {

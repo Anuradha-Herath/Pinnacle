@@ -12,7 +12,7 @@ interface Category {
   description?: string;
   priceRange?: string;
   thumbnailImage?: string;
-  mainCategory: string; // Add mainCategory to the interface
+  mainCategory: string[]; // Changed from string to array of strings
   createdAt: string;
 }
 
@@ -70,10 +70,10 @@ export default function CategoryList() {
     }
   };
 
-  // Get filtered categories
+  // Get filtered categories - updated to handle array of categories
   const filteredCategories = filter === "All"
     ? categories
-    : categories.filter(category => category.mainCategory === filter);
+    : categories.filter(category => category.mainCategory.includes(filter));
 
   return (
     <div className="flex">
@@ -159,7 +159,7 @@ export default function CategoryList() {
                       Title
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Main Category
+                      Main Categories
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Description
@@ -191,19 +191,24 @@ export default function CategoryList() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="font-medium">{category.title}</div>
                       </td>
-                      {/* Add Main Category cell */}
+                      {/* Updated Main Category cell to display multiple categories */}
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs ${
-                            category.mainCategory === "Men"
-                              ? "bg-blue-100 text-blue-800"
-                              : category.mainCategory === "Women"
-                              ? "bg-pink-100 text-pink-800"
-                              : "bg-purple-100 text-purple-800"
-                          }`}
-                        >
-                          {category.mainCategory}
-                        </span>
+                        <div className="flex flex-wrap gap-1">
+                          {category.mainCategory.map((cat) => (
+                            <span
+                              key={cat}
+                              className={`px-2 py-1 rounded-full text-xs ${
+                                cat === "Men"
+                                  ? "bg-blue-100 text-blue-800"
+                                  : cat === "Women"
+                                  ? "bg-pink-100 text-pink-800"
+                                  : "bg-purple-100 text-purple-800"
+                              }`}
+                            >
+                              {cat}
+                            </span>
+                          ))}
+                        </div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="max-w-xs truncate">
