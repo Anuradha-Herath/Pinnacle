@@ -58,8 +58,22 @@ export async function POST(request: NextRequest) {
     
     const body = await request.json();
     
-    // Validate mainCategory is an array with at least one value
-    if (!body.mainCategory || !Array.isArray(body.mainCategory) || body.mainCategory.length === 0) {
+    // Validate and process mainCategory
+    let mainCategoryArray: string[];
+    
+    if (typeof body.mainCategory === 'string') {
+      // If it's a single string, convert to array
+      mainCategoryArray = [body.mainCategory];
+    } else if (Array.isArray(body.mainCategory)) {
+      // If it's already an array, use it
+      mainCategoryArray = body.mainCategory;
+    } else {
+      return NextResponse.json({ 
+        error: "mainCategory must be a string or an array of strings"
+      }, { status: 400 });
+    }
+    
+    if (mainCategoryArray.length === 0) {
       return NextResponse.json({ 
         error: "Please select at least one main category" 
       }, { status: 400 });
@@ -75,7 +89,7 @@ export async function POST(request: NextRequest) {
       title: body.title,
       description: body.description,
       priceRange: body.priceRange,
-      mainCategory: body.mainCategory, // Now handled as an array
+      mainCategory: mainCategoryArray, // Use the processed array
       thumbnailImage: thumbnailUrl
     });
     

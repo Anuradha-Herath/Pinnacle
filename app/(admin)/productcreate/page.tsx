@@ -14,7 +14,7 @@ interface GalleryItem {
 interface Category {
   _id: string;
   title: string;
-  mainCategory: string;
+  mainCategory: string[]; // Updated: now an array of strings
 }
 
 export default function ProductCreate() {
@@ -88,7 +88,10 @@ export default function ProductCreate() {
   // Update filtered subcategories when main category changes
   useEffect(() => {
     if (formData.category) {
-      const filtered = categories.filter(cat => cat.mainCategory === formData.category);
+      // Update this filter to check if the selected category is in the mainCategory array
+      const filtered = categories.filter(cat => 
+        cat.mainCategory && cat.mainCategory.includes(formData.category)
+      );
       setFilteredSubCategories(filtered);
       
       // Reset subcategory selection when main category changes
