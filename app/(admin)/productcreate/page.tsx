@@ -5,10 +5,17 @@ import Sidebar from "../../components/Sidebar";
 import ProductGallery from "@/app/components/ProductGallery";
 import { useRouter } from "next/navigation";
 
+interface AdditionalImage {
+  id: string; // Add unique ID
+  src: string | ArrayBuffer | null;
+  name: string;
+}
+
 interface GalleryItem {
   src: string | ArrayBuffer | null;
   name: string;
   color: string;
+  additionalImages?: AdditionalImage[];
 }
 
 interface Category {
@@ -154,9 +161,13 @@ export default function ProductCreate() {
         return {
           ...item,
           color: detectedColor || "default",
+          additionalImages: item.additionalImages || [] // Ensure additionalImages exists
         };
       }
-      return item;
+      return {
+        ...item,
+        additionalImages: item.additionalImages || [] // Ensure additionalImages exists
+      };
     });
 
     // Update formData with the new gallery items
@@ -201,6 +212,53 @@ export default function ProductCreate() {
       return {
         ...prev,
         gallery: updatedGallery,
+      };
+    });
+  };
+
+  // Updated handler for additional images that uses the unique ID
+  const handleAddAdditionalImage = (colorIndex: number, newImage: AdditionalImage) => {
+    console.log("Adding additional image to color index:", colorIndex, newImage);
+    
+    // Ensure we're not adding a duplicate image
+    setFormData((prev) => {
+      const updatedGallery = [...prev.gallery];
+      
+      // Initialize additionalImages array if it doesn't exist yet
+      if (!updatedGallery[colorIndex].additionalImages) {
+        updatedGallery[colorIndex].additionalImages = [];
+      }
+      
+      // Check if image with this ID already exists to prevent duplicates
+      const existingImageIndex = updatedGallery[colorIndex].additionalImages!
+        .findIndex(img => 'id' in img && img.id === newImage.id);
+        
+      if (existingImageIndex >= 0) {
+        console.log("Image already exists, not adding duplicate");
+        return prev; // Return previous state unchanged
+      }
+      
+      // Add the new image if it's not a duplicate
+      updatedGallery[colorIndex].additionalImages!.push(newImage);
+      
+      return {
+        ...prev,
+        gallery: updatedGallery
+      };
+    });
+  };
+
+  const handleRemoveAdditionalImage = (colorIndex: number, imageIndex: number) => {
+    setFormData((prev) => {
+      const updatedGallery = [...prev.gallery];
+      
+      if (updatedGallery[colorIndex].additionalImages) {
+        updatedGallery[colorIndex].additionalImages!.splice(imageIndex, 1);
+      }
+      
+      return {
+        ...prev,
+        gallery: updatedGallery
       };
     });
   };
@@ -624,6 +682,8 @@ export default function ProductCreate() {
                 onAddImages={handleAddImages}
                 onRemoveImage={handleRemoveImage}
                 onUpdateColor={handleUpdateColor}
+                onAddAdditionalImage={handleAddAdditionalImage}
+                onRemoveAdditionalImage={handleRemoveAdditionalImage}
               />
               {/* Show size selector only when not in Accessories category */}
               {formData.category !== "Accessories" && (

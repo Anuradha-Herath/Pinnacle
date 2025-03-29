@@ -1,10 +1,17 @@
 import mongoose, { Schema } from 'mongoose';
 
-// Define Gallery item schema
+// Define additional image schema - ensure it's simple and clear
+const AdditionalImageSchema = new Schema({
+  src: { type: String, required: true },
+  name: { type: String, required: true },
+});
+
+// Define Gallery item schema with additional images
 const GalleryItemSchema = new Schema({
   src: { type: String, required: true },
   name: { type: String, required: true },
   color: { type: String, required: true },
+  additionalImages: [AdditionalImageSchema], // Make sure this is an array
 });
 
 // Define main product schema
