@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useRef } from "react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
 
 interface GalleryItem {
@@ -8,9 +8,10 @@ interface GalleryItem {
 }
 
 interface ProductGalleryProps {
-  initialGallery?: GalleryItem[];
-  onGalleryChange: (gallery: GalleryItem[]) => void;
-  onMainImageRemove?: (index: number) => void;
+  gallery: GalleryItem[]; // Changed: Now a controlled prop
+  onAddImages: (newItems: GalleryItem[]) => void; // Changed: Now only adds new images
+  onRemoveImage: (index: number) => void; // Changed: Now removes at index
+  onUpdateColor: (index: number, color: string) => void; // Changed: Now updates color
 }
 
 const commonColors = [
@@ -29,36 +30,12 @@ const commonColors = [
 ];
 
 const ProductGallery: React.FC<ProductGalleryProps> = ({
-  onGalleryChange,
-  onMainImageRemove,
-  initialGallery = []
+  gallery,
+  onAddImages,
+  onRemoveImage,
+  onUpdateColor
 }) => {
-  const [gallery, setGallery] = useState<GalleryItem[]>(initialGallery);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
-  // Use a ref to track if this is the initial render or a gallery update
-  const initialRenderRef = useRef(true);
-  const prevGalleryRef = useRef<GalleryItem[]>([]);
-  
-  // Only notify parent of changes when gallery actually changes and not on initial render
-  useEffect(() => {
-    // Skip the first render
-    if (initialRenderRef.current) {
-      initialRenderRef.current = false;
-      prevGalleryRef.current = gallery;
-      return;
-    }
-    
-    // Check if gallery has actually changed before calling onGalleryChange
-    const prevGallery = prevGalleryRef.current;
-    if (
-      gallery.length !== prevGallery.length || 
-      JSON.stringify(gallery) !== JSON.stringify(prevGallery)
-    ) {
-      prevGalleryRef.current = gallery;
-      onGalleryChange(gallery);
-    }
-  }, [gallery]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
@@ -77,7 +54,7 @@ const ProductGallery: React.FC<ProductGalleryProps> = ({
       });
 
       Promise.all(newFiles).then(newItems => {
-        setGallery(prev => [...prev, ...newItems]);
+        onAddImages(newItems);
       });
 
       // Clear the input so the same file can be selected again
@@ -85,26 +62,6 @@ const ProductGallery: React.FC<ProductGalleryProps> = ({
         fileInputRef.current.value = '';
       }
     }
-  };
-
-  const handleRemove = (index: number) => {
-    setGallery(prev => {
-      const newGallery = [...prev];
-      newGallery.splice(index, 1);
-      return newGallery;
-    });
-    
-    if (onMainImageRemove) {
-      onMainImageRemove(index);
-    }
-  };
-
-  const handleColorChange = (index: number, color: string) => {
-    setGallery(prev => {
-      const newGallery = [...prev];
-      newGallery[index] = { ...newGallery[index], color };
-      return newGallery;
-    });
   };
 
   return (
@@ -130,7 +87,7 @@ const ProductGallery: React.FC<ProductGalleryProps> = ({
                 </label>
                 <select
                   value={item.color}
-                  onChange={(e) => handleColorChange(index, e.target.value)}
+                  onChange={(e) => onUpdateColor(index, e.target.value)}
                   className="w-full border rounded-md p-1 text-sm"
                 >
                   <option value="">Select a color</option>
@@ -149,7 +106,7 @@ const ProductGallery: React.FC<ProductGalleryProps> = ({
 
               <button
                 type="button"
-                onClick={() => handleRemove(index)}
+                onClick={() => onRemoveImage(index)}
                 className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full"
               >
                 <XMarkIcon className="w-4 h-4" />
