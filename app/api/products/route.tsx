@@ -112,27 +112,49 @@ export async function POST(request: Request) {
     
     const body = await request.json();
     
-    // Process gallery images - upload each to Cloudinary
+    // Process gallery images - upload each to Cloudinary including additional images
     const processedGallery = await Promise.all(
       body.gallery.map(async (item: any) => {
-        // Only process if it's a base64 string
+        // Process main image
+        let processedMainImage: string;
         if (typeof item.src === 'string' && (
             item.src.startsWith('data:image') || 
             item.src.match(/^[A-Za-z0-9+/=]+$/)
           )) {
-          // Upload to Cloudinary
-          const imageUrl = await uploadToCloudinary(item.src);
-          
-          // Return updated item with Cloudinary URL and preserve the color information
-          return {
-            src: imageUrl,
-            name: item.name || '',
-            color: item.color || ''  // Ensure color is included
-          };
+          processedMainImage = await uploadToCloudinary(item.src);
+        } else {
+          processedMainImage = item.src;
         }
         
-        // If not a base64 string, just return the item unchanged
-        return item;
+        // Process additional images if they exist
+        const processedAdditionalImages = item.additionalImages && item.additionalImages.length > 0 
+          ? await Promise.all(item.additionalImages.map(async (additionalImg: any) => {
+              // Only process if it's a base64 string
+              if (typeof additionalImg.src === 'string' && (
+                  additionalImg.src.startsWith('data:image') || 
+                  additionalImg.src.match(/^[A-Za-z0-9+/=]+$/)
+                )) {
+                // Upload to Cloudinary
+                const imageUrl = await uploadToCloudinary(additionalImg.src);
+                
+                return {
+                  src: imageUrl,
+                  name: additionalImg.name || ''
+                };
+              }
+              
+              // If not a base64 string, just return the item unchanged
+              return additionalImg;
+            }))
+          : [];
+        
+        // Return updated item with Cloudinary URLs
+        return {
+          src: processedMainImage,
+          name: item.name || '',
+          color: item.color || '',
+          additionalImages: processedAdditionalImages
+        };
       })
     );
     
