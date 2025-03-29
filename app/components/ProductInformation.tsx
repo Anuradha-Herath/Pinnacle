@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Star, Minus, Plus } from "lucide-react";
+import { Star, Minus, Plus, ChevronDown } from "lucide-react";
 import Image from "next/image";
 import SizeGuideModal from "./SizeGuideModal";
 
@@ -32,6 +32,8 @@ const ProductInformation: React.FC<ProductInformationProps> = ({
 }) => {
   // Add state for size guide modal
   const [isSizeGuideOpen, setIsSizeGuideOpen] = useState(false);
+  // Add state for description expansion
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   
   // Check if product is an accessory
   const isAccessory = product.category === "Accessories";
@@ -101,8 +103,23 @@ const ProductInformation: React.FC<ProductInformationProps> = ({
       {/* Price */}
       <p className="text-2xl font-semibold mb-4">${product.price.toFixed(2)}</p>
       
-      {/* Description */}
-      <p className="text-gray-700 mb-6">{product.description}</p>
+      {/* Collapsible Description */}
+      <div className="mb-6 border-b pb-4">
+        <button 
+          onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+          className="flex justify-between items-center w-full text-left"
+        >
+          <span className="text-lg font-medium">Description</span>
+          <ChevronDown 
+            size={20} 
+            className={`transition-transform ${isDescriptionExpanded ? 'rotate-180' : 'rotate-0'}`}
+          />
+        </button>
+        
+        {isDescriptionExpanded && (
+          <p className="text-gray-700 mt-3">{product.description}</p>
+        )}
+      </div>
       
       {/* Product Images - Replacing color circles */}
       {product.images && product.images.length > 1 && (

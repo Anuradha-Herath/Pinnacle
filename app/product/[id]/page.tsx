@@ -7,7 +7,6 @@ import Footer from "../../components/Footer";
 import ProductCarousel from "../../components/ProductCarousel";
 import ProductImageGallery from "../../components/ProductImageGallery";
 import ProductInformation from "../../components/ProductInformation";
-import ProductDetailsSection from "../../components/ProductDetailsSection";
 import UserReviewsSection from "../../components/UserReviewsSection";
 import { useCart } from "@/app/context/CartContext";
 import { useWishlist } from "@/app/context/WishlistContext";
@@ -117,7 +116,6 @@ export default function EnhancedProductDetailPage() {
           details: [
             `Category: ${data.product.category}`,
             `Sub-Category: ${data.product.subCategory}`,
-            data.product.description ? `Description: ${data.product.description}` : null,
           ].filter(Boolean),
           colors: data.product.gallery?.map((item: any) => item.color) || [],
           sizes: data.product.sizes || [],
@@ -125,6 +123,7 @@ export default function EnhancedProductDetailPage() {
           occasions: data.product.occasions || [],
           style: data.product.style || [],
           season: data.product.season || [],
+          category: data.product.category, // Make sure category is passed for accessory check
         };
 
         // Set the initial additional images based on the first color
@@ -440,15 +439,7 @@ export default function EnhancedProductDetailPage() {
           </div>
         </div>
         
-        {/* Product Details Section - Add occasions, style, seasons */}
-        <ProductDetailsSection 
-          details={product?.details || []}
-          occasions={product?.occasions}
-          style={product?.style}
-          season={product?.season}
-        />
-        
-        {/* User Reviews Section - Pass onRatingChange callback */}
+        {/* User Reviews Section */}
         <UserReviewsSection 
           productId={product.id} 
           onRatingChange={(newRating) => {
