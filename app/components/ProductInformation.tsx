@@ -101,25 +101,7 @@ const ProductInformation: React.FC<ProductInformationProps> = ({
       </div>
       
       {/* Price */}
-      <p className="text-2xl font-semibold mb-4">${product.price.toFixed(2)}</p>
-      
-      {/* Collapsible Description */}
-      <div className="mb-6 border-b pb-4">
-        <button 
-          onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
-          className="flex justify-between items-center w-full text-left"
-        >
-          <span className="text-lg font-medium">Description</span>
-          <ChevronDown 
-            size={20} 
-            className={`transition-transform ${isDescriptionExpanded ? 'rotate-180' : 'rotate-0'}`}
-          />
-        </button>
-        
-        {isDescriptionExpanded && (
-          <p className="text-gray-700 mt-3">{product.description}</p>
-        )}
-      </div>
+      <p className="text-2xl font-semibold mb-6">${product.price.toFixed(2)}</p>
       
       {/* Product Images - Replacing color circles */}
       {product.images && product.images.length > 1 && (
@@ -178,7 +160,7 @@ const ProductInformation: React.FC<ProductInformationProps> = ({
       )}
       
       {/* Quantity */}
-      <div className="mb-6">
+      <div className="mb-8">
         <h2 className="text-sm font-medium mb-2">Quantity</h2>
         <div className="inline-flex items-center border">
           <button
@@ -196,6 +178,28 @@ const ProductInformation: React.FC<ProductInformationProps> = ({
             <Plus size={16} />
           </button>
         </div>
+      </div>
+      
+      {/* Description - Moved below sizes and quantity with enhanced styling */}
+      <div className="my-8 rounded-lg border border-gray-200 overflow-hidden bg-gray-50">
+        <button 
+          onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+          className="flex justify-between items-center w-full p-4 text-left bg-white"
+        >
+          <span className="text-lg font-medium text-gray-900">Description</span>
+          <ChevronDown 
+            size={20} 
+            className={`transition-transform duration-300 text-gray-500 ${isDescriptionExpanded ? 'rotate-180' : 'rotate-0'}`}
+          />
+        </button>
+        
+        {isDescriptionExpanded && (
+          <div className="p-6 bg-white border-t border-gray-200">
+            <div className="prose prose-sm max-w-none">
+              <p className="text-gray-700 leading-relaxed">{product.description}</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Size Guide Modal - only show for non-accessories */}
