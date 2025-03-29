@@ -206,16 +206,20 @@ export default function ProductCreate() {
   };
 
   const handleSave = async () => {
+    // Modified validation logic to handle accessories category
     if (
       !formData.productName ||
       !formData.category ||
       !formData.regularPrice ||
       !formData.subCategory ||
-      !(formData.sizes.length > 0) ||
+      // Only validate sizes for non-accessories categories
+      (formData.category !== "Accessories" && !(formData.sizes.length > 0)) ||
       formData.gallery.length === 0
     ) {
       alert(
-        "Please fill in all required fields (Product Name, Sizes, Category, Sub-Category, Regular Price) and add at least one product image with color!"
+        `Please fill in all required fields (Product Name, ${
+          formData.category !== "Accessories" ? "Sizes, " : ""
+        }Category, Sub-Category, Regular Price) and add at least one product image with color!`
       );
       return;
     }
@@ -621,34 +625,37 @@ export default function ProductCreate() {
                 onRemoveImage={handleRemoveImage}
                 onUpdateColor={handleUpdateColor}
               />
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Size <span className="text-red-500">*</span>
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {["NS", "XS", "S", "M", "L", "XL", "2XL", "3XL"].map(
-                    (size) => (
-                      <label key={size} className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={formData.sizes.includes(size)}
-                          onChange={() => handleSizeChange(size)}
-                          className="hidden"
-                        />
-                        <span
-                          className={`inline-flex items-center justify-center px-4 py-3 text-sm font-medium rounded-md border border-gray-300 cursor-pointer ${
-                            formData.sizes.includes(size)
-                              ? "bg-gray-500 text-white"
-                              : "bg-gray-300"
-                          }`}
-                        >
-                          {size}
-                        </span>
-                      </label>
-                    )
-                  )}
+              {/* Show size selector only when not in Accessories category */}
+              {formData.category !== "Accessories" && (
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Size <span className="text-red-500">*</span>
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {["NS", "XS", "S", "M", "L", "XL", "2XL", "3XL"].map(
+                      (size) => (
+                        <label key={size} className="flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={formData.sizes.includes(size)}
+                            onChange={() => handleSizeChange(size)}
+                            className="hidden"
+                          />
+                          <span
+                            className={`inline-flex items-center justify-center px-4 py-3 text-sm font-medium rounded-md border border-gray-300 cursor-pointer ${
+                              formData.sizes.includes(size)
+                                ? "bg-gray-500 text-white"
+                                : "bg-gray-300"
+                            }`}
+                          >
+                            {size}
+                          </span>
+                        </label>
+                      )
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
           <div className="flex justify-end gap-4 mt-6">
