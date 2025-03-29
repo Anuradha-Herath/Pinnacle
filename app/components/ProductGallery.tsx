@@ -1,5 +1,5 @@
-import React, { useState, useRef, ChangeEvent } from 'react';
-import { XMarkIcon } from '@heroicons/react/24/outline';
+import React, { useState, useRef, useEffect } from "react";
+import { XMarkIcon } from "@heroicons/react/24/outline";
 
 interface GalleryItem {
   src: string | ArrayBuffer | null;
@@ -8,9 +8,9 @@ interface GalleryItem {
 }
 
 interface ProductGalleryProps {
+  initialGallery?: GalleryItem[];
   onGalleryChange: (gallery: GalleryItem[]) => void;
   onMainImageRemove?: (index: number) => void;
-  initialGallery?: GalleryItem[];
 }
 
 const commonColors = [
@@ -28,63 +28,83 @@ const commonColors = [
   { name: 'Multicolor', value: 'multicolor' }
 ];
 
-const ProductGallery: React.FC<ProductGalleryProps> = ({ onGalleryChange, onMainImageRemove, initialGallery = [] }) => {
+const ProductGallery: React.FC<ProductGalleryProps> = ({
+  onGalleryChange,
+  onMainImageRemove,
+  initialGallery = []
+}) => {
   const [gallery, setGallery] = useState<GalleryItem[]>(initialGallery);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const newFiles = Array.from(e.target.files);
-      
-      newFiles.forEach(file => {
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          if (event.target?.result) {
-            // Try to detect color from filename
-            const fileName = file.name.toLowerCase();
-            const detectedColor = commonColors.find(color => 
-              fileName.includes(color.value)
-            )?.value || '';
-            
-            const newItem: GalleryItem = {
-              src: event.target.result,
-              name: file.name,
-              color: detectedColor // Pre-fill detected color or leave empty
-            };
-            
-            setGallery(prev => {
-              const updatedGallery = [...prev, newItem];
-              onGalleryChange(updatedGallery);
-              return updatedGallery;
-            });
-          }
-        };
-        reader.readAsDataURL(file);
-      });
+  
+  // Use a ref to track if this is the initial render or a gallery update
+  const initialRenderRef = useRef(true);
+  const prevGalleryRef = useRef<GalleryItem[]>([]);
+  
+  // Only notify parent of changes when gallery actually changes and not on initial render
+  useEffect(() => {
+    // Skip the first render
+    if (initialRenderRef.current) {
+      initialRenderRef.current = false;
+      prevGalleryRef.current = gallery;
+      return;
     }
+    
+    // Check if gallery has actually changed before calling onGalleryChange
+    const prevGallery = prevGalleryRef.current;
+    if (
+      gallery.length !== prevGallery.length || 
+      JSON.stringify(gallery) !== JSON.stringify(prevGallery)
+    ) {
+      prevGalleryRef.current = gallery;
+      onGalleryChange(gallery);
+    }
+  }, [gallery]);
 
-    // Clear the input so the same file can be selected again if needed
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const newFiles = Array.from(e.target.files).map(file => {
+        return new Promise<GalleryItem>((resolve) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            resolve({
+              src: reader.result,
+              name: file.name,
+              color: ''
+            });
+          };
+          reader.readAsDataURL(file);
+        });
+      });
+
+      Promise.all(newFiles).then(newItems => {
+        setGallery(prev => [...prev, ...newItems]);
+      });
+
+      // Clear the input so the same file can be selected again
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
     }
   };
 
   const handleRemove = (index: number) => {
-    const updatedGallery = [...gallery];
-    updatedGallery.splice(index, 1);
-    setGallery(updatedGallery);
-    onGalleryChange(updatedGallery);
+    setGallery(prev => {
+      const newGallery = [...prev];
+      newGallery.splice(index, 1);
+      return newGallery;
+    });
     
-    if (onMainImageRemove && index === 0) {
+    if (onMainImageRemove) {
       onMainImageRemove(index);
     }
   };
 
   const handleColorChange = (index: number, color: string) => {
-    const updatedGallery = [...gallery];
-    updatedGallery[index].color = color;
-    setGallery(updatedGallery);
-    onGalleryChange(updatedGallery);
+    setGallery(prev => {
+      const newGallery = [...prev];
+      newGallery[index] = { ...newGallery[index], color };
+      return newGallery;
+    });
   };
 
   return (
@@ -93,7 +113,6 @@ const ProductGallery: React.FC<ProductGalleryProps> = ({ onGalleryChange, onMain
         Product Gallery <span className="text-red-500">*</span>
       </label>
       <div className="space-y-4">
-        {/* Gallery items */}
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           {gallery.map((item, index) => (
             <div key={index} className="border rounded-md p-2 relative">
@@ -104,18 +123,21 @@ const ProductGallery: React.FC<ProductGalleryProps> = ({ onGalleryChange, onMain
                   className="w-full h-full object-contain"
                 />
               </div>
-              
-              {/* Color selection with common colors dropdown */}
+
               <div className="mb-2">
-                <label className="block text-xs text-gray-500 mb-1">Color:</label>
+                <label className="block text-xs text-gray-500 mb-1">
+                  Color:
+                </label>
                 <select
                   value={item.color}
                   onChange={(e) => handleColorChange(index, e.target.value)}
                   className="w-full border rounded-md p-1 text-sm"
                 >
                   <option value="">Select a color</option>
-                  {commonColors.map(color => (
-                    <option key={color.value} value={color.value}>{color.name}</option>
+                  {commonColors.map((color) => (
+                    <option key={color.value} value={color.value}>
+                      {color.name}
+                    </option>
                   ))}
                 </select>
                 {!item.color && (
@@ -124,7 +146,7 @@ const ProductGallery: React.FC<ProductGalleryProps> = ({ onGalleryChange, onMain
                   </p>
                 )}
               </div>
-              
+
               <button
                 type="button"
                 onClick={() => handleRemove(index)}
@@ -134,8 +156,6 @@ const ProductGallery: React.FC<ProductGalleryProps> = ({ onGalleryChange, onMain
               </button>
             </div>
           ))}
-
-          {/* Add image button */}
           <div
             className="border-2 border-dashed border-gray-300 rounded-md flex items-center justify-center aspect-square cursor-pointer hover:bg-gray-50"
             onClick={() => fileInputRef.current?.click()}
@@ -148,15 +168,13 @@ const ProductGallery: React.FC<ProductGalleryProps> = ({ onGalleryChange, onMain
           ref={fileInputRef}
           type="file"
           accept="image/*"
-          multiple
+          multiple={true}
           className="hidden"
           onChange={handleFileChange}
         />
       </div>
-
       <div className="mt-2 text-sm text-gray-500">
-        Add images with different colors of the product. Each image requires selecting a color.
-        The chatbot uses this color information to recommend products.
+        Add images with different colors of the product. Each image requires selecting a color. The chatbot uses this color information to recommend products.
       </div>
     </div>
   );

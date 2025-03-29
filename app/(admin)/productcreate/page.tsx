@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import TopBar from "../../components/TopBar";
 import Sidebar from "../../components/Sidebar";
 import ProductGallery from "@/app/components/ProductGallery";
@@ -122,7 +122,7 @@ export default function ProductCreate() {
     }));
   };
 
-  const handleGalleryChange = (newGallery: GalleryItem[]) => {
+  const handleGalleryChange = useCallback((newGallery: GalleryItem[]) => {
     // Ensure each gallery item has valid color information
     const galleryWithColors = newGallery.map(item => {
       // If color is empty, set a default value based on the file name
@@ -144,12 +144,14 @@ export default function ProductCreate() {
     });
     
     setFormData((prev) => ({ ...prev, gallery: galleryWithColors }));
+    
+    // Set main product image if needed
     if (galleryWithColors.length > 0 && !mainProductImage) {
       setMainProductImage(galleryWithColors[0].src);
     } else if (galleryWithColors.length === 0) {
       setMainProductImage(null);
     }
-  };
+  }, [mainProductImage]);
 
   const handleMainImageRemove = (index: number) => {
     if (index === 0 && formData.gallery.length > 1) {
