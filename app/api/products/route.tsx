@@ -151,6 +151,13 @@ export async function POST(request: Request) {
       occasions: body.occasions || [],
       style: body.style || [],
       season: body.season || [],
+      
+      // Add fitType and sizing info - these will be relevant for clothing but not accessories
+      fitType: body.fitType,
+      sizingTrend: body.sizingTrend,
+      sizingNotes: body.sizingNotes,
+      // Only add sizeChart if it's defined
+      ...(body.sizeChart && Object.keys(body.sizeChart).length > 0 ? { sizeChart: body.sizeChart } : {})
     });
     
     await newProduct.save();
@@ -162,11 +169,13 @@ export async function POST(request: Request) {
       stock: 0, // Initialize with zero stock
       status: 'Newly Added', // Set initial status
       image: processedGallery.length > 0 ? processedGallery[0].src : '',
-      // Initialize size stock with zeros
-      sizeStock: body.sizes.reduce((acc: any, size: string) => {
-        acc[size] = 0;
-        return acc;
-      }, {})
+      // Initialize size stock with zeros - only for non-accessories or if sizes are provided
+      sizeStock: body.sizes && body.sizes.length > 0 ? 
+        body.sizes.reduce((acc: any, size: string) => {
+          acc[size] = 0;
+          return acc;
+        }, {}) : 
+        { default: 0 } // Use a default stock counter for accessories
     });
     
     await newInventory.save();
