@@ -13,6 +13,7 @@ interface ProductInformationProps {
     images: string[]; // Use images array instead of colors array
     sizes: string[];
     rating: number;
+    category?: string; // Add category property to check if it's an accessory
   };
   quantity: number;
   updateQuantity: (value: number) => void;
@@ -31,6 +32,9 @@ const ProductInformation: React.FC<ProductInformationProps> = ({
 }) => {
   // Add state for size guide modal
   const [isSizeGuideOpen, setIsSizeGuideOpen] = useState(false);
+  
+  // Check if product is an accessory
+  const isAccessory = product.category === "Accessories";
 
   // Generate stars for rating
   const renderRatingStars = () => {
@@ -126,8 +130,8 @@ const ProductInformation: React.FC<ProductInformationProps> = ({
         </div>
       )}
       
-      {/* Sizes */}
-      {product.sizes && product.sizes.length > 0 && (
+      {/* Sizes - Only show for non-accessories */}
+      {!isAccessory && product.sizes && product.sizes.length > 0 && (
         <div className="mb-6">
           <div className="flex justify-between items-center mb-2">
             <h2 className="text-sm font-medium">Size</h2>
@@ -177,12 +181,14 @@ const ProductInformation: React.FC<ProductInformationProps> = ({
         </div>
       </div>
 
-      {/* Size Guide Modal */}
-      <SizeGuideModal 
-        isOpen={isSizeGuideOpen} 
-        onClose={() => setIsSizeGuideOpen(false)} 
-        category="apparel" 
-      />
+      {/* Size Guide Modal - only show for non-accessories */}
+      {!isAccessory && (
+        <SizeGuideModal 
+          isOpen={isSizeGuideOpen} 
+          onClose={() => setIsSizeGuideOpen(false)} 
+          category="apparel" 
+        />
+      )}
     </div>
   );
 };

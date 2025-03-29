@@ -111,19 +111,36 @@ export async function PUT(
       })
     );
     
+    // Create an update object that handles accessories appropriately
+    const updateData = {
+      productName: body.productName,
+      description: body.description,
+      category: body.category,
+      subCategory: body.subCategory,
+      regularPrice: Number(body.regularPrice),
+      tag: body.tag,
+      // For accessories, we may have an empty sizes array
+      sizes: body.sizes || [],
+      gallery: processedGallery,
+      
+      // Add occasion-related fields if they're provided
+      ...(body.occasions ? { occasions: body.occasions } : {}),
+      ...(body.style ? { style: body.style } : {}),
+      ...(body.season ? { season: body.season } : {}),
+      
+      // Only include fit/sizing fields if not an accessory
+      ...(body.category !== "Accessories" ? {
+        fitType: body.fitType,
+        sizingTrend: body.sizingTrend,
+        sizingNotes: body.sizingNotes,
+        ...(body.sizeChart && Object.keys(body.sizeChart).length > 0 ? { sizeChart: body.sizeChart } : {})
+      } : {})
+    };
+    
     // Update product with processed gallery
     const updatedProduct = await Product.findByIdAndUpdate(
       id, 
-      {
-        productName: body.productName,
-        description: body.description,
-        category: body.category,
-        subCategory: body.subCategory,
-        regularPrice: Number(body.regularPrice),
-        tag: body.tag,
-        sizes: body.sizes,
-        gallery: processedGallery
-      }, 
+      updateData, 
       { new: true }
     );
     

@@ -98,8 +98,9 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
     e.preventDefault();
     e.stopPropagation();
     
-    // Don't allow adding to cart without selecting a size if product has sizes
-    if (productWithDefaults.sizes.length > 0 && !selectedSize) {
+    // Only check for size selection if the product is not in Accessories category and has sizes
+    const isAccessory = product.category === "Accessories";
+    if (!isAccessory && productWithDefaults.sizes.length > 0 && !selectedSize) {
       toast.error("Please select a size");
       return;
     }
@@ -113,7 +114,7 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
       name: product.name,
       price: product.price,
       image: colorImage || product.image,
-      size: selectedSize || undefined,
+      size: !isAccessory ? selectedSize || undefined : undefined,
       color: selectedColor || undefined
     }, false); // Set second parameter to false
     
@@ -270,8 +271,8 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
         </div>
       )}
       
-      {/* Sizes with selection indicator */}
-      {productWithDefaults.sizes.length > 0 && (
+      {/* Sizes with selection indicator - only show for non-accessories */}
+      {product.category !== "Accessories" && productWithDefaults.sizes.length > 0 && (
         <div className="flex gap-2 mt-2">
           {productWithDefaults.sizes.slice(0, 5).map((size, index) => (
             <button
