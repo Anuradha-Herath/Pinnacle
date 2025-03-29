@@ -39,6 +39,37 @@ const connectDB = async () => {
   }
 };
 
+// Check if a query is about general information/FAQs rather than products
+const isGeneralInfoOrFAQ = (query: string, responseText: string): boolean => {
+  // Keywords that suggest the query is about policies or general information
+  const faqKeywords = [
+    'policy', 'policies', 'shipping', 'delivery', 'return', 'exchange', 'payment', 
+    'order', 'track', 'contact', 'help', 'support', 'faq', 'question', 
+    'hours', 'store', 'location', 'warranty', 'guarantee', 'refund',
+    'how do i', 'how can i', 'how long', 'what is', 'do you'
+  ];
+  
+  // Check if the query contains FAQ keywords
+  const queryLower = query.toLowerCase();
+  const responseLower = responseText.toLowerCase();
+  
+  // Check for FAQ indicators in the query
+  const containsFAQKeyword = faqKeywords.some(keyword => queryLower.includes(keyword));
+  
+  // Check if response contains policy information indicators
+  const containsPolicyInfo = 
+    responseLower.includes('policy') || 
+    responseLower.includes('policies') ||
+    responseLower.includes('shipping') ||
+    responseLower.includes('return') ||
+    responseLower.includes('exchange') ||
+    responseLower.includes('days') ||
+    (responseLower.includes('contact') && responseLower.includes('customer service'));
+  
+  // Consider the question an FAQ if either condition is true
+  return containsFAQKeyword || containsPolicyInfo;
+};
+
 // Array of models to try in order of preference
 const MODEL_PRIORITY = ["gemini-1.5-flash", "gemini-pro", "gemini-1.0-pro"];
 
@@ -186,6 +217,14 @@ const prepareProductContext = (products: any[]): ProductContextItem[] => {
 // Improved product matching algorithm with multiple strategies
 const findRecommendedProducts = (responseText: string, productContext: ProductContextItem[], userQuery: string, userPreferences?: any): ProductContextItem[] => {
   console.log(`Finding product recommendations for: "${userQuery.substring(0, 50)}..."`);
+  
+  // First, check if this is a general information or FAQ query
+  // If it is, return an empty array (no product recommendations)
+  if (isGeneralInfoOrFAQ(userQuery, responseText)) {
+    console.log("Detected general information or FAQ query - skipping product recommendations");
+    return [];
+  }
+  
   const recommendedProducts: ProductContextItem[] = [];
   const debug = { strategies: {} as any };
   
@@ -571,8 +610,8 @@ const processResponseWithProductCards = async (
     userPreferences
   );
   
-  // If we found matching products, add structured product data to the response
-  if (recommendedProducts.length > 0) {
+  // If we found matching products AND this isn't a general info query, add structured product data to the response
+  if (recommendedProducts.length > 0 && !isGeneralInfoOrFAQ(userQuery, responseText)) {
     // Add a special marker that the frontend can detect and replace with product cards
     return `${responseText}\n\n[[PRODUCT_RECOMMENDATIONS]]\n${JSON.stringify(recommendedProducts)}`;
   }
