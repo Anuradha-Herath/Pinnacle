@@ -249,10 +249,15 @@ export default function ProductCreate() {
 
       const result = await response.json();
       console.log("Product created:", result);
-      alert("Product saved successfully!");
-
-      // Redirect to product list page
-      router.push("/productlist");
+      
+      // Use a better approach for alert + redirect
+      alert("Product saved successfully! Redirecting to product list...");
+      
+      // Add a small timeout to ensure the alert is processed before redirect
+      setTimeout(() => {
+        router.push('/productlist');
+      }, 500);
+      
     } catch (error) {
       console.error("Error saving product:", error);
       alert(
@@ -260,8 +265,7 @@ export default function ProductCreate() {
           error instanceof Error ? error.message : "Unknown error"
         }`
       );
-    } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false); // Only reset this here in case of error
     }
   };
 
