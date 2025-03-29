@@ -56,7 +56,7 @@ const Sidebar: React.FC = () => {
         >
             <div className="mb-8 flex items-center justify-between">
                 {!collapsed && (
-                    <Link href="/dashboard" className="text-2xl font-semibold italic">
+                    <Link href="/admin/dashboard" className="text-2xl font-semibold italic">
                         Pinnacle
                     </Link>
                 )}
@@ -67,62 +67,62 @@ const Sidebar: React.FC = () => {
             <nav>
                 <ul className="space-y-2">
                     <li>
-                        <NavLink href="/dashboard">
+                        <NavLink href="/admin/dashboard">
                             <MdDashboard className="text-xl w-6 flex-shrink-0" />
                             {!collapsed && <span className="ml-2">Dashboard</span>}
                         </NavLink>
                     </li>
                     <li>
-                        <NavLink href="/productlist">
+                        <NavLink href="/admin/productlist">
                             <FaBoxOpen className="text-xl w-6 flex-shrink-0" />
                             {!collapsed && <span className="ml-2">Products</span>}
                         </NavLink>
                     </li>
                     <li>
-                        <NavLink href="/categorylist">
+                        <NavLink href="/admin/categorylist">
                             <BiCategoryAlt className="text-xl w-6 flex-shrink-0" />
                             {!collapsed && <span className="ml-2">Categories</span>}
                         </NavLink>
                     </li>
                     <li>
-                        <NavLink href="/inventorylist">
+                        <NavLink href="/admin/inventorylist">
                             <MdInventory className="text-xl w-6 flex-shrink-0" />
                             {!collapsed && <span className="ml-2">Inventory</span>}
                         </NavLink>
                     </li>
                     <li>
-                        <NavLink href="/orderlist">
+                        <NavLink href="/admin/orderlist">
                             <FaShoppingBag className="text-xl w-6 flex-shrink-0" />
                             {!collapsed && <span className="ml-2">Orders</span>}
                         </NavLink>
                     </li>
                     <li>
-                        <NavLink href="/customerlist">
+                        <NavLink href="/admin/customerlist">
                             <FaUsers className="text-xl w-6 flex-shrink-0" />
                             {!collapsed && <span className="ml-2">Customers</span>}
                         </NavLink>
                     </li>
                     <li>
-                        <NavLink href="/couponlist">
+                        <NavLink href="/admin/couponlist">
                             <RiCoupon3Line className="text-xl w-6 flex-shrink-0" />
                             {!collapsed && <span className="ml-2">Coupons</span>}
                         </NavLink>
                     </li>
                     <li>
-                        <NavLink href="/discountlist">
+                        <NavLink href="/admin/discountlist">
                             <TbDiscount className="text-xl w-6 flex-shrink-0" />
                             {!collapsed && <span className="ml-2">Discounts</span>}
                         </NavLink>
                     </li>
                     <li>
-                        <NavLink href="/adminprofile">
+                        <NavLink href="/admin/adminprofile">
                             <CgProfile className="text-xl w-6 flex-shrink-0" />
                             {!collapsed && <span className="ml-2">Profile</span>}
                         </NavLink>
                     </li>
                     <li>
                         <NavLink 
-                            href="/logout"
+                            href="/admin/logout"
                             onClick={(e: React.MouseEvent<HTMLAnchorElement>) => {
                                 e.preventDefault();
                                 // Add your logout logic here, e.g.:
