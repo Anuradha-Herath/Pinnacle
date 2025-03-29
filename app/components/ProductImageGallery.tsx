@@ -54,21 +54,19 @@ const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
     );
   }
   
-  // Optimized handler with direct state updates
+  // Fixed thumbnail click handler to allow clicking the main image thumbnail
   const handleThumbnailClick = (index: number) => {
-    // Handle main color image clicks
-    if (index === 0 && onImageSelect) {
-      onImageSelect(selectedImage);
-      return;
-    }
-    
-    // Fast path for just updating the active image
+    // Always update which image is displayed in the main area first
     setActiveImageIndex(index);
     
-    // Notify parent component if needed
+    // Notify parent component if the callback exists (for tracking)
     if (onThumbnailClick) {
       onThumbnailClick(index);
     }
+    
+    // Only handle color selection if it's a direct color selection action
+    // (we don't want to change colors when just viewing images)
+    // This part is now separate from displaying the image
   };
 
   // Use the active image URL directly from allImages for better performance
@@ -85,12 +83,11 @@ const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
           className="object-contain"
           sizes="(max-width: 768px) 100vw, 50vw"
           priority
-          // Add specific image dimensions to reduce layout shifts
           style={{objectFit: 'contain'}}
         />
       </div>
 
-      {/* Thumbnails - only render if there are multiple images */}
+      {/* Thumbnails - now with proper active state tracking */}
       {allImages.length > 1 && (
         <div className="flex gap-2 overflow-x-auto pb-2 snap-x">
           {allImages.map((src, index) => (
@@ -107,7 +104,6 @@ const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
                   fill
                   className="object-cover"
                   sizes="80px"
-                  // Use loading="eager" for visible thumbnails
                   loading={index < 4 ? "eager" : "lazy"}
                 />
               </div>
