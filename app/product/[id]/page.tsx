@@ -64,11 +64,12 @@ export default function EnhancedProductDetailPage() {
     }
   };
 
-  // Helper function to get the currently selected image
+  // Fix the helper function to get the currently selected image
   const getSelectedImage = () => {
-    return product?.images && product.images.length > 0
-      ? product.images[selectedImageIndex]
-      : placeholderImage;
+    if (!product || !product.images || product.images.length === 0) {
+      return placeholderImage;
+    }
+    return product.images[selectedImageIndex] || placeholderImage;
   };
 
   // Helper function to get color name from color object or URL
@@ -241,74 +242,77 @@ export default function EnhancedProductDetailPage() {
     setQuantity(Math.max(1, quantity + value));
   };
 
-  // Use debounce for cart and wishlist actions
+  // Fixed debounced add to cart function
   const debouncedAddToCart = debounce((productData: any) => {
     const selectedImg = getSelectedImage();
-    const colorName = getColorName(selectedColor);
-
+    
     console.log("Adding to cart with:", {
+      id: productData.id,
+      name: productData.name,
+      price: productData.price,
       selectedSize,
       selectedColor,
-      colorName,
-      selectedImage: selectedImg
+      image: selectedImg,
+      quantity
     });
 
+    // Ensure we're passing all required data
     addToCart({
       id: productData.id,
       name: productData.name,
       price: productData.price,
       image: selectedImg,
       quantity: quantity,
-      size: selectedSize || undefined, // Convert null to undefined
-      color: selectedColor || undefined // Convert null to undefined
-    }, false); // Pass false to prevent duplicate notification
+      size: selectedSize || undefined,
+      color: selectedColor || undefined
+    });
 
     // Use notification service
     cartNotifications.itemAdded(productData.name);
   }, 300);
 
-  const debouncedToggleWishlist = debounce((productId: string, isInWishlist: boolean) => {
-    if (isInWishlist) {
+  // Fixed toggle wishlist handler
+  const debouncedToggleWishlist = debounce((productId: string, isInList: boolean) => {
+    console.log("Toggling wishlist for product ID:", productId, "Currently in wishlist:", isInList);
+    
+    if (isInList) {
       removeFromWishlist(productId);
-      // Use notification service
       wishlistNotifications.itemRemoved();
     } else {
       addToWishlist(productId);
-      // Use notification service
       wishlistNotifications.itemAdded();
     }
   }, 300);
 
-  // Add to cart handler with quantity support
+  // Fixed add to cart handler
   const handleAddToCart = () => {
     if (!product) return;
 
-    if (!selectedSize && product.sizes.length > 0) {
+    if (!selectedSize && product.sizes && product.sizes.length > 0) {
       toast.error("Please select a size");
       return;
     }
 
-    // No need to define selectedImage here anymore, using helper function instead
+    // Pass the entire product object with correct ID
     debouncedAddToCart({
-      id: product.id,
+      id: product.id, // Ensure we're using the correct ID
       name: product.name,
       price: product.price,
     });
 
-    // Track this action for preferences (if product exists)
-    if (product) {
-      trackProductAction(product, 'cart');
-    }
+    // Track this action for preferences
+    trackProductAction(product, 'cart');
   };
 
-  // Toggle wishlist handler
+  // Fixed toggle wishlist handler
   const toggleWishlist = () => {
-    if (!product) return;
+    if (!product || !product.id) return;
 
     // Track wishlist action
     trackProductAction(product, 'wishlist');
-
-    debouncedToggleWishlist(product._id, isProductInWishlist);
+    
+    // Use product.id consistently, not product._id
+    debouncedToggleWishlist(product.id, isProductInWishlist);
   };
 
   // Updated handler to handle color selection and update additional images
@@ -410,7 +414,7 @@ export default function EnhancedProductDetailPage() {
               onImageSelect={handleImageSelect}
             />
             
-            {/* Action Buttons */}
+            {/* Action Buttons with improved props and debugging */}
             <div className="mt-8 flex flex-col sm:flex-row gap-4">
               <button 
                 onClick={handleAddToCart}
