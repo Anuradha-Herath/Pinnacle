@@ -23,6 +23,38 @@ const ProductSchema = new Schema({
   style: [{ type: String }],     // e.g., "Classic", "Modern", "Vintage", "Bohemian"
   season: [{ type: String }],    // e.g., "Summer", "Winter", "Spring", "Fall"
   
+  // Detailed sizing information
+  fitType: {
+    type: String,
+    enum: ['Slim Fit', 'Regular Fit', 'Relaxed Fit', 'Oversized', 'Tailored'],
+    default: 'Regular Fit',
+  },
+  
+  // Size chart specific to this product
+  sizeChart: {
+    type: Map,
+    of: {
+      chest: Number,
+      waist: Number,
+      hips: Number,
+      length: Number,
+    }
+  },
+  
+  // True to size indicator (-1: runs small, 0: true to size, 1: runs large)
+  sizingTrend: {
+    type: Number,
+    min: -1,
+    max: 1,
+    default: 0
+  },
+  
+  // Sizing notes for chatbot to use
+  sizingNotes: {
+    type: String,
+    maxlength: 500
+  },
+  
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now },
 });
