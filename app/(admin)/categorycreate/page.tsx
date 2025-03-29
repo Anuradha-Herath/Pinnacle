@@ -16,8 +16,9 @@ export default function CategoryCreate() {
   const [description, setDescription] = useState("");
   const [priceRange, setPriceRange] = useState("");
   const [thumbnailImage, setThumbnailImage] = useState<string | null>(null);
-  const [mainCategory, setMainCategory] = useState<string>(""); // New state for main category
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]); // Changed from string to string[] to support multiple categories
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Handle thumbnail image upload
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -31,16 +32,29 @@ export default function CategoryCreate() {
     }
   };
 
+  // Handle checkbox changes for category selection
+  const handleCategoryChange = (category: string) => {
+    setSelectedCategories(prev => 
+      prev.includes(category)
+        ? prev.filter(cat => cat !== category) // Remove if already selected
+        : [...prev, category] // Add if not selected
+    );
+  };
+
   // Handle form submission with improved error handling
-  const handleCreateCategory = async () => {
-    if (!categoryTitle.trim() || !mainCategory) {
-      alert("Category title and main category are required!");
+  const handleCreateCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validate that at least one category is selected
+    if (selectedCategories.length === 0) {
+      setError("Please select at least one main category");
       return;
     }
     
+    setError(null);
+    setIsSubmitting(true);
+    
     try {
-      setIsSubmitting(true);
-      
       const response = await fetch('/api/categories', {
         method: 'POST',
         headers: {
@@ -51,7 +65,7 @@ export default function CategoryCreate() {
           description,
           priceRange,
           thumbnailImage,
-          mainCategory
+          mainCategory: selectedCategories // Send array of selected categories
         })
       });
       
@@ -71,7 +85,7 @@ export default function CategoryCreate() {
       
     } catch (error) {
       console.error("Error creating category:", error);
-      alert(`${error instanceof Error ? error.message : 'Unknown error'}`);
+      setError(error instanceof Error ? error.message : 'Unknown error');
     } finally {
       setIsSubmitting(false);
     }
@@ -133,81 +147,125 @@ export default function CategoryCreate() {
           {/* General Information Section */}
           <div className="bg-white p-6 rounded-lg shadow-md max-w-3xl mx-auto">
             <h2 className="text-lg font-semibold mb-4">General Information</h2>
-            <div className="space-y-4">
-              {/* Main Category Selection - New Field */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Main Category <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={mainCategory}
-                  onChange={(e) => setMainCategory(e.target.value)}
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  required
+            {error && (
+              <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md">
+                {error}
+              </div>
+            )}
+            <form onSubmit={handleCreateCategory}>
+              <div className="space-y-4">
+                {/* Main Category Selection - Changed to display inline */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Main Category (Select at least one)
+                  </label>
+                  <div className="flex space-x-60">
+                    {/* Men Category Checkbox */}
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id="category-men"
+                        checked={selectedCategories.includes("Men")}
+                        onChange={() => handleCategoryChange("Men")}
+                        className="h-4 w-4 text-orange-500 focus:ring-orange-500 border-gray-300 rounded bg-orange-500 checked:bg-orange-500"
+                        disabled={isSubmitting}
+                      />
+                      <label htmlFor="category-men" className="ml-2 text-sm text-gray-700">
+                        Men
+                      </label>
+                    </div>
+                    
+                    {/* Women Category Checkbox */}
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id="category-women"
+                        checked={selectedCategories.includes("Women")}
+                        onChange={() => handleCategoryChange("Women")}
+                        className="h-4 w-4 text-orange-500 focus:ring-orange-500 border-gray-300 rounded bg-orange-500 checked:bg-orange-500"
+                        disabled={isSubmitting}
+                      />
+                      <label htmlFor="category-women" className="ml-2 text-sm text-gray-700">
+                        Women
+                      </label>
+                    </div>
+                    
+                    {/* Accessories Category Checkbox */}
+                    <div className="flex items-center">
+                      <input
+                        type="checkbox"
+                        id="category-accessories"
+                        checked={selectedCategories.includes("Accessories")}
+                        onChange={() => handleCategoryChange("Accessories")}
+                        className="h-4 w-4 text-orange-500 focus:ring-orange-500 border-gray-300 rounded bg-orange-500 checked:bg-orange-500"
+                        disabled={isSubmitting}
+                      />
+                      <label htmlFor="category-accessories" className="ml-2 text-sm text-gray-700">
+                        Accessories
+                      </label>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Category Title <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={categoryTitle}
+                    onChange={(e) => setCategoryTitle(e.target.value)}
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    placeholder="Enter category title"
+                    required
+                    disabled={isSubmitting}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Description
+                  </label>
+                  <textarea
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    placeholder="Enter category description"
+                    rows={4}
+                    disabled={isSubmitting}
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Price Range
+                  </label>
+                  <input
+                    type="text"
+                    value={priceRange}
+                    onChange={(e) => setPriceRange(e.target.value)}
+                    className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                    placeholder="e.g. $10-$100"
+                    disabled={isSubmitting}
+                  />
+                </div>
+              </div>
+              <div className="flex justify-end mt-6 max-w-3xl mx-auto">
+                <button
+                  type="button"
+                  onClick={() => router.push("/categorylist")}
+                  className="bg-gray-300 text-gray-700 px-6 py-2 rounded-md hover:bg-gray-400 transition-colors mr-4"
+                  disabled={isSubmitting}
                 >
-                  <option value="" disabled>Select a main category</option>
-                  <option value="Men">Men</option>
-                  <option value="Women">Women</option>
-                  <option value="Accessories">Accessories</option>
-                </select>
+                  CANCEL
+                </button>
+                <button
+                  type="submit"
+                  className={`bg-orange-500 text-white px-6 py-2 rounded-md hover:bg-orange-600 transition-colors ${isSubmitting ? 'opacity-70 cursor-wait' : ''}`}
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? 'CREATING...' : 'CREATE CATEGORY'}
+                </button>
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Category Title <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={categoryTitle}
-                  onChange={(e) => setCategoryTitle(e.target.value)}
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  placeholder="Enter category title"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Description
-                </label>
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  placeholder="Enter category description"
-                  rows={4}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Price Range
-                </label>
-                <input
-                  type="text"
-                  value={priceRange}
-                  onChange={(e) => setPriceRange(e.target.value)}
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  placeholder="e.g. $10-$100"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex justify-end mt-6 max-w-3xl mx-auto">
-            <button
-              onClick={() => router.push("/categorylist")}
-              className="bg-gray-300 text-gray-700 px-6 py-2 rounded-md hover:bg-gray-400 transition-colors mr-4"
-              disabled={isSubmitting}
-            >
-              CANCEL
-            </button>
-            <button
-              onClick={handleCreateCategory}
-              className={`bg-orange-500 text-white px-6 py-2 rounded-md hover:bg-orange-600 transition-colors ${isSubmitting ? 'opacity-70 cursor-wait' : ''}`}
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? 'CREATING...' : 'CREATE CATEGORY'}
-            </button>
+            </form>
           </div>
         </div>
       </div>
