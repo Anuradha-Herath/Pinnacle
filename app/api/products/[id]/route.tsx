@@ -78,7 +78,6 @@ export async function PUT(
   try {
     await connectDB();
     
-    // Properly await the params object before accessing id
     const { id } = await params;
     
     if (!mongoose.Types.ObjectId.isValid(id)) {
@@ -87,27 +86,48 @@ export async function PUT(
     
     const body = await request.json();
     
-    // Process any new images in gallery
+    // Process gallery images including handling additionalImages properly
     const processedGallery = await Promise.all(
       body.gallery.map(async (item: any) => {
-        // Only process if it's a base64 string
+        // Process main image
+        let mainImageUrl = item.src;
+        
+        // Only upload if it's a base64 string
         if (typeof item.src === 'string' && (
             item.src.startsWith('data:image') || 
             item.src.match(/^[A-Za-z0-9+/=]+$/)
           )) {
-          // Upload to Cloudinary
-          const imageUrl = await uploadToCloudinary(item.src);
-          
-          // Return updated item with Cloudinary URL and ensure color is preserved
-          return {
-            src: imageUrl,
-            name: item.name || '',
-            color: item.color || ''  // Ensure color is included
-          };
+          mainImageUrl = await uploadToCloudinary(item.src);
         }
         
-        // If not a base64 string, just return the item unchanged
-        return item;
+        // Process additional images if they exist
+        const processedAdditionalImages = item.additionalImages && item.additionalImages.length > 0 
+          ? await Promise.all(item.additionalImages.map(async (additionalImg: any) => {
+              let additionalImageUrl = additionalImg.src;
+              
+              // Only upload if it's a base64 string
+              if (typeof additionalImg.src === 'string' && (
+                  additionalImg.src.startsWith('data:image') || 
+                  additionalImg.src.match(/^[A-Za-z0-9+/=]+$/)
+                )) {
+                additionalImageUrl = await uploadToCloudinary(additionalImg.src);
+              }
+              
+              return {
+                id: additionalImg.id || `img_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+                src: additionalImageUrl,
+                name: additionalImg.name || ''
+              };
+            }))
+          : [];
+        
+        // Return updated item with processed images
+        return {
+          src: mainImageUrl,
+          name: item.name || '',
+          color: item.color || '',  
+          additionalImages: processedAdditionalImages
+        };
       })
     );
     

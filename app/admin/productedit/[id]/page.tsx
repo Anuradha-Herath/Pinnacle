@@ -3,221 +3,287 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import TopBar from "../../../components/TopBar";
 import Sidebar from "../../../components/Sidebar";
-import ProductGalleryForEdit from "@/app/components/ProductGalleryForEdit";
+import ProductGallery from "@/app/components/ProductGallery";
+
+interface AdditionalImage {
+  id: string;
+  src: string | ArrayBuffer | null;
+  name: string;
+}
 
 interface GalleryItem {
   src: string | ArrayBuffer | null;
   name: string;
   color: string;
+  additionalImages?: AdditionalImage[];
 }
 
-interface ProductData {
+interface Category {
   _id: string;
-  productName: string;
-  description: string;
-  category: string;
-  subCategory: string;
-  regularPrice: string;
-  tag: string;
-  sizes: string[];
-  gallery: GalleryItem[];
+  title: string;
+  mainCategory: string[];
 }
 
 export default function ProductEdit() {
   const router = useRouter();
-  // Use the useParams hook instead of accessing params directly
-  const params = useParams();
-  const id = params.id as string;
-  
+  const { id } = useParams();
+  const [isClient, setIsClient] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [formData, setFormData] = useState<ProductData>({
-    _id: '',
-    productName: '',
-    description: '',
-    category: '',
-    subCategory: '',
-    regularPrice: '',
-    tag: '',
+  const [formData, setFormData] = useState({
+    productName: "",
+    description: "",
+    category: "",
+    subCategory: "",
+    regularPrice: "1000",
+    tag: "",
     sizes: [],
-    gallery: []
+    gallery: [],
+    occasions: [],
+    style: [],
+    season: [],
+    fitType: "Regular Fit",
+    sizingTrend: 0,
+    sizingNotes: "",
+    sizeChart: {}
   });
 
-  const [mainProductImage, setMainProductImage] = useState<string | ArrayBuffer | null>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [filteredSubCategories, setFilteredSubCategories] = useState<Category[]>([]);
+  const [mainProductImage, setMainProductImage] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Fetch product data when component mounts
   useEffect(() => {
-    const fetchProductData = async () => {
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setLoadingCategories(true);
+        const response = await fetch("/api/categories");
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch categories");
+        }
+
+        const data = await response.json();
+        setCategories(data.categories || []);
+      } catch (err) {
+        console.error("Error fetching categories:", err);
+        setError(err instanceof Error ? err.message : "An error occurred");
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
+
+    fetchCategories();
+  }, []);
+
+  useEffect(() => {
+    if (formData.category) {
+      const filtered = categories.filter(
+        (cat) => cat.mainCategory && cat.mainCategory.includes(formData.category)
+      );
+      setFilteredSubCategories(filtered);
+    }
+  }, [formData.category, categories]);
+
+  useEffect(() => {
+    const fetchProduct = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch(`/api/products/${id}`);
-        
-        if (!response.ok) {
-          throw new Error('Failed to fetch product');
-        }
-        
-        const data = await response.json();
-        
-        // Format the data to match our form structure
+        const res = await fetch(`/api/products/${id}`);
+        if (!res.ok) throw new Error("Failed to fetch product");
+        const data = await res.json();
+        const product = data.product;
+
+        const processedGallery = product.gallery.map(item => ({
+          ...item,
+          additionalImages: Array.isArray(item.additionalImages)
+            ? item.additionalImages.map(img => ({
+                id: img.id || `img_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+                src: img.src,
+                name: img.name
+              }))
+            : []
+        }));
+
         setFormData({
-          _id: data.product._id,
-          productName: data.product.productName,
-          description: data.product.description || '',
-          category: data.product.category,
-          subCategory: data.product.subCategory,
-          regularPrice: data.product.regularPrice.toString(),
-          tag: data.product.tag || '',
-          sizes: data.product.sizes || [],
-          gallery: data.product.gallery || []
+          ...product,
+          gallery: processedGallery,
+          regularPrice: String(product.regularPrice),
+          tag: product.tag || "",
+          sizes: product.sizes || [],
+          occasions: product.occasions || [],
+          style: product.style || [],
+          season: product.season || [],
+          fitType: product.fitType || "Regular Fit",
+          sizingTrend: product.sizingTrend || 0,
+          sizingNotes: product.sizingNotes || "",
+          sizeChart: product.sizeChart || {}
         });
-        
-        // Set main product image if gallery exists
-        if (data.product.gallery && data.product.gallery.length > 0) {
-          setMainProductImage(data.product.gallery[0].src);
+
+        if (processedGallery && processedGallery.length > 0) {
+          setMainProductImage(processedGallery[0].src);
         }
-        
-      } catch (err) {
-        console.error('Error fetching product:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load product');
+      } catch (error) {
+        console.error("Error fetching product:", error);
+        setError(error instanceof Error ? error.message : "An error occurred");
       } finally {
         setIsLoading(false);
       }
     };
-    
-    fetchProductData();
+
+    fetchProduct();
   }, [id]);
 
-  // Handlers
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: { target: { name: string; value: any } }) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSizeChange = (size: string) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       sizes: prev.sizes.includes(size)
-        ? prev.sizes.filter(s => s !== size)
+        ? prev.sizes.filter((s) => s !== size)
         : [...prev.sizes, size]
     }));
   };
 
-  const handleImageRemove = (index: number) => {
-    const newGallery = formData.gallery.filter((_, i) => i !== index);
-    setFormData(prev => ({ ...prev, gallery: newGallery }));
-    
-    if (index === 0 && newGallery.length > 0) {
-      setMainProductImage(newGallery[0].src);
-    } else if (newGallery.length === 0) {
-      setMainProductImage(null);
-    }
+  const handleAddImages = (newItems: any[]) => {
+    const processedItems = newItems.map(item => ({
+      ...item,
+      additionalImages: item.additionalImages || []
+    }));
+    setFormData((prev) => {
+      const updatedGallery = [...prev.gallery, ...processedItems];
+      if (updatedGallery.length > 0 && !mainProductImage) {
+        setMainProductImage(updatedGallery[0].src);
+      }
+      return { ...prev, gallery: updatedGallery };
+    });
   };
 
-  const handleGalleryUpdate = (newGallery: GalleryItem[]) => {
-    setFormData(prev => ({ ...prev, gallery: newGallery }));
-    if (!mainProductImage && newGallery.length > 0) {
-      setMainProductImage(newGallery[0].src);
-    }
+  const handleRemoveImage = (index: number) => {
+    setFormData((prev) => {
+      const updatedGallery = [...prev.gallery];
+      updatedGallery.splice(index, 1);
+      if (index === 0 && updatedGallery.length > 0) {
+        setMainProductImage(updatedGallery[0].src);
+      } else if (updatedGallery.length === 0) {
+        setMainProductImage(null);
+      }
+      return { ...prev, gallery: updatedGallery };
+    });
   };
 
-  const handleUpdate = async () => {
-    // Validation
+  const handleUpdateColor = (index: number, color: string) => {
+    setFormData((prev) => {
+      const updatedGallery = [...prev.gallery];
+      updatedGallery[index] = { ...updatedGallery[index], color };
+      return { ...prev, gallery: updatedGallery };
+    });
+  };
+
+  const handleAddAdditionalImage = (colorIndex: number, newImage: any) => {
+    console.log("Adding additional image to color index:", colorIndex, newImage);
+
+    setFormData((prev) => {
+      const updatedGallery = [...prev.gallery];
+
+      if (!updatedGallery[colorIndex].additionalImages) {
+        updatedGallery[colorIndex].additionalImages = [];
+      }
+
+      const imageWithId = {
+        ...newImage,
+        id: newImage.id || `img_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+      };
+
+      const existingImageIndex = updatedGallery[colorIndex].additionalImages!
+        .findIndex(img => img.id === imageWithId.id);
+
+      if (existingImageIndex >= 0) {
+        console.log("Image already exists, not adding duplicate");
+        return prev;
+      }
+
+      updatedGallery[colorIndex].additionalImages!.push(imageWithId);
+
+      return {
+        ...prev,
+        gallery: updatedGallery
+      };
+    });
+  };
+
+  const handleRemoveAdditionalImage = (colorIndex: number, imageIndex: number) => {
+    setFormData((prev) => {
+      const updatedGallery = [...prev.gallery];
+      if (updatedGallery[colorIndex].additionalImages) {
+        updatedGallery[colorIndex].additionalImages.splice(imageIndex, 1);
+      }
+      return { ...prev, gallery: updatedGallery };
+    });
+  };
+
+  const handleSave = async () => {
     if (
       !formData.productName ||
       !formData.category ||
       !formData.regularPrice ||
       !formData.subCategory ||
-      !(formData.sizes.length > 0) ||
+      (formData.category !== "Accessories" && !(formData.sizes.length > 0)) ||
       formData.gallery.length === 0
     ) {
-      alert(
-        "Please fill in all required fields (Product Name, Sizes, Category, Sub-Category, Regular Price) and add at least one product image with color!"
-      );
+      alert("Please fill in all required fields and add at least one product image with color!");
       return;
     }
-
+    const missingColorItems = formData.gallery.filter(item => !item.color || item.color.trim() === "");
+    if (missingColorItems.length > 0) {
+      alert("Please specify a color for all product images.");
+      return;
+    }
+    setIsSubmitting(true);
     try {
-      const response = await fetch(`/api/products/${id}`, {
-        method: 'PUT',
+      const dataToSend = JSON.parse(JSON.stringify(formData));
+
+      dataToSend.gallery = dataToSend.gallery.map(item => ({
+        ...item,
+        additionalImages: item.additionalImages || []
+      }));
+
+      const res = await fetch(`/api/products/${id}`, {
+        method: "PUT",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json"
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(dataToSend)
       });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to update product');
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to update product");
       }
-
-      alert("Product updated successfully!");
-      router.push('/admin/productlist');
+      alert("Product updated successfully! Redirecting to product list...");
+      setTimeout(() => {
+        router.push("/admin/productlist");
+      }, 500);
     } catch (error) {
-      console.error('Error updating product:', error);
-      alert(`Failed to update product: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      console.error("Error updating product:", error);
+      alert(`Failed to update product: ${error instanceof Error ? error.message : "Unknown error"}`);
+      setIsSubmitting(false);
     }
   };
 
-  const handleDelete = async () => {
-    if (!confirm("Are you sure you want to delete this product?")) {
-      return;
-    }
-
-    try {
-      const response = await fetch(`/api/products/${id}`, {
-        method: 'DELETE',
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to delete product');
-      }
-
-      alert("Product deleted successfully!");
-      router.push('/admin/productlist');
-    } catch (error) {
-      console.error('Error deleting product:', error);
-      alert(`Failed to delete product: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  };
-
-  // Show loading state
-  if (isLoading) {
-    return (
-      <div className="flex min-h-screen relative">
-        <Sidebar />
-        <div className="flex flex-col flex-1 pb-20">
-          <TopBar title="Product Edit" />
-          <div className="p-6 flex justify-center items-center h-full">
-            <p>Loading product data...</p>
-          </div>
-        </div>
-      </div>
-    );
+  if (!isClient) {
+    return <div className="min-h-screen bg-gray-100 flex items-center justify-center">Loading...</div>;
   }
 
-  // Show error state
-  if (error) {
-    return (
-      <div className="flex min-h-screen relative">
-        <Sidebar />
-        <div className="flex flex-col flex-1 pb-20">
-          <TopBar title="Product Edit" />
-          <div className="p-6 flex justify-center items-center h-full flex-col">
-            <p className="text-red-500 mb-4">Error: {error}</p>
-            <button 
-              onClick={() => router.push('/admin/productlist')}
-              className="px-4 py-2 bg-blue-500 text-white rounded-md"
-            >
-              Back to Products
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  if (isLoading) return <p>Loading product data...</p>;
 
-  // The render JSX remains the same
   return (
     <div className="flex min-h-screen relative">
       <Sidebar />
@@ -229,9 +295,7 @@ export default function ProductEdit() {
             <span className="font-semibold"> Edit Product</span>
           </div>
           <h1 className="text-2xl font-bold mb-8">Edit Product</h1>
-
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Form Fields */}
             <form className="space-y-6">
               <div>
                 <label className="block text-sm font-medium mb-2">
@@ -245,7 +309,7 @@ export default function ProductEdit() {
                   className="w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-
+              
               <div>
                 <label className="block text-sm font-medium mb-2">
                   Description
@@ -255,35 +319,66 @@ export default function ProductEdit() {
                   value={formData.description}
                   onChange={handleChange}
                   className="w-full p-3 border rounded-md h-32 focus:ring-2 focus:ring-blue-500"
-                />
+                ></textarea>
               </div>
 
               <div>
                 <label className="block text-sm font-medium mb-2">
-                  Category <span className="text-red-500">*</span>
+                  Main Category <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
+                <select
                   name="category"
                   value={formData.category}
                   onChange={handleChange}
                   className="w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500"
-                />
+                >
+                  <option value="">Select Main Category</option>
+                  <option value="Men">Men</option>
+                  <option value="Women">Women</option>
+                  <option value="Accessories">Accessories</option>
+                </select>
               </div>
 
               <div>
                 <label className="block text-sm font-medium mb-2">
                   Sub Category <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
+                <select
                   name="subCategory"
                   value={formData.subCategory}
                   onChange={handleChange}
                   className="w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500"
-                />
+                  disabled={
+                    !formData.category || filteredSubCategories.length === 0
+                  }
+                >
+                  <option value="">
+                    {loadingCategories
+                      ? "Loading subcategories..."
+                      : !formData.category
+                      ? "Select main category first"
+                      : filteredSubCategories.length === 0
+                      ? "No subcategories available"
+                      : "Select Sub Category"}
+                  </option>
+                  {filteredSubCategories.map((category) => (
+                    <option key={category._id} value={category.title}>
+                      {category.title}
+                    </option>
+                  ))}
+                </select>
+                {formData.category &&
+                  filteredSubCategories.length === 0 &&
+                  !loadingCategories && (
+                    <div className="text-sm text-orange-500 mt-1">
+                      No subcategories found for {formData.category}.{" "}
+                      <a href="/admin/categorycreate" className="underline">
+                        Create one
+                      </a>
+                    </div>
+                  )}
               </div>
-
+              
               <div>
                 <label className="block text-sm font-medium mb-2">
                   Regular Price ($) <span className="text-red-500">*</span>
@@ -296,7 +391,7 @@ export default function ProductEdit() {
                   className="w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-
+              
               <div>
                 <label className="block text-sm font-medium mb-2">Tag</label>
                 <input
@@ -307,35 +402,238 @@ export default function ProductEdit() {
                   className="w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500"
                 />
               </div>
-            </form>
 
-            {/* Image and Size Section */}
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Suitable Occasions
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    "Casual",
+                    "Formal",
+                    "Business",
+                    "Party",
+                    "Wedding",
+                    "Beach",
+                    "Outdoor",
+                    "Sportswear",
+                  ].map((occasion) => (
+                    <label key={occasion} className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={formData.occasions.includes(occasion)}
+                        onChange={() => {
+                          setFormData((prev) => ({
+                            ...prev,
+                            occasions: prev.occasions.includes(occasion)
+                              ? prev.occasions.filter((o) => o !== occasion)
+                              : [...prev.occasions, occasion],
+                          }));
+                        }}
+                        className="hidden"
+                      />
+                      <span
+                        className={`inline-flex items-center justify-center px-3 py-1 text-sm font-medium rounded-md border border-gray-300 cursor-pointer ${
+                          formData.occasions.includes(occasion)
+                            ? "bg-blue-500 text-white"
+                            : "bg-gray-100"
+                        }`}
+                      >
+                        {occasion}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Style Attributes
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    "Classic",
+                    "Modern",
+                    "Vintage",
+                    "Bohemian",
+                    "Minimalist",
+                    "Elegant",
+                    "Casual",
+                    "Trendy",
+                  ].map((style) => (
+                    <label key={style} className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={formData.style.includes(style)}
+                        onChange={() => {
+                          setFormData((prev) => ({
+                            ...prev,
+                            style: prev.style.includes(style)
+                              ? prev.style.filter((s) => s !== style)
+                              : [...prev.style, style],
+                          }));
+                        }}
+                        className="hidden"
+                      />
+                      <span
+                        className={`inline-flex items-center justify-center px-3 py-1 text-sm font-medium rounded-md border border-gray-300 cursor-pointer ${
+                          formData.style.includes(style)
+                            ? "bg-purple-500 text-white"
+                            : "bg-gray-100"
+                        }`}
+                      >
+                        {style}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Suitable Seasons
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    "Spring",
+                    "Summer",
+                    "Fall",
+                    "Winter",
+                    "All Seasons",
+                  ].map((season) => (
+                    <label key={season} className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={formData.season.includes(season)}
+                        onChange={() => {
+                          setFormData((prev) => ({
+                            ...prev,
+                            season: prev.season.includes(season)
+                              ? prev.season.filter((s) => s !== season)
+                              : [...prev.season, season],
+                          }));
+                        }}
+                        className="hidden"
+                      />
+                      <span
+                        className={`inline-flex items-center justify-center px-3 py-1 text-sm font-medium rounded-md border border-gray-300 cursor-pointer ${
+                          formData.season.includes(season)
+                            ? "bg-green-500 text-white"
+                            : "bg-gray-100"
+                        }`}
+                      >
+                        {season}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Fit Type
+                </label>
+                <select
+                  name="fitType"
+                  value={formData.fitType}
+                  onChange={handleChange}
+                  className="w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="Slim Fit">Slim Fit</option>
+                  <option value="Regular Fit">Regular Fit</option>
+                  <option value="Relaxed Fit">Relaxed Fit</option>
+                  <option value="Oversized">Oversized</option>
+                  <option value="Tailored">Tailored</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Size Accuracy
+                </label>
+                <div className="flex space-x-4">
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="sizingTrend"
+                      value={-1}
+                      checked={formData.sizingTrend === -1}
+                      onChange={() =>
+                        setFormData((prev) => ({ ...prev, sizingTrend: -1 }))
+                      }
+                      className="mr-2"
+                    />
+                    <span>Runs Small</span>
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="sizingTrend"
+                      value={0}
+                      checked={formData.sizingTrend === 0}
+                      onChange={() =>
+                        setFormData((prev) => ({ ...prev, sizingTrend: 0 }))
+                      }
+                      className="mr-2"
+                    />
+                    <span>True to Size</span>
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="radio"
+                      name="sizingTrend"
+                      value={1}
+                      checked={formData.sizingTrend === 1}
+                      onChange={() =>
+                        setFormData((prev) => ({ ...prev, sizingTrend: 1 }))
+                      }
+                      className="mr-2"
+                    />
+                    <span>Runs Large</span>
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Sizing Notes
+                </label>
+                <textarea
+                  name="sizingNotes"
+                  value={formData.sizingNotes}
+                  onChange={handleChange}
+                  placeholder="E.g.: This shirt has a slim fit through the chest and shoulders. We recommend sizing up if you prefer a looser fit."
+                  className="w-full p-3 border rounded-md h-32 focus:ring-2 focus:ring-blue-500"
+                ></textarea>
+              </div>
+            </form>
             <div className="space-y-6">
               <div className="w-full h-64 bg-gray-200 rounded-md flex items-center justify-center">
                 {mainProductImage ? (
                   <img
-                    src={mainProductImage.toString()}
+                    src={typeof mainProductImage === "string" ? mainProductImage : undefined}
                     alt="Main Product"
-                    className="w-full h-full object-contain"
+                    className="w-full h-full object-cover rounded-md"
                   />
                 ) : (
                   <span className="text-gray-500">Main Product Image</span>
                 )}
               </div>
-
-              <ProductGalleryForEdit
+              <ProductGallery
                 gallery={formData.gallery}
-                onGalleryUpdate={handleGalleryUpdate}
-                onImageRemove={handleImageRemove}
+                onAddImages={handleAddImages}
+                onRemoveImage={handleRemoveImage}
+                onUpdateColor={handleUpdateColor}
+                onAddAdditionalImage={handleAddAdditionalImage}
+                onRemoveAdditionalImage={handleRemoveAdditionalImage}
               />
-
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Size <span className="text-red-500">*</span>
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {["NS", "XS", "S", "M", "L", "XL", "2XL", "3XL"].map(
-                    (size) => (
+              {formData.category !== "Accessories" && (
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Size <span className="text-red-500">*</span>
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {["NS", "XS", "S", "M", "L", "XL", "2XL", "3XL"].map(size => (
                       <label key={size} className="flex items-center">
                         <input
                           type="checkbox"
@@ -343,44 +641,32 @@ export default function ProductEdit() {
                           onChange={() => handleSizeChange(size)}
                           className="hidden"
                         />
-                        <span
-                          className={`inline-flex items-center justify-center px-4 py-3 text-sm font-medium rounded-md border border-gray-300 cursor-pointer ${
-                            formData.sizes.includes(size)
-                              ? "bg-gray-500"
-                              : "bg-gray-300"
-                          }`}
-                        >
+                        <span className={`inline-flex items-center justify-center px-4 py-3 text-sm font-medium rounded-md border border-gray-300 cursor-pointer ${formData.sizes.includes(size) ? "bg-gray-500 text-white" : "bg-gray-300"}`}>
                           {size}
                         </span>
                       </label>
-                    )
-                  )}
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
-
-          <div className="flex justify-end w-full mt-6 space-x-4">
+          <div className="flex justify-end gap-4 mt-6">
             <button
               type="button"
-              onClick={handleUpdate}
-              className="px-11 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-700 transition-colors"
-            >
-              UPDATE
-            </button>
-            <button
-              type="button"
-              onClick={handleDelete}
-              className="px-11 py-2 bg-orange-600 text-white rounded-md hover:bg-red-700 transition-colors"
-            >
-              DELETE
-            </button>
-            <button
-              type="button"
-              onClick={() => router.push('/admin/productlist')}
-              className="px-11 py-2 border border-black rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+              onClick={() => router.push("/admin/productlist")}
+              className="px-20 py-2 border rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+              disabled={isSubmitting}
             >
               CANCEL
+            </button>
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={isSubmitting}
+              className={`px-20 py-2 ${isSubmitting ? "bg-gray-400" : "bg-orange-600 hover:bg-orange-700"} text-white rounded-md transition-colors`}
+            >
+              {isSubmitting ? "SAVING..." : "SAVE"}
             </button>
           </div>
         </div>
