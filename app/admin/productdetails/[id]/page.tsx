@@ -25,12 +25,26 @@ interface ProductData {
   inventory?: Record<string, number>;
 }
 
+interface InventoryData {
+  _id: string;
+  productId: string;
+  productName: string;
+  stock: number;
+  status: string;
+  stockLimit?: number;
+  sizeStock?: { [key: string]: number };
+  colorStock?: { [key: string]: number };
+  colorSizeStock?: { [color: string]: { [size: string]: number } };
+  image: string;
+}
+
 export default function ProductDetails() {
   const router = useRouter();
   const params = useParams();
   const id = params.id as string;
 
   const [product, setProduct] = useState<ProductData | null>(null);
+  const [inventory, setInventory] = useState<InventoryData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
@@ -38,39 +52,34 @@ export default function ProductDetails() {
   const [viewingAdditionalImage, setViewingAdditionalImage] = useState(false);
 
   useEffect(() => {
-    const fetchProductData = async () => {
+    const fetchData = async () => {
       try {
         setIsLoading(true);
-        const response = await fetch(`/api/products/${id}`);
-
-        if (!response.ok) {
+        // Fetch product data
+        const productResponse = await fetch(`/api/products/${id}`);
+        if (!productResponse.ok) {
           throw new Error("Failed to fetch product");
         }
+        const productData = await productResponse.json();
 
-        const data = await response.json();
-        setProduct(data.product);
+        setProduct(productData.product);
+
+        // Fetch inventory data using product ID
+        const inventoryResponse = await fetch(`/api/inventory/product/${productData.product._id}`);
+        if (inventoryResponse.ok) {
+          const inventoryData = await inventoryResponse.json();
+          setInventory(inventoryData.inventory);
+        }
       } catch (err) {
-        console.error("Error fetching product:", err);
+        console.error("Error fetching data:", err);
         setError(err instanceof Error ? err.message : "Failed to load product");
       } finally {
         setIsLoading(false);
       }
     };
 
-    fetchProductData();
+    fetchData();
   }, [id]);
-
-  const sizeInventory =
-    product?.sizes.map((size) => ({
-      size: size,
-      quantity: Math.floor(Math.random() * 300) + 100,
-    })) || [];
-
-  const colorInventory =
-    product?.gallery.map((item) => ({
-      name: item.color,
-      quantity: Math.floor(Math.random() * 300) + 100,
-    })) || [];
 
   const tags = product?.tag ? product.tag.split(",").map((tag) => tag.trim()) : [];
 
@@ -80,6 +89,7 @@ export default function ProductDetails() {
     return "True to Size";
   };
 
+  // Image modal functions
   const openImageModal = (src: string) => {
     setSelectedImage(src);
   };
@@ -99,6 +109,26 @@ export default function ProductDetails() {
   const viewAdditionalImage = (src: string) => {
     openImageModal(src);
     setViewingAdditionalImage(true);
+  };
+
+  // Helper function to get color inventory from actual data
+  const getColorInventory = () => {
+    if (!product || !inventory?.colorStock) return [];
+    
+    return product.gallery.map(item => ({
+      name: item.color,
+      quantity: inventory.colorStock?.[item.color] || 0
+    }));
+  };
+
+  // Helper function to get size inventory from actual data
+  const getSizeInventory = () => {
+    if (!product || !inventory?.sizeStock) return [];
+    
+    return product.sizes.map(size => ({
+      size,
+      quantity: inventory.sizeStock?.[size] || 0
+    }));
   };
 
   if (isLoading) {
@@ -146,6 +176,7 @@ export default function ProductDetails() {
             <span className="font-semibold"> Product Details</span>
           </div>
 
+          {/* Image Modal */}
           {selectedImage && (
             <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
               <div className="relative max-w-4xl w-full">
@@ -169,6 +200,7 @@ export default function ProductDetails() {
             </div>
           )}
 
+          {/* Main Image Grid */}
           <div className="mb-8 grid grid-cols-1 md:grid-cols-3 gap-4">
             <div
               className="md:col-span-2 h-96 rounded-lg overflow-hidden bg-gray-100 cursor-pointer"
@@ -239,7 +271,9 @@ export default function ProductDetails() {
             </div>
           </div>
 
+          {/* Product Details Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Left Section - Basic Product Info */}
             <div className="space-y-6">
               <div className="border-b pb-4">
                 <span className="text-xl font-bold text-black">Product Name</span>
@@ -342,7 +376,9 @@ export default function ProductDetails() {
               )}
             </div>
 
+            {/* Right Section - Inventory & Sizing */}
             <div className="space-y-6">
+              {/* Sizing Information Section */}
               <div className="space-y-4">
                 <span className="text-xl font-bold text-black">Sizing Information</span>
 
@@ -396,23 +432,44 @@ export default function ProductDetails() {
                 )}
               </div>
 
-              {sizeInventory.length > 0 && (
+              {/* Inventory Status */}
+              {inventory && (
+                <div className="bg-gray-50 p-4 rounded-lg space-y-2">
+                  <span className="text-xl font-bold text-black">Inventory Status</span>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-500">Status</span>
+                    <span className={`font-medium px-3 py-1 rounded-full text-sm 
+                      ${inventory.status === 'In Stock' ? 'bg-green-100 text-green-800' : 
+                        inventory.status === 'Out Of Stock' ? 'bg-red-100 text-red-800' : 
+                        'bg-yellow-100 text-yellow-800'}`}>
+                      {inventory.status}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-500">Total Stock</span>
+                    <span className="font-medium">{inventory.stock} units</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-500">Stock Limit</span>
+                    <span className="font-medium">{inventory.stockLimit || 'N/A'}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Size Inventory Table - Now with actual data */}
+              {getSizeInventory().length > 0 && (
                 <div className="space-y-4">
                   <span className="text-xl font-bold text-black">Inventory by Size</span>
                   <div className="overflow-x-auto rounded-lg border">
                     <table className="w-full">
                       <thead className="bg-gray-50">
                         <tr>
-                          <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
-                            Size
-                          </th>
-                          <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">
-                            Quantity
-                          </th>
+                          <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Size</th>
+                          <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">Quantity</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200">
-                        {sizeInventory.map((item) => (
+                        {getSizeInventory().map((item) => (
                           <tr key={item.size}>
                             <td className="px-4 py-3 font-medium">{item.size}</td>
                             <td className="px-4 py-3 text-right">{item.quantity}</td>
@@ -424,23 +481,20 @@ export default function ProductDetails() {
                 </div>
               )}
 
-              {colorInventory.length > 0 && (
+              {/* Color Inventory Table - Now with actual data */}
+              {getColorInventory().length > 0 && (
                 <div className="space-y-4">
                   <span className="text-xl font-bold text-black">Inventory by Color</span>
                   <div className="overflow-x-auto rounded-lg border">
                     <table className="w-full">
                       <thead className="bg-gray-50">
                         <tr>
-                          <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">
-                            Color
-                          </th>
-                          <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">
-                            Quantity
-                          </th>
+                          <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Color</th>
+                          <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">Quantity</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-200">
-                        {colorInventory.map((color, index) => (
+                        {getColorInventory().map((color, index) => (
                           <tr key={index}>
                             <td className="px-4 py-3">
                               <div className="flex items-center">
@@ -460,12 +514,56 @@ export default function ProductDetails() {
                 </div>
               )}
 
+              {/* Color x Size Detailed Inventory (if available) */}
+              {inventory?.colorSizeStock && Object.keys(inventory.colorSizeStock).length > 0 && (
+                <div className="space-y-4">
+                  <span className="text-xl font-bold text-black">Detailed Color-Size Inventory</span>
+                  <div className="overflow-x-auto rounded-lg border">
+                    <table className="w-full">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Color</th>
+                          <th className="px-4 py-3 text-left text-sm font-medium text-gray-500">Size</th>
+                          <th className="px-4 py-3 text-right text-sm font-medium text-gray-500">Quantity</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {Object.entries(inventory.colorSizeStock).flatMap(([color, sizes]) => 
+                          Object.entries(sizes).map(([size, quantity]) => (
+                            <tr key={`${color}-${size}`}>
+                              <td className="px-4 py-3">
+                                <div className="flex items-center">
+                                  <span 
+                                    className="w-4 h-4 rounded-full mr-2"
+                                    style={{ backgroundColor: color }}
+                                  ></span>
+                                  <span>{color}</span>
+                                </div>
+                              </td>
+                              <td className="px-4 py-3">{size}</td>
+                              <td className="px-4 py-3 text-right">{quantity}</td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
               <div className="flex justify-end gap-4 mt-8">
                 <button
                   onClick={() => router.push(`/admin/productedit/${id}`)}
                   className="px-20 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors"
                 >
                   EDIT
+                </button>
+                <button
+                  onClick={() => inventory ? router.push(`/admin/inventorydetails?id=${inventory._id}`) : null}
+                  className={`px-20 py-2 ${inventory ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 cursor-not-allowed'} text-white rounded-md transition-colors`}
+                >
+                  INVENTORY
                 </button>
                 <button
                   onClick={() => router.push("/admin/productlist")}
