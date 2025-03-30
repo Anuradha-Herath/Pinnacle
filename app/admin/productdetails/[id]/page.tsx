@@ -92,7 +92,7 @@ export default function ProductDetails() {
           <div className="p-6 flex justify-center items-center h-full flex-col">
             <p className="text-red-500 mb-4">Error: {error || "Product not found"}</p>
             <button 
-              onClick={() => router.push('/productlist')}
+              onClick={() => router.push('/admin/productlist')}
               className="px-4 py-2 bg-blue-500 text-white rounded-md"
             >
               Back to Products
@@ -248,13 +248,13 @@ export default function ProductDetails() {
               {/* Action Buttons */}
               <div className="flex justify-end gap-4 mt-8">
                 <button 
-                  onClick={() => router.push(`/productedit/${id}`)}
+                  onClick={() => router.push(`/admin/productedit/${id}`)}
                   className="px-20 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors"
                 >
                   EDIT
                 </button>
                 <button 
-                  onClick={() => router.push('/productlist')}
+                  onClick={() => router.push('/admin/productlist')}
                   className="px-20 py-2 border rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
                 >
                   BACK

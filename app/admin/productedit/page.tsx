@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import TopBar from "../../components/TopBar";
 import Sidebar from "../../components/Sidebar";
 import ProductGalleryForEdit from "@/app/components/ProductGalleryForEdit";
@@ -11,6 +12,8 @@ interface GalleryItem {
 }
 
 export default function ProductEdit() {
+  const router = useRouter();
+
   // Initial product data
   const initialFormData = {
     productName: "Classic Seamless Henly polo Tee",
@@ -248,6 +251,7 @@ export default function ProductEdit() {
             </button>
             <button
               type="button"
+              onClick={() => router.push('/admin/productlist')}
               className="px-11 py-2 border border-black rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
             >
               CANCEL

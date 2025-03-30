@@ -151,7 +151,7 @@ export default function ProductEdit() {
       }
 
       alert("Product updated successfully!");
-      router.push('/productlist');
+      router.push('/admin/productlist');
     } catch (error) {
       console.error('Error updating product:', error);
       alert(`Failed to update product: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -174,7 +174,7 @@ export default function ProductEdit() {
       }
 
       alert("Product deleted successfully!");
-      router.push('/productlist');
+      router.push('/admin/productlist');
     } catch (error) {
       console.error('Error deleting product:', error);
       alert(`Failed to delete product: ${error instanceof Error ? error.message : 'Unknown error'}`);
@@ -206,7 +206,7 @@ export default function ProductEdit() {
           <div className="p-6 flex justify-center items-center h-full flex-col">
             <p className="text-red-500 mb-4">Error: {error}</p>
             <button 
-              onClick={() => router.push('/productlist')}
+              onClick={() => router.push('/admin/productlist')}
               className="px-4 py-2 bg-blue-500 text-white rounded-md"
             >
               Back to Products
@@ -224,7 +224,6 @@ export default function ProductEdit() {
       <div className="flex flex-col flex-1 pb-20">
         <TopBar title="Product Edit" />
         <div className="p-6 mx-auto w-full max-w-6xl">
-          {/* ...existing code... */}
           <div className="text-sm text-gray-500 mb-6">
             <span>Home</span> &gt; <span>All Products</span> &gt;
             <span className="font-semibold"> Edit Product</span>
@@ -234,7 +233,6 @@ export default function ProductEdit() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {/* Form Fields */}
             <form className="space-y-6">
-              {/* ...existing form fields... */}
               <div>
                 <label className="block text-sm font-medium mb-2">
                   Product Name <span className="text-red-500">*</span>
@@ -248,7 +246,6 @@ export default function ProductEdit() {
                 />
               </div>
 
-              {/* ...more form fields... */}
               <div>
                 <label className="block text-sm font-medium mb-2">
                   Description
@@ -314,7 +311,6 @@ export default function ProductEdit() {
 
             {/* Image and Size Section */}
             <div className="space-y-6">
-              {/* ...existing image and size section... */}
               <div className="w-full h-64 bg-gray-200 rounded-md flex items-center justify-center">
                 {mainProductImage ? (
                   <img
@@ -381,7 +377,7 @@ export default function ProductEdit() {
             </button>
             <button
               type="button"
-              onClick={() => router.push('/productlist')}
+              onClick={() => router.push('/admin/productlist')}
               className="px-11 py-2 border border-black rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
             >
               CANCEL

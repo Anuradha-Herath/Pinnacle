@@ -39,17 +39,17 @@ export default function OrdersPage() {
           {/* Top-Right Icons */}
           <div className="flex items-center gap-2">
             {/* Notifications */}
-            <button onClick={() => router.push("/notifications")} className="p-2 hover:bg-gray-200 rounded-lg">
+            <button onClick={() => router.push("/admin/notifications")} className="p-2 hover:bg-gray-200 rounded-lg">
               <BellIcon className="h-6 w-6 text-gray-600" />
             </button>
 
             {/* Settings */}
-            <button onClick={() => router.push("/settings")} className="p-2 hover:bg-gray-200 rounded-lg">
+            <button onClick={() => router.push("/admin/settings")} className="p-2 hover:bg-gray-200 rounded-lg">
               <Cog6ToothIcon className="h-6 w-6 text-gray-600" />
             </button>
 
             {/* Clock Icon (e.g., Order History, Activity Log, etc.) */}
-            <button onClick={() => router.push("/history")} className="p-2 hover:bg-gray-200 rounded-lg">
+            <button onClick={() => router.push("/admin/history")} className="p-2 hover:bg-gray-200 rounded-lg">
               <ClockIcon className="h-6 w-6 text-gray-600" />
             </button>
 

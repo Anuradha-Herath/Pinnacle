@@ -1,9 +1,11 @@
 "use client";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import TopBar from "../../components/TopBar";
 import Sidebar from "../../components/Sidebar";
 
 export default function ProductDetails() {
+  const router = useRouter();
   const productImages = [
     "p1.webp",
     "p2.webp",
@@ -192,10 +194,16 @@ export default function ProductDetails() {
 
               {/* Action Buttons */}
               <div className="flex justify-end gap-4 mt-8">
-                <button className="px-20 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors">
+                <button 
+                  onClick={() => router.push('/admin/productedit/sample')}
+                  className="px-20 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors"
+                >
                   EDIT
                 </button>
-                <button className="px-20 py-2 border rounded-md text-gray-700 hover:bg-gray-50 transition-colors">
+                <button 
+                  onClick={() => router.push('/admin/productlist')}
+                  className="px-20 py-2 border rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+                >
                   BACK
                 </button>
               </div>

@@ -193,7 +193,7 @@ const ProductsPage = () => {
             <div className="flex justify-between items-center mb-4">
               <h1 className="text-2xl font-bold">All Products</h1>
               <button 
-                onClick={() => router.push('/productcreate')} 
+                onClick={() => router.push('/admin/productcreate')} 
                 className="bg-orange-500 text-white px-4 py-2 rounded-lg"
               >
                 Add New Product
@@ -297,7 +297,7 @@ const ProductsPage = () => {
               </p>
               {!searchQuery && (
                 <button 
-                  onClick={() => router.push('/productcreate')} 
+                  onClick={() => router.push('/admin/productcreate')} 
                   className="mt-4 px-4 py-2 bg-orange-500 text-white rounded-md"
                 >
                   Add New Product

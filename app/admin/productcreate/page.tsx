@@ -317,7 +317,7 @@ export default function ProductCreate() {
       
       // Add a small timeout to ensure the alert is processed before redirect
       setTimeout(() => {
-        router.push('/productlist');
+        router.push('/admin/productlist');
       }, 500);
       
     } catch (error) {
@@ -420,7 +420,7 @@ export default function ProductCreate() {
                   !loading && (
                     <div className="text-sm text-orange-500 mt-1">
                       No subcategories found for {formData.category}.{" "}
-                      <a href="/categorycreate" className="underline">
+                      <a href="/admin/categorycreate" className="underline">
                         Create one
                       </a>
                     </div>
@@ -721,7 +721,7 @@ export default function ProductCreate() {
           <div className="flex justify-end gap-4 mt-6">
             <button
               type="button"
-              onClick={() => router.push("/productlist")}
+              onClick={() => router.push("/admin/productlist")}
               className="px-20 py-2 border rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
               disabled={isSubmitting}
             >
