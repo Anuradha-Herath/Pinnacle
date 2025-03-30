@@ -183,7 +183,10 @@ export default function ProductEdit() {
   const handleUpdateColor = (index: number, color: string) => {
     setFormData((prev) => {
       const updatedGallery = [...prev.gallery];
-      updatedGallery[index] = { ...updatedGallery[index], color };
+      updatedGallery[index] = { 
+        ...updatedGallery[index], 
+        color: color.trim() ? color : updatedGallery[index].color 
+      };
       return { ...prev, gallery: updatedGallery };
     });
   };
@@ -244,7 +247,7 @@ export default function ProductEdit() {
     }
     const missingColorItems = formData.gallery.filter(item => !item.color || item.color.trim() === "");
     if (missingColorItems.length > 0) {
-      alert("Please specify a color for all product images.");
+      alert("Please specify a color for all product images. You can select from common colors or enter a custom color name.");
       return;
     }
     setIsSubmitting(true);

@@ -35,7 +35,8 @@ const commonColors = [
   { name: 'Orange', value: 'orange' },
   { name: 'Brown', value: 'brown' },
   { name: 'Grey', value: 'grey' },
-  { name: 'Multicolor', value: 'multicolor' }
+  { name: 'Multicolor', value: 'multicolor' },
+  { name: 'Custom color...', value: 'custom' } // Add custom option
 ];
 
 const ProductGallery: React.FC<ProductGalleryProps> = ({
@@ -50,6 +51,7 @@ const ProductGallery: React.FC<ProductGalleryProps> = ({
   const [expandedColorIndex, setExpandedColorIndex] = useState<number | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [activeColorIndex, setActiveColorIndex] = useState<number | null>(null);
+  const [customColors, setCustomColors] = useState<Record<number, string>>({});
   
   // Handler for main color image uploads
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -147,6 +149,32 @@ const ProductGallery: React.FC<ProductGalleryProps> = ({
     fileInput.click();
   }, [isUploading, activeColorIndex, onAddAdditionalImage]);
 
+  // Handle color selection with custom color support
+  const handleColorChange = (index: number, selectedValue: string) => {
+    if (selectedValue === 'custom') {
+      // When "Custom" is selected, initialize empty custom color but don't update main color yet
+      setCustomColors(prev => ({ ...prev, [index]: '' }));
+    } else {
+      // For regular colors, update directly and remove any custom color entry
+      onUpdateColor(index, selectedValue);
+      setCustomColors(prev => {
+        const updated = { ...prev };
+        delete updated[index];
+        return updated;
+      });
+    }
+  };
+
+  // Handle custom color input changes
+  const handleCustomColorChange = (index: number, customValue: string) => {
+    setCustomColors(prev => ({ ...prev, [index]: customValue }));
+    
+    // Only update the actual color if there's some text entered
+    if (customValue.trim()) {
+      onUpdateColor(index, customValue.toLowerCase().trim());
+    }
+  };
+
   return (
     <div>
       <label className="block text-sm font-medium mb-2">
@@ -171,8 +199,8 @@ const ProductGallery: React.FC<ProductGalleryProps> = ({
                   Color:
                 </label>
                 <select
-                  value={item.color}
-                  onChange={(e) => onUpdateColor(index, e.target.value)}
+                  value={index in customColors ? 'custom' : item.color}
+                  onChange={(e) => handleColorChange(index, e.target.value)}
                   className="w-full border rounded-md p-1 text-sm"
                 >
                   <option value="">Select a color</option>
@@ -182,6 +210,19 @@ const ProductGallery: React.FC<ProductGalleryProps> = ({
                     </option>
                   ))}
                 </select>
+                
+                {/* Custom color input field - shown only when "Custom" is selected */}
+                {index in customColors && (
+                  <input
+                    type="text"
+                    value={customColors[index]}
+                    onChange={(e) => handleCustomColorChange(index, e.target.value)}
+                    placeholder="Enter custom color name"
+                    className="w-full border rounded-md p-1 mt-2 text-sm"
+                    autoFocus
+                  />
+                )}
+                
                 {!item.color && (
                   <p className="text-xs text-orange-500 mt-1">
                     Please select a color for this image
@@ -279,6 +320,7 @@ const ProductGallery: React.FC<ProductGalleryProps> = ({
       </div>
       <div className="mt-2 text-sm text-gray-500">
         Add main color images first, then expand each color to add additional product images for that color.
+        Select "Custom color..." if the color you need isn't in the list.
       </div>
     </div>
   );
