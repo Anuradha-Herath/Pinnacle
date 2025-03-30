@@ -93,19 +93,29 @@ export default function ProductEdit() {
   useEffect(() => {
     const fetchProduct = async () => {
       try {
+        setIsLoading(true);
         const res = await fetch(`/api/products/${id}`);
         if (!res.ok) throw new Error("Failed to fetch product");
         const data = await res.json();
         const product = data.product;
+
+        const processedGallery = product.gallery.map(item => ({
+          ...item,
+          additionalImages: Array.isArray(item.additionalImages)
+            ? item.additionalImages.map(img => ({
+                id: img.id || `img_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+                src: img.src,
+                name: img.name
+              }))
+            : []
+        }));
+
         setFormData({
-          productName: product.productName,
-          description: product.description || "",
-          category: product.category,
-          subCategory: product.subCategory,
+          ...product,
+          gallery: processedGallery,
           regularPrice: String(product.regularPrice),
           tag: product.tag || "",
           sizes: product.sizes || [],
-          gallery: product.gallery || [],
           occasions: product.occasions || [],
           style: product.style || [],
           season: product.season || [],
@@ -114,15 +124,18 @@ export default function ProductEdit() {
           sizingNotes: product.sizingNotes || "",
           sizeChart: product.sizeChart || {}
         });
-        if (product.gallery && product.gallery.length > 0) {
-          setMainProductImage(product.gallery[0].src);
+
+        if (processedGallery && processedGallery.length > 0) {
+          setMainProductImage(processedGallery[0].src);
         }
       } catch (error) {
         console.error("Error fetching product:", error);
+        setError(error instanceof Error ? error.message : "An error occurred");
       } finally {
         setIsLoading(false);
       }
     };
+
     fetchProduct();
   }, [id]);
 
@@ -176,16 +189,34 @@ export default function ProductEdit() {
   };
 
   const handleAddAdditionalImage = (colorIndex: number, newImage: any) => {
+    console.log("Adding additional image to color index:", colorIndex, newImage);
+
     setFormData((prev) => {
       const updatedGallery = [...prev.gallery];
+
       if (!updatedGallery[colorIndex].additionalImages) {
         updatedGallery[colorIndex].additionalImages = [];
       }
-      const exists = updatedGallery[colorIndex].additionalImages.some((img: any) => img.id === newImage.id);
-      if (!exists) {
-        updatedGallery[colorIndex].additionalImages.push(newImage);
+
+      const imageWithId = {
+        ...newImage,
+        id: newImage.id || `img_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
+      };
+
+      const existingImageIndex = updatedGallery[colorIndex].additionalImages!
+        .findIndex(img => img.id === imageWithId.id);
+
+      if (existingImageIndex >= 0) {
+        console.log("Image already exists, not adding duplicate");
+        return prev;
       }
-      return { ...prev, gallery: updatedGallery };
+
+      updatedGallery[colorIndex].additionalImages!.push(imageWithId);
+
+      return {
+        ...prev,
+        gallery: updatedGallery
+      };
     });
   };
 
@@ -218,12 +249,19 @@ export default function ProductEdit() {
     }
     setIsSubmitting(true);
     try {
+      const dataToSend = JSON.parse(JSON.stringify(formData));
+
+      dataToSend.gallery = dataToSend.gallery.map(item => ({
+        ...item,
+        additionalImages: item.additionalImages || []
+      }));
+
       const res = await fetch(`/api/products/${id}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(dataToSend)
       });
       if (!res.ok) {
         const errorData = await res.json();
