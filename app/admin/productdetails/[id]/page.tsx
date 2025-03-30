@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import TopBar from "../../../components/TopBar";
 import Sidebar from "../../../components/Sidebar";
-import Image from "next/image";
+import { XIcon } from "lucide-react";
 
 interface ProductData {
   _id: string;
@@ -34,6 +34,8 @@ export default function ProductDetails() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [viewingAdditionalImage, setViewingAdditionalImage] = useState(false);
 
   useEffect(() => {
     const fetchProductData = async () => {
@@ -76,6 +78,27 @@ export default function ProductDetails() {
     if (trend === -1) return "Runs Small";
     if (trend === 1) return "Runs Large";
     return "True to Size";
+  };
+
+  const openImageModal = (src: string) => {
+    setSelectedImage(src);
+  };
+
+  const closeImageModal = () => {
+    setSelectedImage(null);
+    setViewingAdditionalImage(false);
+  };
+
+  const viewMainImage = () => {
+    if (product?.gallery[activeImageIndex]?.src) {
+      openImageModal(product.gallery[activeImageIndex].src);
+      setViewingAdditionalImage(false);
+    }
+  };
+
+  const viewAdditionalImage = (src: string) => {
+    openImageModal(src);
+    setViewingAdditionalImage(true);
   };
 
   if (isLoading) {
@@ -123,13 +146,40 @@ export default function ProductDetails() {
             <span className="font-semibold"> Product Details</span>
           </div>
 
+          {selectedImage && (
+            <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4">
+              <div className="relative max-w-4xl w-full">
+                <button
+                  onClick={closeImageModal}
+                  className="absolute top-2 right-2 bg-white rounded-full p-1 hover:bg-gray-200 z-10"
+                >
+                  <XIcon className="w-6 h-6" />
+                </button>
+                <img
+                  src={selectedImage}
+                  alt="Enlarged product view"
+                  className="mx-auto max-h-[80vh] max-w-full object-contain"
+                />
+                {viewingAdditionalImage && (
+                  <p className="text-white text-center mt-2 text-sm">
+                    Additional view of {product?.gallery[activeImageIndex]?.color} color
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="mb-8 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="md:col-span-2 h-96 rounded-lg overflow-hidden bg-gray-100">
+            <div
+              className="md:col-span-2 h-96 rounded-lg overflow-hidden bg-gray-100 cursor-pointer"
+              onClick={viewMainImage}
+            >
               {product.gallery.length > 0 && (
                 <img
                   src={product.gallery[activeImageIndex]?.src || "/placeholder.png"}
                   alt="Main product"
-                  className="w-full h-full object-contain"
+                  className="w-full h-full object-contain hover:opacity-90 transition-opacity"
+                  title="Click to enlarge"
                 />
               )}
             </div>
@@ -165,12 +215,22 @@ export default function ProductDetails() {
                     <h3 className="text-lg font-semibold mb-2">Additional Views</h3>
                     <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                       {product.gallery[activeImageIndex].additionalImages.map((img, idx) => (
-                        <div key={idx} className="border rounded-md overflow-hidden">
-                          <img
-                            src={img.src}
-                            alt={`Additional view ${idx + 1}`}
-                            className="w-full aspect-square object-cover"
-                          />
+                        <div
+                          key={idx}
+                          className="border rounded-md overflow-hidden cursor-pointer hover:border-orange-500 transition-colors"
+                          onClick={() => viewAdditionalImage(img.src)}
+                          title="Click to enlarge"
+                        >
+                          <div className="aspect-square relative">
+                            <img
+                              src={img.src}
+                              alt={`Additional view ${idx + 1}`}
+                              className="w-full h-full object-cover hover:opacity-90 transition-opacity"
+                            />
+                            <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-0 hover:bg-opacity-20 transition-all">
+                              <span className="text-white text-xs opacity-0 hover:opacity-100">View</span>
+                            </div>
+                          </div>
                         </div>
                       ))}
                     </div>
