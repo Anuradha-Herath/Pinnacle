@@ -1,20 +1,27 @@
 "use client";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import TopBar from "../../components/TopBar";
 import Sidebar from "../../components/Sidebar";
 import ProductGallery from "@/app/components/ProductGallery";
 import { useRouter } from "next/navigation";
 
+interface AdditionalImage {
+  id: string; // Add unique ID
+  src: string | ArrayBuffer | null;
+  name: string;
+}
+
 interface GalleryItem {
   src: string | ArrayBuffer | null;
   name: string;
   color: string;
+  additionalImages?: AdditionalImage[];
 }
 
 interface Category {
   _id: string;
   title: string;
-  mainCategory: string;
+  mainCategory: string[]; // Updated: now an array of strings
 }
 
 export default function ProductCreate() {
@@ -29,12 +36,15 @@ export default function ProductCreate() {
     sizes: string[];
     gallery: GalleryItem[];
     occasions: string[]; // New field for occasions
-    style: string[];     // New field for style attributes
-    season: string[];    // New field for seasons
+    style: string[]; // New field for style attributes
+    season: string[]; // New field for seasons
     fitType: string;
     sizingTrend: number;
     sizingNotes: string;
-    sizeChart: Record<string, { chest?: number, waist?: number, hips?: number, length?: number }>;
+    sizeChart: Record<
+      string,
+      { chest?: number; waist?: number; hips?: number; length?: number }
+    >;
   }>({
     productName: "",
     description: "",
@@ -45,8 +55,8 @@ export default function ProductCreate() {
     sizes: [],
     gallery: [],
     occasions: [], // Initialize empty occasions array
-    style: [],     // Initialize empty style array
-    season: [],    // Initialize empty season array
+    style: [], // Initialize empty style array
+    season: [], // Initialize empty season array
     fitType: "Regular Fit",
     sizingTrend: 0,
     sizingNotes: "",
@@ -59,24 +69,26 @@ export default function ProductCreate() {
   const [error, setError] = useState<string | null>(null);
 
   // State to track which subcategories to show based on selected main category
-  const [filteredSubCategories, setFilteredSubCategories] = useState<Category[]>([]);
+  const [filteredSubCategories, setFilteredSubCategories] = useState<Category[]>(
+    []
+  );
 
   // Fetch all categories when component mounts
   useEffect(() => {
     const fetchCategories = async () => {
       try {
         setLoading(true);
-        const response = await fetch('/api/categories');
-        
+        const response = await fetch("/api/categories");
+
         if (!response.ok) {
-          throw new Error('Failed to fetch categories');
+          throw new Error("Failed to fetch categories");
         }
-        
+
         const data = await response.json();
         setCategories(data.categories || []);
       } catch (err) {
         console.error("Error fetching categories:", err);
-        setError(err instanceof Error ? err.message : 'An error occurred');
+        setError(err instanceof Error ? err.message : "An error occurred");
       } finally {
         setLoading(false);
       }
@@ -88,13 +100,16 @@ export default function ProductCreate() {
   // Update filtered subcategories when main category changes
   useEffect(() => {
     if (formData.category) {
-      const filtered = categories.filter(cat => cat.mainCategory === formData.category);
+      // Update this filter to check if the selected category is in the mainCategory array
+      const filtered = categories.filter(
+        (cat) => cat.mainCategory && cat.mainCategory.includes(formData.category)
+      );
       setFilteredSubCategories(filtered);
-      
+
       // Reset subcategory selection when main category changes
-      setFormData(prev => ({
+      setFormData((prev) => ({
         ...prev,
-        subCategory: ''
+        subCategory: "",
       }));
     }
   }, [formData.category, categories]);
@@ -119,93 +134,200 @@ export default function ProductCreate() {
     }));
   };
 
-  const handleGalleryChange = (newGallery: GalleryItem[]) => {
-    // Ensure each gallery item has valid color information
-    const galleryWithColors = newGallery.map(item => {
-      // If color is empty, set a default value based on the file name
-      // This helps the chatbot recognize colors even if admin didn't set them explicitly
-      if (!item.color || item.color.trim() === '') {
-        const colorKeywords = ['red', 'blue', 'green', 'black', 'white', 'yellow', 
-                              'purple', 'pink', 'orange', 'brown', 'grey', 'gray'];
-        
-        // Check if the filename contains any color keywords
+  const handleAddImages = (newItems: GalleryItem[]) => {
+    // Process new items to detect colors from filenames
+    const processedItems = newItems.map((item) => {
+      if (!item.color || item.color.trim() === "") {
+        const colorKeywords = [
+          "red",
+          "blue",
+          "green",
+          "black",
+          "white",
+          "yellow",
+          "purple",
+          "pink",
+          "orange",
+          "brown",
+          "grey",
+          "gray",
+        ];
+
         const fileName = item.name.toLowerCase();
-        const detectedColor = colorKeywords.find(color => fileName.includes(color));
-        
+        const detectedColor = colorKeywords.find((color) =>
+          fileName.includes(color)
+        );
+
         return {
           ...item,
-          color: detectedColor || 'default' // Use detected color or set to 'default'
+          color: detectedColor || "default",
+          additionalImages: item.additionalImages || [] // Ensure additionalImages exists
         };
       }
-      return item;
+      return {
+        ...item,
+        additionalImages: item.additionalImages || [] // Ensure additionalImages exists
+      };
     });
-    
-    setFormData((prev) => ({ ...prev, gallery: galleryWithColors }));
-    if (galleryWithColors.length > 0 && !mainProductImage) {
-      setMainProductImage(galleryWithColors[0].src);
-    } else if (galleryWithColors.length === 0) {
-      setMainProductImage(null);
-    }
+
+    // Update formData with the new gallery items
+    setFormData((prev) => {
+      const updatedGallery = [...prev.gallery, ...processedItems];
+
+      // Update main product image if needed
+      if (updatedGallery.length > 0 && !mainProductImage) {
+        setMainProductImage(updatedGallery[0].src);
+      }
+
+      return {
+        ...prev,
+        gallery: updatedGallery,
+      };
+    });
   };
 
-  const handleMainImageRemove = (index: number) => {
-    if (index === 0 && formData.gallery.length > 1) {
-      setMainProductImage(formData.gallery[1].src);
-    } else if (formData.gallery.length <= 1) {
-      setMainProductImage(null);
-    }
+  const handleRemoveImage = (index: number) => {
+    setFormData((prev) => {
+      const updatedGallery = [...prev.gallery];
+      updatedGallery.splice(index, 1);
+
+      // Update main product image if needed
+      if (index === 0 && updatedGallery.length > 0) {
+        setMainProductImage(updatedGallery[0].src);
+      } else if (updatedGallery.length === 0) {
+        setMainProductImage(null);
+      }
+
+      return {
+        ...prev,
+        gallery: updatedGallery,
+      };
+    });
+  };
+
+  const handleUpdateColor = (index: number, color: string) => {
+    setFormData((prev) => {
+      const updatedGallery = [...prev.gallery];
+      updatedGallery[index] = { ...updatedGallery[index], color };
+      return {
+        ...prev,
+        gallery: updatedGallery,
+      };
+    });
+  };
+
+  // Updated handler for additional images that uses the unique ID
+  const handleAddAdditionalImage = (colorIndex: number, newImage: AdditionalImage) => {
+    console.log("Adding additional image to color index:", colorIndex, newImage);
+    
+    // Ensure we're not adding a duplicate image
+    setFormData((prev) => {
+      const updatedGallery = [...prev.gallery];
+      
+      // Initialize additionalImages array if it doesn't exist yet
+      if (!updatedGallery[colorIndex].additionalImages) {
+        updatedGallery[colorIndex].additionalImages = [];
+      }
+      
+      // Check if image with this ID already exists to prevent duplicates
+      const existingImageIndex = updatedGallery[colorIndex].additionalImages!
+        .findIndex(img => 'id' in img && img.id === newImage.id);
+        
+      if (existingImageIndex >= 0) {
+        console.log("Image already exists, not adding duplicate");
+        return prev; // Return previous state unchanged
+      }
+      
+      // Add the new image if it's not a duplicate
+      updatedGallery[colorIndex].additionalImages!.push(newImage);
+      
+      return {
+        ...prev,
+        gallery: updatedGallery
+      };
+    });
+  };
+
+  const handleRemoveAdditionalImage = (colorIndex: number, imageIndex: number) => {
+    setFormData((prev) => {
+      const updatedGallery = [...prev.gallery];
+      
+      if (updatedGallery[colorIndex].additionalImages) {
+        updatedGallery[colorIndex].additionalImages!.splice(imageIndex, 1);
+      }
+      
+      return {
+        ...prev,
+        gallery: updatedGallery
+      };
+    });
   };
 
   const handleSave = async () => {
+    // Modified validation logic to handle accessories category
     if (
       !formData.productName ||
       !formData.category ||
       !formData.regularPrice ||
       !formData.subCategory ||
-      !(formData.sizes.length > 0) ||
+      // Only validate sizes for non-accessories categories
+      (formData.category !== "Accessories" && !(formData.sizes.length > 0)) ||
       formData.gallery.length === 0
     ) {
       alert(
-        "Please fill in all required fields (Product Name, Sizes, Category, Sub-Category, Regular Price) and add at least one product image with color!"
+        `Please fill in all required fields (Product Name, ${
+          formData.category !== "Accessories" ? "Sizes, " : ""
+        }Category, Sub-Category, Regular Price) and add at least one product image with color!`
       );
       return;
     }
 
     // Validate that all gallery items have color information
-    const missingColorItems = formData.gallery.filter(item => !item.color || item.color.trim() === '');
+    const missingColorItems = formData.gallery.filter(
+      (item) => !item.color || item.color.trim() === ""
+    );
     if (missingColorItems.length > 0) {
-      alert("Please specify a color for all product images. Colors help customers identify products and improve search results.");
+      alert(
+        "Please specify a color for all product images. Colors help customers identify products and improve search results."
+      );
       return;
     }
 
     setIsSubmitting(true);
-    
+
     try {
-      const response = await fetch('/api/products', {
-        method: 'POST',
+      const response = await fetch("/api/products", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify(formData),
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create product');
+        throw new Error(errorData.error || "Failed to create product");
       }
 
       const result = await response.json();
       console.log("Product created:", result);
-      alert("Product saved successfully!");
       
-      // Redirect to product list page
-      router.push('/productlist');
+      // Use a better approach for alert + redirect
+      alert("Product saved successfully! Redirecting to product list...");
+      
+      // Add a small timeout to ensure the alert is processed before redirect
+      setTimeout(() => {
+        router.push('/productlist');
+      }, 500);
       
     } catch (error) {
       console.error("Error saving product:", error);
-      alert(`Failed to save product: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    } finally {
-      setIsSubmitting(false);
+      alert(
+        `Failed to save product: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+      setIsSubmitting(false); // Only reset this here in case of error
     }
   };
 
@@ -245,7 +367,7 @@ export default function ProductCreate() {
                   className="w-full p-3 border rounded-md h-32 focus:ring-2 focus:ring-blue-500"
                 ></textarea>
               </div>
-              
+
               {/* Main Category Dropdown */}
               <div>
                 <label className="block text-sm font-medium mb-2">
@@ -263,7 +385,7 @@ export default function ProductCreate() {
                   <option value="Accessories">Accessories</option>
                 </select>
               </div>
-              
+
               {/* Sub Category Dropdown - populated from categories */}
               <div>
                 <label className="block text-sm font-medium mb-2">
@@ -274,16 +396,18 @@ export default function ProductCreate() {
                   value={formData.subCategory}
                   onChange={handleChange}
                   className="w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500"
-                  disabled={!formData.category || filteredSubCategories.length === 0}
+                  disabled={
+                    !formData.category || filteredSubCategories.length === 0
+                  }
                 >
                   <option value="">
-                    {loading 
-                      ? 'Loading subcategories...' 
-                      : !formData.category 
-                      ? 'Select main category first' 
-                      : filteredSubCategories.length === 0 
-                      ? 'No subcategories available' 
-                      : 'Select Sub Category'}
+                    {loading
+                      ? "Loading subcategories..."
+                      : !formData.category
+                      ? "Select main category first"
+                      : filteredSubCategories.length === 0
+                      ? "No subcategories available"
+                      : "Select Sub Category"}
                   </option>
                   {filteredSubCategories.map((category) => (
                     <option key={category._id} value={category.title}>
@@ -291,13 +415,18 @@ export default function ProductCreate() {
                     </option>
                   ))}
                 </select>
-                {formData.category && filteredSubCategories.length === 0 && !loading && (
-                  <div className="text-sm text-orange-500 mt-1">
-                    No subcategories found for {formData.category}. <a href="/categorycreate" className="underline">Create one</a>
-                  </div>
-                )}
+                {formData.category &&
+                  filteredSubCategories.length === 0 &&
+                  !loading && (
+                    <div className="text-sm text-orange-500 mt-1">
+                      No subcategories found for {formData.category}.{" "}
+                      <a href="/categorycreate" className="underline">
+                        Create one
+                      </a>
+                    </div>
+                  )}
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium mb-2">
                   Regular Price ($) <span className="text-red-500">*</span>
@@ -327,34 +456,41 @@ export default function ProductCreate() {
                   Suitable Occasions
                 </label>
                 <div className="flex flex-wrap gap-2">
-                  {["Casual", "Formal", "Business", "Party", "Wedding", "Beach", "Outdoor", "Sportswear"].map(
-                    (occasion) => (
-                      <label key={occasion} className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={formData.occasions.includes(occasion)}
-                          onChange={() => {
-                            setFormData((prev) => ({
-                              ...prev,
-                              occasions: prev.occasions.includes(occasion)
-                                ? prev.occasions.filter((o) => o !== occasion)
-                                : [...prev.occasions, occasion],
-                            }));
-                          }}
-                          className="hidden"
-                        />
-                        <span
-                          className={`inline-flex items-center justify-center px-3 py-1 text-sm font-medium rounded-md border border-gray-300 cursor-pointer ${
-                            formData.occasions.includes(occasion)
-                              ? "bg-blue-500 text-white"
-                              : "bg-gray-100"
-                          }`}
-                        >
-                          {occasion}
-                        </span>
-                      </label>
-                    )
-                  )}
+                  {[
+                    "Casual",
+                    "Formal",
+                    "Business",
+                    "Party",
+                    "Wedding",
+                    "Beach",
+                    "Outdoor",
+                    "Sportswear",
+                  ].map((occasion) => (
+                    <label key={occasion} className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={formData.occasions.includes(occasion)}
+                        onChange={() => {
+                          setFormData((prev) => ({
+                            ...prev,
+                            occasions: prev.occasions.includes(occasion)
+                              ? prev.occasions.filter((o) => o !== occasion)
+                              : [...prev.occasions, occasion],
+                          }));
+                        }}
+                        className="hidden"
+                      />
+                      <span
+                        className={`inline-flex items-center justify-center px-3 py-1 text-sm font-medium rounded-md border border-gray-300 cursor-pointer ${
+                          formData.occasions.includes(occasion)
+                            ? "bg-blue-500 text-white"
+                            : "bg-gray-100"
+                        }`}
+                      >
+                        {occasion}
+                      </span>
+                    </label>
+                  ))}
                 </div>
               </div>
 
@@ -364,34 +500,41 @@ export default function ProductCreate() {
                   Style Attributes
                 </label>
                 <div className="flex flex-wrap gap-2">
-                  {["Classic", "Modern", "Vintage", "Bohemian", "Minimalist", "Elegant", "Casual", "Trendy"].map(
-                    (style) => (
-                      <label key={style} className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={formData.style.includes(style)}
-                          onChange={() => {
-                            setFormData((prev) => ({
-                              ...prev,
-                              style: prev.style.includes(style)
-                                ? prev.style.filter((s) => s !== style)
-                                : [...prev.style, style],
-                            }));
-                          }}
-                          className="hidden"
-                        />
-                        <span
-                          className={`inline-flex items-center justify-center px-3 py-1 text-sm font-medium rounded-md border border-gray-300 cursor-pointer ${
-                            formData.style.includes(style)
-                              ? "bg-purple-500 text-white"
-                              : "bg-gray-100"
-                          }`}
-                        >
-                          {style}
-                        </span>
-                      </label>
-                    )
-                  )}
+                  {[
+                    "Classic",
+                    "Modern",
+                    "Vintage",
+                    "Bohemian",
+                    "Minimalist",
+                    "Elegant",
+                    "Casual",
+                    "Trendy",
+                  ].map((style) => (
+                    <label key={style} className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={formData.style.includes(style)}
+                        onChange={() => {
+                          setFormData((prev) => ({
+                            ...prev,
+                            style: prev.style.includes(style)
+                              ? prev.style.filter((s) => s !== style)
+                              : [...prev.style, style],
+                          }));
+                        }}
+                        className="hidden"
+                      />
+                      <span
+                        className={`inline-flex items-center justify-center px-3 py-1 text-sm font-medium rounded-md border border-gray-300 cursor-pointer ${
+                          formData.style.includes(style)
+                            ? "bg-purple-500 text-white"
+                            : "bg-gray-100"
+                        }`}
+                      >
+                        {style}
+                      </span>
+                    </label>
+                  ))}
                 </div>
               </div>
 
@@ -401,34 +544,38 @@ export default function ProductCreate() {
                   Suitable Seasons
                 </label>
                 <div className="flex flex-wrap gap-2">
-                  {["Spring", "Summer", "Fall", "Winter", "All Seasons"].map(
-                    (season) => (
-                      <label key={season} className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={formData.season.includes(season)}
-                          onChange={() => {
-                            setFormData((prev) => ({
-                              ...prev,
-                              season: prev.season.includes(season)
-                                ? prev.season.filter((s) => s !== season)
-                                : [...prev.season, season],
-                            }));
-                          }}
-                          className="hidden"
-                        />
-                        <span
-                          className={`inline-flex items-center justify-center px-3 py-1 text-sm font-medium rounded-md border border-gray-300 cursor-pointer ${
-                            formData.season.includes(season)
-                              ? "bg-green-500 text-white"
-                              : "bg-gray-100"
-                          }`}
-                        >
-                          {season}
-                        </span>
-                      </label>
-                    )
-                  )}
+                  {[
+                    "Spring",
+                    "Summer",
+                    "Fall",
+                    "Winter",
+                    "All Seasons",
+                  ].map((season) => (
+                    <label key={season} className="flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={formData.season.includes(season)}
+                        onChange={() => {
+                          setFormData((prev) => ({
+                            ...prev,
+                            season: prev.season.includes(season)
+                              ? prev.season.filter((s) => s !== season)
+                              : [...prev.season, season],
+                          }));
+                        }}
+                        className="hidden"
+                      />
+                      <span
+                        className={`inline-flex items-center justify-center px-3 py-1 text-sm font-medium rounded-md border border-gray-300 cursor-pointer ${
+                          formData.season.includes(season)
+                            ? "bg-green-500 text-white"
+                            : "bg-gray-100"
+                        }`}
+                      >
+                        {season}
+                      </span>
+                    </label>
+                  ))}
                 </div>
               </div>
 
@@ -450,7 +597,7 @@ export default function ProductCreate() {
                   <option value="Tailored">Tailored</option>
                 </select>
               </div>
-              
+
               {/* Sizing Trend Selector */}
               <div>
                 <label className="block text-sm font-medium mb-2">
@@ -463,7 +610,9 @@ export default function ProductCreate() {
                       name="sizingTrend"
                       value={-1}
                       checked={formData.sizingTrend === -1}
-                      onChange={() => setFormData(prev => ({ ...prev, sizingTrend: -1 }))}
+                      onChange={() =>
+                        setFormData((prev) => ({ ...prev, sizingTrend: -1 }))
+                      }
                       className="mr-2"
                     />
                     <span>Runs Small</span>
@@ -474,7 +623,9 @@ export default function ProductCreate() {
                       name="sizingTrend"
                       value={0}
                       checked={formData.sizingTrend === 0}
-                      onChange={() => setFormData(prev => ({ ...prev, sizingTrend: 0 }))}
+                      onChange={() =>
+                        setFormData((prev) => ({ ...prev, sizingTrend: 0 }))
+                      }
                       className="mr-2"
                     />
                     <span>True to Size</span>
@@ -485,14 +636,16 @@ export default function ProductCreate() {
                       name="sizingTrend"
                       value={1}
                       checked={formData.sizingTrend === 1}
-                      onChange={() => setFormData(prev => ({ ...prev, sizingTrend: 1 }))}
+                      onChange={() =>
+                        setFormData((prev) => ({ ...prev, sizingTrend: 1 }))
+                      }
                       className="mr-2"
                     />
                     <span>Runs Large</span>
                   </label>
                 </div>
               </div>
-              
+
               {/* Sizing Notes */}
               <div>
                 <label className="block text-sm font-medium mb-2">
@@ -525,43 +678,50 @@ export default function ProductCreate() {
                 )}
               </div>
               <ProductGallery
-                onGalleryChange={handleGalleryChange}
-                onMainImageRemove={handleMainImageRemove}
+                gallery={formData.gallery}
+                onAddImages={handleAddImages}
+                onRemoveImage={handleRemoveImage}
+                onUpdateColor={handleUpdateColor}
+                onAddAdditionalImage={handleAddAdditionalImage}
+                onRemoveAdditionalImage={handleRemoveAdditionalImage}
               />
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Size <span className="text-red-500">*</span>
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {["NS", "XS", "S", "M", "L", "XL", "2XL", "3XL"].map(
-                    (size) => (
-                      <label key={size} className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={formData.sizes.includes(size)}
-                          onChange={() => handleSizeChange(size)}
-                          className="hidden"
-                        />
-                        <span
-                          className={`inline-flex items-center justify-center px-4 py-3 text-sm font-medium rounded-md border border-gray-300 cursor-pointer ${
-                            formData.sizes.includes(size)
-                              ? "bg-gray-500 text-white"
-                              : "bg-gray-300"
-                          }`}
-                        >
-                          {size}
-                        </span>
-                      </label>
-                    )
-                  )}
+              {/* Show size selector only when not in Accessories category */}
+              {formData.category !== "Accessories" && (
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Size <span className="text-red-500">*</span>
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {["NS", "XS", "S", "M", "L", "XL", "2XL", "3XL"].map(
+                      (size) => (
+                        <label key={size} className="flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={formData.sizes.includes(size)}
+                            onChange={() => handleSizeChange(size)}
+                            className="hidden"
+                          />
+                          <span
+                            className={`inline-flex items-center justify-center px-4 py-3 text-sm font-medium rounded-md border border-gray-300 cursor-pointer ${
+                              formData.sizes.includes(size)
+                                ? "bg-gray-500 text-white"
+                                : "bg-gray-300"
+                            }`}
+                          >
+                            {size}
+                          </span>
+                        </label>
+                      )
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
           <div className="flex justify-end gap-4 mt-6">
             <button
               type="button"
-              onClick={() => router.push('/productlist')}
+              onClick={() => router.push("/productlist")}
               className="px-20 py-2 border rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
               disabled={isSubmitting}
             >
@@ -571,9 +731,13 @@ export default function ProductCreate() {
               type="button"
               onClick={handleSave}
               disabled={isSubmitting}
-              className={`px-20 py-2 ${isSubmitting ? 'bg-gray-400' : 'bg-orange-600 hover:bg-orange-700'} text-white rounded-md transition-colors`}
+              className={`px-20 py-2 ${
+                isSubmitting
+                  ? "bg-gray-400"
+                  : "bg-orange-600 hover:bg-orange-700"
+              } text-white rounded-md transition-colors`}
             >
-              {isSubmitting ? 'SAVING...' : 'SAVE'}
+              {isSubmitting ? "SAVING..." : "SAVE"}
             </button>
           </div>
         </div>

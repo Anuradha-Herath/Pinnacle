@@ -112,27 +112,49 @@ export async function POST(request: Request) {
     
     const body = await request.json();
     
-    // Process gallery images - upload each to Cloudinary
+    // Process gallery images - upload each to Cloudinary including additional images
     const processedGallery = await Promise.all(
       body.gallery.map(async (item: any) => {
-        // Only process if it's a base64 string
+        // Process main image
+        let processedMainImage: string;
         if (typeof item.src === 'string' && (
             item.src.startsWith('data:image') || 
             item.src.match(/^[A-Za-z0-9+/=]+$/)
           )) {
-          // Upload to Cloudinary
-          const imageUrl = await uploadToCloudinary(item.src);
-          
-          // Return updated item with Cloudinary URL and preserve the color information
-          return {
-            src: imageUrl,
-            name: item.name || '',
-            color: item.color || ''  // Ensure color is included
-          };
+          processedMainImage = await uploadToCloudinary(item.src);
+        } else {
+          processedMainImage = item.src;
         }
         
-        // If not a base64 string, just return the item unchanged
-        return item;
+        // Process additional images if they exist
+        const processedAdditionalImages = item.additionalImages && item.additionalImages.length > 0 
+          ? await Promise.all(item.additionalImages.map(async (additionalImg: any) => {
+              // Only process if it's a base64 string
+              if (typeof additionalImg.src === 'string' && (
+                  additionalImg.src.startsWith('data:image') || 
+                  additionalImg.src.match(/^[A-Za-z0-9+/=]+$/)
+                )) {
+                // Upload to Cloudinary
+                const imageUrl = await uploadToCloudinary(additionalImg.src);
+                
+                return {
+                  src: imageUrl,
+                  name: additionalImg.name || ''
+                };
+              }
+              
+              // If not a base64 string, just return the item unchanged
+              return additionalImg;
+            }))
+          : [];
+        
+        // Return updated item with Cloudinary URLs
+        return {
+          src: processedMainImage,
+          name: item.name || '',
+          color: item.color || '',
+          additionalImages: processedAdditionalImages
+        };
       })
     );
     
@@ -151,6 +173,13 @@ export async function POST(request: Request) {
       occasions: body.occasions || [],
       style: body.style || [],
       season: body.season || [],
+      
+      // Add fitType and sizing info - these will be relevant for clothing but not accessories
+      fitType: body.fitType,
+      sizingTrend: body.sizingTrend,
+      sizingNotes: body.sizingNotes,
+      // Only add sizeChart if it's defined
+      ...(body.sizeChart && Object.keys(body.sizeChart).length > 0 ? { sizeChart: body.sizeChart } : {})
     });
     
     await newProduct.save();
@@ -162,11 +191,13 @@ export async function POST(request: Request) {
       stock: 0, // Initialize with zero stock
       status: 'Newly Added', // Set initial status
       image: processedGallery.length > 0 ? processedGallery[0].src : '',
-      // Initialize size stock with zeros
-      sizeStock: body.sizes.reduce((acc: any, size: string) => {
-        acc[size] = 0;
-        return acc;
-      }, {})
+      // Initialize size stock with zeros - only for non-accessories or if sizes are provided
+      sizeStock: body.sizes && body.sizes.length > 0 ? 
+        body.sizes.reduce((acc: any, size: string) => {
+          acc[size] = 0;
+          return acc;
+        }, {}) : 
+        { default: 0 } // Use a default stock counter for accessories
     });
     
     await newInventory.save();

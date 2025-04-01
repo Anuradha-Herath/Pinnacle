@@ -1,7 +1,18 @@
+
 import jwt, { Secret, JwtPayload, SignOptions } from 'jsonwebtoken';
 import { IUser } from '../models/User';
+import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || '6fbd53421a847b141d318205a0b6809ea8d2af891f686982297a9de1cd35492b';
+
+// Define a User interface for JWT operations
+export interface JwtUser {
+  _id: string;
+  email: string;
+  role: string;
+}
+
+// Ensure JWT_SECRET is properly typed as jwt.Secret
+const JWT_SECRET: jwt.Secret = process.env.JWT_SECRET || '6fbd53421a847b141d318205a0b6809ea8d2af891f686982297a9de1cd35492b';
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '7d';
 
 // Token types
@@ -12,16 +23,21 @@ export interface TokenPayload {
 }
 
 // Generate JWT token
+
 export const generateToken = (user: IUser): string => {
   if (!user._id) {
     throw new Error('User ID is required to generate token');
   }
   
+
+export const generateToken = (user: JwtUser): string => {
+
   const payload: TokenPayload = {
-    id: user._id.toString(),
+    id: user._id,
     email: user.email,
     role: user.role,
   };
+
 
   // Use proper typing for the secret and options
   const secret: Secret = JWT_SECRET;
@@ -31,6 +47,15 @@ export const generateToken = (user: IUser): string => {
   };
   
   return jwt.sign(payload, secret, options);
+
+  // Explicitly type the options to avoid TypeScript errors
+  const options: jwt.SignOptions = {
+    expiresIn: JWT_EXPIRES_IN as jwt.SignOptions['expiresIn']
+  };
+
+  // Use the correct types for jwt.sign
+  return jwt.sign(payload, JWT_SECRET, options);
+
 };
 
 // Verify JWT token

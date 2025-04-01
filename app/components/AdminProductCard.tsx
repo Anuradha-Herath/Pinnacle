@@ -24,12 +24,12 @@ const AdminProductCard = ({ product, onDelete }: {
     
     // Navigate to edit page with product ID
     const handleEditClick = () => {
-      router.push(`/productedit/${product.id}`);
+      router.push(`/admin/productedit/${product.id}`);
     };
     
     // Navigate to view details page with product ID
     const handleViewClick = () => {
-      router.push(`/productdetails/${product.id}`);
+      router.push(`/admin/productdetails/${product.id}`);
     };
 
     // Handle product deletion
