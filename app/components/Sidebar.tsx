@@ -131,7 +131,7 @@ const Sidebar: React.FC = () => {
                             {!collapsed && <span className="ml-2">Profile</span>}
                         </NavLink>
                     </li>
-              
+                    <li>
                         <button
                             onClick={handleLogout}
                             className="hover:bg-gray-700 rounded w-full text-left py-2"
