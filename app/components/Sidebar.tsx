@@ -2,7 +2,9 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { useAuth } from "@/app/context/AuthContext";
+import { authNotifications } from "@/lib/notificationService";
 import {
     AiOutlineLogout,
     AiOutlineMenu,
@@ -21,6 +23,8 @@ const Sidebar: React.FC = () => {
     const [mounted, setMounted] = useState<boolean>(false);
     
     const pathname = usePathname();
+    const router = useRouter();
+    const { logout } = useAuth();
     
     // Use useEffect to handle client-side operations
     useEffect(() => {
@@ -31,6 +35,13 @@ const Sidebar: React.FC = () => {
 
     const toggleCollapsed = () => {
         setCollapsed(!collapsed);
+    };
+
+    const handleLogout = async () => {
+        await logout();
+        // Use notification service instead of direct toast call
+        authNotifications.logoutSuccess();
+        router.push('/adminlogin');
     };
 
     // Helper function for Link or collapsed icon-only button
@@ -120,19 +131,17 @@ const Sidebar: React.FC = () => {
                             {!collapsed && <span className="ml-2">Profile</span>}
                         </NavLink>
                     </li>
-                    <li>
-                        <NavLink 
-                            href="/admin/logout"
-                            onClick={(e: React.MouseEvent<HTMLAnchorElement>) => {
-                                e.preventDefault();
-                                // Add your logout logic here, e.g.:
-                                // logout();
-                                // router.push('/login');
-                            }}
-                        >
-                            <AiOutlineLogout className="text-xl w-6 flex-shrink-0" />
-                            {!collapsed && <span className="ml-2">Logout</span>}
-                        </NavLink>
+              
+                        <button
+                            onClick={handleLogout}
+                            className="hover:bg-gray-700 rounded w-full text-left py-2"
+                      
+                       >
+                            <div className="inline-flex items-center">
+                                <AiOutlineLogout className="text-xl w-8 flex-shrink-0 pl-2" />
+                                {!collapsed && <span className="ml-2">Logout</span>}
+                            </div>
+                        </button>
                     </li>
                 </ul>
             </nav>
