@@ -96,18 +96,58 @@ export async function POST(request: Request) {
     ];
     console.log("Unique product IDs:", uniqueProductIds);
 
-    // Step 5: Format simple line items without database lookup for now
-    // This will help isolate if the error is in the database interaction
-    const simpleLineItems = requestBody.cart.map((item: any) => ({
-      quantity: item.quantity,
-      price_data: {
-        currency: "INR",
-        product_data: item.name,
-        unit_amount: Math.round(item.price * 100),
-      },
-    }));
+    // Modified Step 5: Format line items with simplified structure for database compatibility
+    const simpleLineItems = requestBody.cart.map((item: any) => {
+      // Create a more detailed product name that includes color and size
+      const productName = item.name;
+      const productDetails = [];
 
-    console.log("Created simple line items");
+      if (item.color) {
+        // Extract just the filename from the color URL if it's a URL
+        let colorName = item.color;
+        if (colorName.startsWith("http") || colorName.includes("/")) {
+          // Extract the filename without extension
+          const parts = colorName.split("/");
+          const fileName = parts[parts.length - 1];
+          colorName = fileName.split(".")[0]; // Remove file extension
+        }
+        productDetails.push(`Color: ${colorName}`);
+      }
+
+      if (item.size) {
+        productDetails.push(`Size: ${item.size}`);
+      }
+
+      // Full product description including variants
+      const fullProductName =
+        productDetails.length > 0
+          ? `${productName} (${productDetails.join(", ")})`
+          : productName;
+
+      // Store image URL separately for session storage
+      const imageUrl = item.image || "";
+
+      return {
+        quantity: item.quantity,
+        price_data: {
+          currency: "USD",
+          // Convert to string to match the schema expectation
+          product_data: fullProductName,
+          unit_amount: Math.round(item.price * 100), // Convert to cents
+        },
+        // Include metadata as a separate field
+        metadata: {
+          productId: item.id,
+          color: item.color || "N/A",
+          size: item.size || "N/A",
+          imageUrl: imageUrl,
+        },
+      };
+    });
+
+    console.log(
+      "Created simplified line items compatible with the database schema"
+    );
 
     // Step 6: Create a simplified order object to store
     try {
@@ -173,11 +213,12 @@ export async function POST(request: Request) {
             // Format line items for Stripe API requirements
             const stripeLineItems = simpleLineItems.map((item) => ({
               price_data: {
-                currency: "INR",
+                currency: "USD",
                 product_data: {
-                  name: item.price_data.product_data, // This is the name of the product
+                  name: item.price_data.product_data, // Includes color and size
+                  images: [item.metadata.imageUrl].filter(Boolean),
                 },
-                unit_amount: item.price_data.unit_amount, // Already in smallest currency unit
+                unit_amount: item.price_data.unit_amount,
               },
               quantity: item.quantity,
             }));
@@ -214,11 +255,25 @@ export async function POST(request: Request) {
           console.log("Skipping Stripe - not initialized");
         }
 
+        // When sending to the client, include images in the response
+        const clientLineItems = simpleLineItems.map((item) => ({
+          quantity: item.quantity,
+          price_data: {
+            currency: item.price_data.currency,
+            product_data: {
+              name: item.price_data.product_data,
+              images: [item.metadata.imageUrl].filter(Boolean),
+            },
+            unit_amount: item.price_data.unit_amount,
+          },
+          metadata: item.metadata,
+        }));
+
         // Return success with order info and appropriate redirect
         return NextResponse.json({
           success: true,
           orderId: newOrder.orderNumber || newOrder._id.toString(),
-          line_items: simpleLineItems,
+          line_items: clientLineItems, // Send the enriched version to client
           redirect: redirectUrl,
         });
       } catch (dbError: any) {

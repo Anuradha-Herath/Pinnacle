@@ -10,8 +10,9 @@ const LineItemSchema = new Schema({
     currency: {
       type: String,
       required: true,
-      default: "INR",
+      default: "USD",
     },
+    // Keep as string to ensure compatibility
     product_data: {
       type: String,
       required: true,
@@ -24,6 +25,13 @@ const LineItemSchema = new Schema({
   productId: {
     type: Schema.Types.ObjectId,
     ref: "Product",
+  },
+  // Add metadata to store additional product information
+  metadata: {
+    productId: String,
+    color: String,
+    size: String,
+    imageUrl: String,
   },
 });
 
