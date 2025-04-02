@@ -199,7 +199,7 @@ function Checkout() {
                         </div>
                       </div>
                       <div className="font-medium text-gray-900">
-                        ₹{(item.price * item.quantity).toFixed(2)}
+                        ${(item.price * item.quantity).toFixed(2)}
                       </div>
                     </div>
                   ))}
@@ -233,16 +233,16 @@ function Checkout() {
                 <div className="flex justify-between py-1">
                   <span className="text-gray-600">Subtotal</span>
                   <span className="font-medium">
-                    ₹{getCartTotal().toFixed(2)}
+                    ${getCartTotal().toFixed(2)}
                   </span>
                 </div>
                 <div className="flex justify-between py-1">
                   <span className="text-gray-600">Shipping</span>
-                  <span className="font-medium">₹650.00</span>
+                  <span className="font-medium">$650.00</span>
                 </div>
                 <div className="flex justify-between py-3 text-lg font-semibold border-t border-gray-200 mt-2">
                   <span>Total</span>
-                  <span>₹{(getCartTotal() + 650).toFixed(2)}</span>
+                  <span>${(getCartTotal() + 650).toFixed(2)}</span>
                 </div>
               </div>
             </div>
@@ -573,7 +573,7 @@ function Checkout() {
                         />
                         <span>Standard Shipping</span>
                       </div>
-                      <span className="font-medium">₹650.00</span>
+                      <span className="font-medium">$650.00</span>
                     </label>
                   ) : (
                     <div className="p-4 border border-gray-300 rounded-lg bg-gray-50">
