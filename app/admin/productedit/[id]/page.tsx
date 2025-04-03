@@ -24,12 +24,30 @@ interface Category {
   mainCategory: string[];
 }
 
+interface ProductFormData {
+  productName: string;
+  description: string;
+  category: string;
+  subCategory: string;
+  regularPrice: string;
+  tag: string;
+  sizes: string[];
+  gallery: GalleryItem[];
+  occasions: string[];
+  style: string[];
+  season: string[];
+  fitType: string;
+  sizingTrend: number;
+  sizingNotes: string;
+  sizeChart: Record<string, any>;
+}
+
 export default function ProductEdit() {
   const router = useRouter();
   const { id } = useParams();
   const [isClient, setIsClient] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<ProductFormData>({
     productName: "",
     description: "",
     category: "",
@@ -51,7 +69,7 @@ export default function ProductEdit() {
   const [loadingCategories, setLoadingCategories] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filteredSubCategories, setFilteredSubCategories] = useState<Category[]>([]);
-  const [mainProductImage, setMainProductImage] = useState(null);
+  const [mainProductImage, setMainProductImage] = useState<string | ArrayBuffer | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -99,10 +117,10 @@ export default function ProductEdit() {
         const data = await res.json();
         const product = data.product;
 
-        const processedGallery = product.gallery.map(item => ({
+        const processedGallery = product.gallery.map((item: any) => ({
           ...item,
           additionalImages: Array.isArray(item.additionalImages)
-            ? item.additionalImages.map(img => ({
+            ? item.additionalImages.map((img: any) => ({
                 id: img.id || `img_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
                 src: img.src,
                 name: img.name
@@ -145,7 +163,7 @@ export default function ProductEdit() {
   };
 
   const handleSizeChange = (size: string) => {
-    setFormData((prev) => ({
+    setFormData((prev: ProductFormData) => ({
       ...prev,
       sizes: prev.sizes.includes(size)
         ? prev.sizes.filter((s) => s !== size)
@@ -153,12 +171,12 @@ export default function ProductEdit() {
     }));
   };
 
-  const handleAddImages = (newItems: any[]) => {
+  const handleAddImages = (newItems: GalleryItem[]) => {
     const processedItems = newItems.map(item => ({
       ...item,
       additionalImages: item.additionalImages || []
     }));
-    setFormData((prev) => {
+    setFormData((prev: ProductFormData) => {
       const updatedGallery = [...prev.gallery, ...processedItems];
       if (updatedGallery.length > 0 && !mainProductImage) {
         setMainProductImage(updatedGallery[0].src);
@@ -168,7 +186,7 @@ export default function ProductEdit() {
   };
 
   const handleRemoveImage = (index: number) => {
-    setFormData((prev) => {
+    setFormData((prev: ProductFormData) => {
       const updatedGallery = [...prev.gallery];
       updatedGallery.splice(index, 1);
       if (index === 0 && updatedGallery.length > 0) {
@@ -181,7 +199,7 @@ export default function ProductEdit() {
   };
 
   const handleUpdateColor = (index: number, color: string) => {
-    setFormData((prev) => {
+    setFormData((prev: ProductFormData) => {
       const updatedGallery = [...prev.gallery];
       updatedGallery[index] = { 
         ...updatedGallery[index], 
@@ -191,10 +209,10 @@ export default function ProductEdit() {
     });
   };
 
-  const handleAddAdditionalImage = (colorIndex: number, newImage: any) => {
+  const handleAddAdditionalImage = (colorIndex: number, newImage: AdditionalImage) => {
     console.log("Adding additional image to color index:", colorIndex, newImage);
 
-    setFormData((prev) => {
+    setFormData((prev: ProductFormData) => {
       const updatedGallery = [...prev.gallery];
 
       if (!updatedGallery[colorIndex].additionalImages) {
@@ -224,7 +242,7 @@ export default function ProductEdit() {
   };
 
   const handleRemoveAdditionalImage = (colorIndex: number, imageIndex: number) => {
-    setFormData((prev) => {
+    setFormData((prev: ProductFormData) => {
       const updatedGallery = [...prev.gallery];
       if (updatedGallery[colorIndex].additionalImages) {
         updatedGallery[colorIndex].additionalImages.splice(imageIndex, 1);
@@ -254,7 +272,7 @@ export default function ProductEdit() {
     try {
       const dataToSend = JSON.parse(JSON.stringify(formData));
 
-      dataToSend.gallery = dataToSend.gallery.map(item => ({
+      dataToSend.gallery = dataToSend.gallery.map((item: GalleryItem) => ({
         ...item,
         additionalImages: item.additionalImages || []
       }));
@@ -426,7 +444,7 @@ export default function ProductEdit() {
                         type="checkbox"
                         checked={formData.occasions.includes(occasion)}
                         onChange={() => {
-                          setFormData((prev) => ({
+                          setFormData((prev: ProductFormData) => ({
                             ...prev,
                             occasions: prev.occasions.includes(occasion)
                               ? prev.occasions.filter((o) => o !== occasion)
@@ -469,7 +487,7 @@ export default function ProductEdit() {
                         type="checkbox"
                         checked={formData.style.includes(style)}
                         onChange={() => {
-                          setFormData((prev) => ({
+                          setFormData((prev: ProductFormData) => ({
                             ...prev,
                             style: prev.style.includes(style)
                               ? prev.style.filter((s) => s !== style)
@@ -509,7 +527,7 @@ export default function ProductEdit() {
                         type="checkbox"
                         checked={formData.season.includes(season)}
                         onChange={() => {
-                          setFormData((prev) => ({
+                          setFormData((prev: ProductFormData) => ({
                             ...prev,
                             season: prev.season.includes(season)
                               ? prev.season.filter((s) => s !== season)
