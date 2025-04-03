@@ -38,10 +38,15 @@ export default function ChatbotWrapper() {
     "/coupondelete",
     "/adminlist",
     "/orderlist",
+    "/admin", // Add the /admin prefix to catch all admin/* routes
   ];
   
   // Check if the current path is an admin route
-  const isAdminRoute = adminRoutes.some(route => pathname === route || pathname.startsWith(route + '/'));
+  const isAdminRoute = adminRoutes.some(route => 
+    pathname === route || 
+    pathname.startsWith(route + '/') || 
+    pathname.startsWith('/admin/') // Explicitly check for any path starting with /admin/
+  );
   
   // If we're on an admin route, don't show the chatbot
   if (isAdminRoute) {
