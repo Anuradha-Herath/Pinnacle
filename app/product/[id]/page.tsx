@@ -7,7 +7,6 @@ import Footer from "../../components/Footer";
 import ProductCarousel from "../../components/ProductCarousel";
 import ProductImageGallery from "../../components/ProductImageGallery";
 import ProductInformation from "../../components/ProductInformation";
-import ProductDetailsSection from "../../components/ProductDetailsSection";
 import UserReviewsSection from "../../components/UserReviewsSection";
 import { useCart } from "@/app/context/CartContext";
 import { useWishlist } from "@/app/context/WishlistContext";
@@ -29,7 +28,7 @@ export default function EnhancedProductDetailPage() {
   const params = useParams();
   const router = useRouter();
   const id = params?.id as string;
-  
+
   // State to hold product data
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -41,18 +40,21 @@ export default function EnhancedProductDetailPage() {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
   const [productRating, setProductRating] = useState<number>(0); // Add state for real rating
-  
+  const [selectedColorIndex, setSelectedColorIndex] = useState(0);
+  const [currentAdditionalImages, setCurrentAdditionalImages] = useState<string[]>([]);
+  const [displayedImageIndex, setDisplayedImageIndex] = useState(0); // Add state to track the displayed image index within the combined array
+
   // Context hooks
   const { addToCart } = useCart();
   const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist();
   const isProductInWishlist = product ? isInWishlist(product.id) : false;
   const placeholderImage = '/placeholder.png';
-  
+
   // Helper function to validate image URLs
   const isValidImageUrl = (url: string): boolean => {
     if (!url) return false;
     if (url.trim() === '') return false;
-    
+
     try {
       if (url.startsWith('/')) return true;
       new URL(url);
@@ -62,17 +64,18 @@ export default function EnhancedProductDetailPage() {
     }
   };
 
-  // Helper function to get the currently selected image
+  // Fix the helper function to get the currently selected image
   const getSelectedImage = () => {
-    return product?.images && product.images.length > 0
-      ? product.images[selectedImageIndex]
-      : placeholderImage;
+    if (!product || !product.images || product.images.length === 0) {
+      return placeholderImage;
+    }
+    return product.images[selectedImageIndex] || placeholderImage;
   };
 
   // Helper function to get color name from color object or URL
   const getColorName = (color: string | null): string | null => {
     if (!color) return null;
-    
+
     // If it's a URL, extract a simple name
     if (color.startsWith('http') || color.startsWith('/')) {
       // Get just the filename without extension
@@ -80,42 +83,55 @@ export default function EnhancedProductDetailPage() {
       const fileName = parts[parts.length - 1];
       return fileName.split('.')[0];
     }
-    
+
     return color;
   };
-  
+
   // Fetch product data
   useEffect(() => {
     const fetchProductData = async () => {
       try {
         setLoading(true);
         const response = await fetch(`/api/products/${id}`);
-        
+
         if (!response.ok) {
           throw new Error('Failed to fetch product');
         }
-        
+
         const data = await response.json();
-        
-        // Format data for our components with image validation
+
+        // Extract and process gallery and additional images
+        const mainImages = data.product.gallery?.map((item: any) => item.src) || [];
+        const colorAdditionalImages = data.product.gallery?.map((item: any) =>
+          (item.additionalImages || []).map((img: any) => img.src)
+        ) || [];
+
+        // Format data for our components
         const formattedProduct = {
           id: data.product._id,
           name: data.product.productName,
           price: data.product.regularPrice,
           description: data.product.description || 'No description available',
-          images: data.product.gallery
-            ?.map((item: any) => item.src)
-            .filter((src: string) => src && src.trim() !== '') || [], // Filter out empty strings
+          images: mainImages.filter((src: string) => src && src.trim() !== ''),
+          additionalImagesByColor: colorAdditionalImages, // Store all additional images by color index
           details: [
             `Category: ${data.product.category}`,
             `Sub-Category: ${data.product.subCategory}`,
-            data.product.description ? `Description: ${data.product.description}` : null,
           ].filter(Boolean),
           colors: data.product.gallery?.map((item: any) => item.color) || [],
           sizes: data.product.sizes || [],
-          rating: 0, // Initialize with 0, will be updated with real rating from reviews
+          rating: 0, // Initialize with 0
+          occasions: data.product.occasions || [],
+          style: data.product.style || [],
+          season: data.product.season || [],
+          category: data.product.category, // Make sure category is passed for accessory check
         };
-        
+
+        // Set the initial additional images based on the first color
+        if (formattedProduct.additionalImagesByColor?.[0]) {
+          setCurrentAdditionalImages(formattedProduct.additionalImagesByColor[0]);
+        }
+
         // Track this product view
         trackProductView({
           id: data.product._id,
@@ -126,22 +142,22 @@ export default function EnhancedProductDetailPage() {
           sizes: data.product.sizes || [],
           price: data.product.regularPrice
         });
-        
+
         // Store raw data for API interactions
         setProduct({
           ...formattedProduct,
           rawData: data.product
         });
-        
+
         // Store recently viewed products in localStorage
         storeRecentlyViewed(formattedProduct);
-        
+
         // Fetch related products based on category
         fetchRelatedProducts(data.product.category);
-        
+
         // Fetch recently viewed products
         fetchRecentlyViewed();
-        
+
       } catch (err) {
         console.error('Error fetching product:', err);
         setError(err instanceof Error ? err.message : 'Failed to load product details');
@@ -149,162 +165,180 @@ export default function EnhancedProductDetailPage() {
         setLoading(false);
       }
     };
-    
+
     if (id) {
       fetchProductData();
     }
   }, [id]);
-  
+
   // Improved store recently viewed function
   const storeRecentlyViewed = (product: any) => {
     try {
       const recentlyViewed = JSON.parse(localStorage.getItem('recentlyViewed') || '[]');
-      
+
       // Format the product to match what ProductCard expects
       const formattedProduct = {
         id: product.id,
         name: product.name,
         price: product.price,
-        image: product.images && product.images.length > 0 ? 
+        image: product.images && product.images.length > 0 ?
           product.images[0] : placeholderImage,  // Use first image or placeholder
         colors: product.images || [],  // Use images array as colors
         sizes: product.sizes || [],
       };
-      
+
       // Add to beginning of array, remove duplicates, limit to 6 items
       const updatedRecentlyViewed = [
         formattedProduct,
         ...recentlyViewed.filter((p: any) => p.id !== product.id)
       ].slice(0, 6);
-      
+
       localStorage.setItem('recentlyViewed', JSON.stringify(updatedRecentlyViewed));
     } catch (error) {
       console.error('Error storing recently viewed products:', error);
     }
   };
-  
+
   // Improved fetch recently viewed function
   const fetchRecentlyViewed = () => {
     try {
       const recentItems = JSON.parse(localStorage.getItem('recentlyViewed') || '[]');
-      
+
       // Validate and fix image URLs in recently viewed items
       const validatedItems = recentItems
         .filter((p: any) => p.id !== id)
         .map((item: any) => ({
           ...item,
           image: isValidImageUrl(item.image) ? item.image : placeholderImage,
-          colors: Array.isArray(item.colors) ? 
+          colors: Array.isArray(item.colors) ?
             item.colors.filter(isValidImageUrl) : []
         }));
-      
+
       setRecentlyViewed(validatedItems);
     } catch (error) {
       console.error('Error retrieving recently viewed products:', error);
     }
   };
-  
+
   // Fetch related products
   const fetchRelatedProducts = async (category: string) => {
     try {
       const response = await fetch(`/api/customer/products?category=${category}&limit=6`);
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch related products');
       }
-      
+
       const data = await response.json();
       setRelatedProducts(data.products.filter((p: any) => p.id !== id).slice(0, 4));
-      
+
     } catch (err) {
       console.error('Error fetching related products:', err);
     }
   };
-  
+
   // Handle quantity changes
   const updateQuantity = (value: number) => {
     setQuantity(Math.max(1, quantity + value));
   };
-  
-  // Use debounce for cart and wishlist actions
+
+  // Fixed debounced add to cart function
   const debouncedAddToCart = debounce((productData: any) => {
     const selectedImg = getSelectedImage();
-    const colorName = getColorName(selectedColor);
     
     console.log("Adding to cart with:", {
+      id: productData.id,
+      name: productData.name,
+      price: productData.price,
       selectedSize,
       selectedColor,
-      colorName,
-      selectedImage: selectedImg
+      image: selectedImg,
+      quantity
     });
-    
+
+    // Ensure we're passing all required data
     addToCart({
       id: productData.id,
       name: productData.name,
       price: productData.price,
       image: selectedImg,
       quantity: quantity,
-      size: selectedSize || undefined, // Convert null to undefined
-      color: selectedColor || undefined // Convert null to undefined
-    }, false); // Pass false to prevent duplicate notification
-    
+      size: selectedSize || undefined,
+      color: selectedColor || undefined
+    });
+
     // Use notification service
     cartNotifications.itemAdded(productData.name);
   }, 300);
 
-  const debouncedToggleWishlist = debounce((productId: string, isInWishlist: boolean) => {
-    if (isInWishlist) {
+  // Fixed toggle wishlist handler
+  const debouncedToggleWishlist = debounce((productId: string, isInList: boolean) => {
+    console.log("Toggling wishlist for product ID:", productId, "Currently in wishlist:", isInList);
+    
+    if (isInList) {
       removeFromWishlist(productId);
-      // Use notification service
       wishlistNotifications.itemRemoved();
     } else {
       addToWishlist(productId);
-      // Use notification service
       wishlistNotifications.itemAdded();
     }
   }, 300);
-  
-  // Add to cart handler with quantity support
+
+  // Fixed add to cart handler
   const handleAddToCart = () => {
     if (!product) return;
-    
-    if (!selectedSize && product.sizes.length > 0) {
+
+    if (!selectedSize && product.sizes && product.sizes.length > 0) {
       toast.error("Please select a size");
       return;
     }
-    
-    // No need to define selectedImage here anymore, using helper function instead
+
+    // Pass the entire product object with correct ID
     debouncedAddToCart({
-      id: product.id,
+      id: product.id, // Ensure we're using the correct ID
       name: product.name,
       price: product.price,
     });
-    
-    // Track this action for preferences (if product exists)
-    if (product) {
-      trackProductAction(product, 'cart');
-    }
+
+    // Track this action for preferences
+    trackProductAction(product, 'cart');
   };
-  
-  // Toggle wishlist handler
+
+  // Fixed toggle wishlist handler
   const toggleWishlist = () => {
-    if (!product) return;
-    
+    if (!product || !product.id) return;
+
     // Track wishlist action
     trackProductAction(product, 'wishlist');
     
-    debouncedToggleWishlist(product._id, isProductInWishlist);
+    // Use product.id consistently, not product._id
+    debouncedToggleWishlist(product.id, isProductInWishlist);
   };
-  
-  // Sync the selectedImageIndex state with ProductInformation and ProductImageGallery
+
+  // Updated handler to handle color selection and update additional images
   const handleImageSelect = (index: number) => {
+    setSelectedColorIndex(index);
     setSelectedImageIndex(index);
-    // Also update selected color based on the selected image
+    setDisplayedImageIndex(0); // Reset displayed image to main image when color changes
+
+    // Update selected color
     if (product?.colors && product.colors[index]) {
-      setSelectedColor(product.images[index]);
+      setSelectedColor(product.colors[index]);
+    }
+
+    // Update additional images for this color
+    if (product?.additionalImagesByColor && product.additionalImagesByColor[index]) {
+      setCurrentAdditionalImages(product.additionalImagesByColor[index]);
+    } else {
+      setCurrentAdditionalImages([]);
     }
   };
-  
+
+  // New handler for clicking on thumbnails
+  const handleThumbnailClick = (index: number) => {
+    setDisplayedImageIndex(index);
+  };
+
   // Loading state
   if (loading) {
     return (
@@ -321,7 +355,7 @@ export default function EnhancedProductDetailPage() {
       </div>
     );
   }
-  
+
   // Error state
   if (error || !product) {
     return (
@@ -355,12 +389,14 @@ export default function EnhancedProductDetailPage() {
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-          {/* Left Column - Product Gallery */}
+          {/* Left Column - Product Gallery with updated props */}
           <div className="product-container relative z-10">
             <ProductImageGallery 
-              images={product.images} 
+              images={product?.images || []} 
+              additionalImages={currentAdditionalImages}
               selectedImage={selectedImageIndex}
               onImageSelect={handleImageSelect}
+              onThumbnailClick={handleThumbnailClick} // Add the new handler
             />
           </div>
           
@@ -369,16 +405,16 @@ export default function EnhancedProductDetailPage() {
             <ProductInformation 
               product={{
                 ...product,
-                rating: productRating > 0 ? productRating : 0, // Use the real rating if available, otherwise 0
+                rating: productRating > 0 ? productRating : 0,
               }}
               quantity={quantity} 
               updateQuantity={updateQuantity}
               selectedSize={selectedSize}
               setSelectedSize={setSelectedSize}
-              onImageSelect={handleImageSelect} // Pass the handler for image selection
+              onImageSelect={handleImageSelect}
             />
             
-            {/* Action Buttons */}
+            {/* Action Buttons with improved props and debugging */}
             <div className="mt-8 flex flex-col sm:flex-row gap-4">
               <button 
                 onClick={handleAddToCart}
@@ -407,10 +443,7 @@ export default function EnhancedProductDetailPage() {
           </div>
         </div>
         
-        {/* Product Details Section */}
-        <ProductDetailsSection details={product.details} />
-        
-        {/* User Reviews Section - Pass onRatingChange callback */}
+        {/* User Reviews Section */}
         <UserReviewsSection 
           productId={product.id} 
           onRatingChange={(newRating) => {

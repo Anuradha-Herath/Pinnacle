@@ -1,27 +1,77 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { BellIcon, Cog6ToothIcon, ClockIcon } from "@heroicons/react/24/solid";
 import Sidebar from "../../components/Sidebar";
 
-export default function CouponCreate() {
-  const [formData, setFormData] = useState({
-    couponCode: "",
-    productId: "",
-    limit: "",
-    customerEligibility: "new user",
-    discountValue: "",
-    oneTimeUse: false,
-    couponStatus: "active",
-    startDate: "",
-    endDate: ""
-  });
+export default function CouponView() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const couponId = searchParams.get('id');
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    console.log("Coupon Data:", formData);
-    // API integration or logic for handling form submission
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  interface CouponData {
+    status: string;
+    startDate: string;
+    endDate: string;
+    code: string;
+    product: string;
+    price: string;
+    discount: string;
+    limit?: string;
+    customerEligibility?: string;
+    description?: string;
+    oneTimeUse: boolean;
+  }
+  
+  const [couponData, setCouponData] = useState<CouponData | null>(null);
+
+  // Fetch coupon data on page load
+  useEffect(() => {
+    if (!couponId) {
+      setError("No coupon ID provided");
+      setLoading(false);
+      return;
+    }
+
+    const fetchCouponData = async () => {
+      try {
+        const response = await fetch(`/api/coupons/${couponId}`);
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch coupon data');
+        }
+        
+        const { coupon } = await response.json();
+        setCouponData(coupon);
+        
+      } catch (err) {
+        setError((err as Error).message);
+        console.error('Error fetching coupon:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCouponData();
+  }, [couponId]);
+
+  const handleEdit = () => {
+    router.push(`/couponedit?id=${couponId}`);
   };
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen bg-gray-100">
+        <Sidebar />
+        <div className="flex-1 flex items-center justify-center">
+          <div>Loading coupon data...</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-gray-100">
@@ -57,45 +107,34 @@ export default function CouponCreate() {
             <p className="text-sm text-gray-500">Home &gt; Coupons &gt; Details</p>
           </div>
 
-          <form onSubmit={handleSubmit}>
+          {error && (
+            <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md">
+              Error: {error}
+            </div>
+          )}
+
+          {couponData && (
             <div className="grid grid-cols-5 gap-6">
               {/* Left Column */}
-                <div className="col-span-2 ">
+              <div className="col-span-2 ">
                 {/* Coupon Status */}
                 <div className="bg-white p-4 rounded-lg shadow-md mb-6">
                   <h2 className="text-md font-medium mb-4">Coupon Status</h2>
                   <hr className="mb-4" />
-                  <div className="flex gap-8">
-                    <label className="flex items-center gap-2">
-                    <input
-                    type="radio"
-                    value="active"
-                    checked={formData.couponStatus === "active"}
-                    onChange={() => setFormData({ ...formData, couponStatus: "active" })}
-                    className="w-3 h-3"
-                    />
-                    <span>Active</span>
-                    </label>
-                  <label className="flex items-center gap-2">
-                    <input
-                    type="radio"
-                    value="inactive"
-                    checked={formData.couponStatus === "inactive"}
-                    onChange={() => setFormData({ ...formData, couponStatus: "inactive" })}
-                    className="w-4 h-4"
-                    />
-                    <span>In Active</span>
-                  </label>
-                  <label className="flex items-center gap-2">
-                    <input
-                    type="radio"
-                    value="future plan"
-                    checked={formData.couponStatus === "future plan"}
-                    onChange={() => setFormData({ ...formData, couponStatus: "future plan" })}
-                    className="w-4 h-4"
-                    />
-                    <span>Future Plan</span>
-                  </label>
+                  <div className="p-2">
+                    <span
+                      className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${
+                        couponData.status === "Future"
+                          ? "bg-blue-300 text-blue-800"
+                          : couponData.status === "Active"
+                          ? "bg-green-300 text-green-800"
+                          : couponData.status === "Expired" || couponData.status === "Inactive"
+                          ? "bg-orange-300 text-orange-800"
+                          : ""
+                      }`}
+                    >
+                      {couponData.status}
+                    </span>
                   </div>
                 </div>
                 {/* Spacer for gap */}
@@ -105,27 +144,19 @@ export default function CouponCreate() {
                   <h2 className="text-md font-medium mb-4">Date Schedule</h2>
                   <hr className="mb-4" />
                   <div className="mb-4">
-                  <label className="block text-sm mb-1">Start Date</label>
-                  <input 
-                    type="text" 
-                    placeholder="DD - MM - YYYY" 
-                    className="block w-full border border-gray-300 p-2 rounded-xl" 
-                    value={formData.startDate}
-                    onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                  />
+                    <label className="block text-sm mb-1">Start Date</label>
+                    <div className="block w-full border border-gray-300 p-2 rounded-xl bg-gray-50">
+                      {couponData.startDate}
+                    </div>
                   </div>
                   <div>
-                  <label className="block text-sm mb-1">End Date</label>
-                  <input 
-                    type="text" 
-                    placeholder="DD - MM - YYYY" 
-                    className="block w-full border border-gray-300 p-2 rounded-xl" 
-                    value={formData.endDate}
-                    onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                  />
+                    <label className="block text-sm mb-1">End Date</label>
+                    <div className="block w-full border border-gray-300 p-2 rounded-xl bg-gray-50">
+                      {couponData.endDate}
+                    </div>
                   </div>
                 </div>
-                </div>
+              </div>
 
               {/* Right Column */}
               <div className="col-span-3">
@@ -135,115 +166,94 @@ export default function CouponCreate() {
                   <h2 className="text-md font-medium mb-4">Coupon Information</h2>
                   <hr className="mb-4" />
                   <div className="mb-4 flex items-center gap-4">
-                  <div pl-10>
-                    <label className="block text-sm mb-1 pr-10">Coupon Code</label>
-                    <input
-                    type="text"
-                    placeholder="Code Enter"
-                    className="block w-full border border-gray-300 p-2 rounded-xl"
-                    value={formData.couponCode}
-                    onChange={(e) => setFormData({ ...formData, couponCode: e.target.value })}
-                    />
+                    <div className="w-1/2">
+                      <label className="block text-sm mb-1">Coupon Code</label>
+                      <div className="block w-full border border-gray-300 p-2 rounded-xl bg-gray-50">
+                        {couponData.code}
+                      </div>
+                    </div>
+                    <div className="w-1/2">
+                      <label className="block text-sm mb-1">Product Name</label>
+                      <div className="block w-full border border-gray-300 p-2 rounded-xl bg-gray-50">
+                        {couponData.product}
+                      </div>
+                    </div>
                   </div>
-                  <div className="ml-auto pr-4 w-1/3">
-                    <label className="block text-sm mb-1 ">Product ID</label>
-                    <input 
-                    type="text"
-                    placeholder="Enter Product ID"
-                    className="block w-full border border-gray-300 p-2 rounded-xl"
-                    value={formData.productId}
-                    onChange={(e) => setFormData({ ...formData, productId: e.target.value })}
-                    />
-                  </div>
-                  <div className="mt-4 "></div>
+                  
+                  <div className="mb-4 flex items-center gap-4">
+                    <div className="w-1/2">
+                      <label className="block text-sm mb-1">Price</label>
+                      <div className="block w-full border border-gray-300 p-2 rounded-xl bg-gray-50">
+                        {couponData.price}
+                      </div>
+                    </div>
+                    <div className="w-1/2">
+                      <label className="block text-sm mb-1">Discount</label>
+                      <div className="block w-full border border-gray-300 p-2 rounded-xl bg-gray-50">
+                        {couponData.discount}
+                      </div>
+                    </div>
                   </div>
                   
                   <div className="mb-4">
-                  <label className="block text-sm mb-1">Coupon Limits</label>
-                  <input
-                  type="text"
-                  placeholder="No Of Limits"
-                  className="block w-1/3 border border-gray-300 p-2 rounded-xl"
-                  value={formData.limit}
-                  onChange={(e) => setFormData({ ...formData, limit: e.target.value })}
-                  />
+                    <label className="block text-sm mb-1">Coupon Limits</label>
+                    <div className="block w-1/3 border border-gray-300 p-2 rounded-xl bg-gray-50">
+                      {couponData.limit || "No limit"}
+                    </div>
                   </div>
+                  
                   <h2 className="text-md font-medium mb-4">Customer Eligibility</h2>
-                  <div className="flex gap-6 mb-4">
-                  <label className="flex items-center gap-2">
-                  <input
-                  type="radio"
-                  value="new user"
-                  checked={formData.customerEligibility === "new user"}
-                  onChange={() => setFormData({ ...formData, customerEligibility: "new user" })}
-                  className="w-4 h-4"
-                  />
-                  <span>New User</span>
-                  </label>
-                  <label className="flex items-center gap-2">
-                  <input
-                  type="radio"
-                  value="loyalty customers"
-                  checked={formData.customerEligibility === "loyalty customers"}
-                  onChange={() => setFormData({ ...formData, customerEligibility: "loyalty customers" })}
-                  className="w-4 h-4"
-                  />
-                  <span>Loyalty Customers</span>
-                  </label>
-                  <label className="flex items-center gap-2">
-                  <input
-                  type="radio"
-                  value="all"
-                  checked={formData.customerEligibility === "all"}
-                  onChange={() => setFormData({ ...formData, customerEligibility: "all" })}
-                  className="w-4 h-4"
-                  />
-                  <span>All</span>
-                  </label>
+                  <div className="mb-4 p-2 border border-gray-300 rounded-xl bg-gray-50">
+                    {couponData.customerEligibility || "All customers"}
                   </div>
+                  
+                  {couponData.description && (
+                    <div className="mb-4">
+                      <label className="block text-sm mb-1">Description</label>
+                      <div className="block w-full border border-gray-300 p-2 rounded-xl bg-gray-50 min-h-[80px]">
+                        {couponData.description}
+                      </div>
+                    </div>
+                  )}
+                  
                   <div className="mb-4">
-                  <label className="block text-sm mb-1">Discount Values</label>
-                  <input
-                  type="text"
-                  placeholder="Discount Value"
-                  className="block w-2/3 border border-gray-300 p-2 rounded-xl"
-                  value={formData.discountValue}
-                  onChange={(e) => setFormData({ ...formData, discountValue: e.target.value })}
-                  />
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={couponData.oneTimeUse}
+                        readOnly
+                        disabled
+                        className="w-4 h-4"
+                      />
+                      <span>One Time Use</span>
+                    </label>
                   </div>
-                  <div>
-                  <label className="flex items-center gap-2">
-                  <input
-                  type="radio"
-                  checked={formData.oneTimeUse}
-                  onChange={() => setFormData({ ...formData, oneTimeUse: !formData.oneTimeUse })}
-                  className="w-4 h-4"
-                  />
-                  <span>One Time Use</span>
-                  </label>
-                  </div>
+                  
                   <br></br>
                   <hr className="mb-4" />
                   {/* Action Buttons */}
-              <div className="flex justify-end gap-2 mt-6">
-                <button type="submit" className="bg-red-500 text-white px-8 py-2 rounded">
-                EDIT
-                </button>
-                <button type="button" className="bg-gray-200 px-8 py-2 rounded">
-                CANCEL
-                </button>
-                
-
-              </div>
+                  <div className="flex justify-end gap-2 mt-6">
+                    <button 
+                      type="button" 
+                      className="bg-red-500 text-white px-8 py-2 rounded"
+                      onClick={handleEdit}
+                    >
+                      EDIT
+                    </button>
+                    <button 
+                      type="button" 
+                      className="bg-gray-200 px-8 py-2 rounded"
+                      onClick={() => router.push('/couponlist')}
+                    >
+                      BACK
+                    </button>
+                  </div>
                 </div>
               </div>
-              
-              </div>
-
-            
-          </form>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
-}  
+}

@@ -1,8 +1,9 @@
 "use client";
 
-import React from "react";
-import { Star, Minus, Plus } from "lucide-react";
+import React, { useState } from "react";
+import { Star, Minus, Plus, ChevronDown } from "lucide-react";
 import Image from "next/image";
+import SizeGuideModal from "./SizeGuideModal";
 
 interface ProductInformationProps {
   product: {
@@ -12,6 +13,7 @@ interface ProductInformationProps {
     images: string[]; // Use images array instead of colors array
     sizes: string[];
     rating: number;
+    category?: string; // Add category property to check if it's an accessory
   };
   quantity: number;
   updateQuantity: (value: number) => void;
@@ -28,6 +30,14 @@ const ProductInformation: React.FC<ProductInformationProps> = ({
   setSelectedSize,
   onImageSelect 
 }) => {
+  // Add state for size guide modal
+  const [isSizeGuideOpen, setIsSizeGuideOpen] = useState(false);
+  // Add state for description expansion
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+  
+  // Check if product is an accessory
+  const isAccessory = product.category === "Accessories";
+
   // Generate stars for rating
   const renderRatingStars = () => {
     const stars = [];
@@ -91,10 +101,7 @@ const ProductInformation: React.FC<ProductInformationProps> = ({
       </div>
       
       {/* Price */}
-      <p className="text-2xl font-semibold mb-4">${product.price.toFixed(2)}</p>
-      
-      {/* Description */}
-      <p className="text-gray-700 mb-6">{product.description}</p>
+      <p className="text-2xl font-semibold mb-6">${product.price.toFixed(2)}</p>
       
       {/* Product Images - Replacing color circles */}
       {product.images && product.images.length > 1 && (
@@ -122,12 +129,17 @@ const ProductInformation: React.FC<ProductInformationProps> = ({
         </div>
       )}
       
-      {/* Sizes */}
-      {product.sizes && product.sizes.length > 0 && (
+      {/* Sizes - Only show for non-accessories */}
+      {!isAccessory && product.sizes && product.sizes.length > 0 && (
         <div className="mb-6">
           <div className="flex justify-between items-center mb-2">
             <h2 className="text-sm font-medium">Size</h2>
-            <button className="text-xs text-blue-600 underline">Size Guide</button>
+            <button 
+              onClick={() => setIsSizeGuideOpen(true)} 
+              className="text-xs text-blue-600 underline hover:text-blue-800"
+            >
+              Size Guide
+            </button>
           </div>
           <div className="flex flex-wrap gap-2">
             {product.sizes.map((size) => (
@@ -148,7 +160,7 @@ const ProductInformation: React.FC<ProductInformationProps> = ({
       )}
       
       {/* Quantity */}
-      <div className="mb-6">
+      <div className="mb-8">
         <h2 className="text-sm font-medium mb-2">Quantity</h2>
         <div className="inline-flex items-center border">
           <button
@@ -167,6 +179,37 @@ const ProductInformation: React.FC<ProductInformationProps> = ({
           </button>
         </div>
       </div>
+      
+      {/* Description - Moved below sizes and quantity with enhanced styling */}
+      <div className="my-8 rounded-lg border border-gray-200 overflow-hidden bg-gray-50">
+        <button 
+          onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
+          className="flex justify-between items-center w-full p-4 text-left bg-white"
+        >
+          <span className="text-lg font-medium text-gray-900">Description</span>
+          <ChevronDown 
+            size={20} 
+            className={`transition-transform duration-300 text-gray-500 ${isDescriptionExpanded ? 'rotate-180' : 'rotate-0'}`}
+          />
+        </button>
+        
+        {isDescriptionExpanded && (
+          <div className="p-6 bg-white border-t border-gray-200">
+            <div className="prose prose-sm max-w-none">
+              <p className="text-gray-700 leading-relaxed">{product.description}</p>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Size Guide Modal - only show for non-accessories */}
+      {!isAccessory && (
+        <SizeGuideModal 
+          isOpen={isSizeGuideOpen} 
+          onClose={() => setIsSizeGuideOpen(false)} 
+          category="apparel" 
+        />
+      )}
     </div>
   );
 };
