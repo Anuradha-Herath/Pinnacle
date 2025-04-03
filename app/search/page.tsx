@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
-import Link from "next/link"; // Add this missing import
+import Link from "next/link";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import ProductCard from "../components/ProductCard";
+import { useSearchHistory } from "../hooks/useSearchHistory";
 
 interface Product {
   id: string;
@@ -25,6 +26,10 @@ export default function SearchPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { addToHistory } = useSearchHistory();
+  
+  // Add a ref to track if we've already added this search term to history
+  const searchAdded = useRef(false);
 
   useEffect(() => {
     const fetchSearchResults = async () => {
@@ -32,6 +37,12 @@ export default function SearchPage() {
         setProducts([]);
         setLoading(false);
         return;
+      }
+      
+      // Only add to history once per query and only if query exists
+      if (query.trim() && !searchAdded.current) {
+        addToHistory(query.trim());
+        searchAdded.current = true;
       }
       
       try {
@@ -53,6 +64,11 @@ export default function SearchPage() {
     };
     
     fetchSearchResults();
+    
+    // Reset the ref when query changes
+    return () => {
+      searchAdded.current = false;
+    };
   }, [query]);
 
   return (
