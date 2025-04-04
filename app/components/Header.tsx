@@ -499,7 +499,7 @@ const Header = () => {
                 {/* User Dropdown Menu - Now controlled by state instead of CSS hover */}
                 {showUserDropdown && (
                   <div className="absolute right-0 mt-2 w-48 bg-white text-black shadow-lg rounded-md overflow-hidden z-50">
-                    <Link href="/profile" className="block px-4 py-2 hover:bg-gray-100">
+                    <Link href="/profilepage" className="block px-4 py-2 hover:bg-gray-100">
                       Profile
                     </Link>
                     <Link href="/orders" className="block px-4 py-2 hover:bg-gray-100">
