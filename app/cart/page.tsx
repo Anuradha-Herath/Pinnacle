@@ -59,10 +59,6 @@ const CartPage = () => {
     if (newQuantity >= 1) {
       updateQuantity(id, newQuantity, size, color);
     }
-    if (newQuantity === 0) {
-      removeFromCart(id, size, color);
-      cartNotifications.itemRemoved();
-    }
   };
 
   const handleRemoveItem = (id: string, name: string, size?: string, color?: string) => {
@@ -181,7 +177,7 @@ const CartPage = () => {
                                 onClick={() =>
                                   handleQuantityChange(
                                     item.id,
-                                    item.quantity - 1,
+                                    Math.max(1, item.quantity - 1),
                                     item.size,
                                     item.color
                                   )
