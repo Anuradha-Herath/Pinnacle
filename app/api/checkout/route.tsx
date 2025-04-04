@@ -1,4 +1,3 @@
-import Product from "@/models/Product";
 import Order from "@/models/Order";
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
