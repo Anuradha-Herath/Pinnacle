@@ -180,7 +180,7 @@ export default function ProfilePage() {
             <Button 
               variant="contained" 
               className="mt-4"
-              onClick={() => router.push('/productlist')}
+              onClick={() => router.push('/')}
             >
               Start Shopping
             </Button>
