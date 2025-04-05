@@ -76,11 +76,22 @@ export async function POST(req: NextRequest) {
     // Save updated order
     await order.save();
 
-    // Update user's total points
-    const user = await User.findById(order.user);
-    if (user) {
-      user.points = (user.points || 0) + pointsEarned;
-      await user.save();
+    // Update user's total points - with proper error handling
+    try {
+      // Using findOneAndUpdate to safely update the points in one atomic operation
+      const updatedUser = await User.findOneAndUpdate(
+        { _id: order.user },
+        { $inc: { points: pointsEarned } }, // Use $inc to safely increment regardless of current value
+        { new: true } // Return the updated document
+      );
+
+      if (!updatedUser) {
+        console.error('User not found when updating points');
+      }
+
+    } catch (pointsError) {
+      console.error('Failed to update user points:', pointsError);
+      // Continue with success response as payment is still processed
     }
 
     return NextResponse.json({

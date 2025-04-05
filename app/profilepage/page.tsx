@@ -128,7 +128,7 @@ export default function ProfilePage() {
         <div className="flex items-center gap-4 mb-6">
           <div className="w-16 h-16 bg-gray-300 rounded-full"></div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
-            {profile?.firstName} {profile?.lastName} {profile?.points >= 200 && <FaCrown className="text-yellow-500" title="Premium customer" />}
+            {profile?.firstName} {profile?.lastName} {(profile?.points ?? 0) >= 200 && <FaCrown className="text-yellow-500" title="Premium customer" />}
           </h1>
         </div>
         <div className="flex justify-end space-x-6 text-lg font-semibold">

@@ -20,7 +20,7 @@ export interface IUser extends Document {
   role: 'user' | 'admin';
   wishlist: string[]; // Array of product IDs
   cart: CartItem[]; // Array of cart items
-  points: number; // Added points field for loyalty program
+  points: number; // Ensure this is required in the interface
   resetPasswordToken?: string;
   resetPasswordExpires?: number;
   createdAt: Date;
@@ -96,6 +96,7 @@ const UserSchema = new Schema<IUser>(
     points: {
       type: Number,
       default: 0,
+      min: 0, // Ensure points can't go below zero
     },
     
     resetPasswordToken: String,
