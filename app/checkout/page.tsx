@@ -6,6 +6,7 @@ import Footer from "../components/Footer";
 import Header from "../components/Header";
 import { useCart } from "../context/CartContext";
 import { getValidImageUrl, handleImageError } from "@/lib/imageUtils";
+import { useRouter } from "next/navigation";
 
 function Checkout() {
   const [shipping, setShipping] = useState("ship");
@@ -14,6 +15,8 @@ function Checkout() {
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [isClient, setIsClient] = useState(false);
   const { cart, getCartTotal, isLoading } = useCart();
+  const router = useRouter();
+  const [successMessage, setSuccessMessage] = useState("");
 
   const [formData, setFormData] = useState({
     email: "",
@@ -27,6 +30,16 @@ function Checkout() {
     postalCode: "",
     phone: "",
   });
+
+  useEffect(() => {
+    // Ensure this logic runs only on the client
+    const searchParams = new URLSearchParams(window.location.search);
+    if (searchParams.get("success") === "1") {
+      setSuccessMessage(
+        `Payment successful! Your order number is ${searchParams.get("order")}.`
+      );
+    }
+  }, []);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -149,6 +162,27 @@ function Checkout() {
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
         </div>
         <Footer />
+      </div>
+    );
+  }
+
+  if (successMessage) {
+    return (
+      <div className="min-h-screen flex flex-col bg-gray-50">
+          <Header />
+      <div className="m-3 flex items-center justify-center bg-gray-50">
+        <div className="p-6 bg-white rounded-lg shadow-md text-center">
+          <h1 className="text-2xl font-bold text-green-600 mb-4">Success!</h1>
+          <p className="text-lg text-gray-700">{successMessage}</p>
+          <button
+            onClick={() => router.push("/")}
+            className="mt-6 px-4 py-2 bg-black text-white rounded-md hover:bg-gray-900 transition"
+          >
+            Go to Homepage
+          </button>
+        </div>
+      </div>
+      <Footer />
       </div>
     );
   }
