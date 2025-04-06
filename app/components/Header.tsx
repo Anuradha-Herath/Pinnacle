@@ -308,7 +308,7 @@ const Header = () => {
 
   return (
     <header
-      className={`bg-black text-white w-full transition-all duration-300 ${
+      className={`bg-[#262626] text-white w-full transition-all duration-300 ${
         !atTop ? "fixed top-0 left-0 right-0 z-50" : "relative z-50"
       } ${visible ? "translate-y-0 opacity-100 shadow-lg" : "-translate-y-full opacity-0"}`}
     >
@@ -319,6 +319,7 @@ const Header = () => {
           <Link href="/" className="text-2xl italic font-serif">
             Pinnacle
           </Link>
+          
 
           {/* Search Bar */}
           <div className="flex-1 max-w-2xl mx-8">
@@ -346,7 +347,7 @@ const Header = () => {
                         setShowSearchHistory(true);
                       }
                     }}
-                    className="w-full px-4 py-2 pl-10 bg-gray-800 rounded text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-600"
+                    className="w-full px-4 py-2 pl-10 bg-[#2D2C2C] rounded text-white placeholder-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-600 border border-grey-100"
                   />
                   <button type="submit" className="absolute left-3 top-2.5">
                     <Search className="h-5 w-5 text-gray-400" />
@@ -551,7 +552,7 @@ const Header = () => {
           </div>
         </div>
       </div>
-
+      <hr className="border-t border-gray-200" />
       {/* Navigation */}
       <nav className="border-t border-gray-800">
         <div className="mx-auto px-4 w-full">
