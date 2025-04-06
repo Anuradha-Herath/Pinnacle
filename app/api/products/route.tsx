@@ -59,9 +59,11 @@ export async function GET(request: NextRequest) {
 
     // If fetching a single product by ID
     if (productId) {
+      console.log(`API: Fetching product with ID: ${productId}`);
       const product = await Product.findById(productId);
       
       if (!product) {
+        console.error(`API: Product not found with ID: ${productId}`);
         return NextResponse.json({ 
           success: false, 
           error: 'Product not found' 
@@ -78,7 +80,7 @@ export async function GET(request: NextRequest) {
              (d.type === 'Sub-category' && d.product === product.subCategory) ||
              (d.type === 'All' && d.applyToAllProducts)
       );
-      
+          
       // Calculate discounted price if discount exists
       if (productSpecificDiscount) {
         discountedPrice = product.regularPrice - (product.regularPrice * productSpecificDiscount.percentage / 100);
@@ -232,7 +234,16 @@ export async function POST(request: Request) {
       })
     );
     
-    // Save using Mongoose with processed gallery
+    // Process size chart image if it exists
+    let sizeChartImageUrl = null;
+    if (body.sizeChartImage && typeof body.sizeChartImage === 'string' && 
+        (body.sizeChartImage.startsWith('data:image') || 
+         body.sizeChartImage.match(/^[A-Za-z0-9+/=]+$/))) {
+      sizeChartImageUrl = await uploadToCloudinary(body.sizeChartImage);
+      console.log("Size chart image uploaded:", sizeChartImageUrl);
+    }
+    
+    // Save using Mongoose with processed gallery and size chart
     const newProduct = new Product({
       productName: body.productName,
       description: body.description,
@@ -253,7 +264,10 @@ export async function POST(request: Request) {
       sizingTrend: body.sizingTrend,
       sizingNotes: body.sizingNotes,
       // Only add sizeChart if it's defined
-      ...(body.sizeChart && Object.keys(body.sizeChart).length > 0 ? { sizeChart: body.sizeChart } : {})
+      ...(body.sizeChart && Object.keys(body.sizeChart).length > 0 ? { sizeChart: body.sizeChart } : {}),
+      
+      // Add size chart image URL
+      sizeChartImage: sizeChartImageUrl
     });
     
     await newProduct.save();
