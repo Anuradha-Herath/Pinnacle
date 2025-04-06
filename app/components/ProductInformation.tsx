@@ -1,19 +1,23 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Star, Minus, Plus, ChevronDown } from "lucide-react";
 import Image from "next/image";
 import SizeGuideModal from "./SizeGuideModal";
 
 interface ProductInformationProps {
   product: {
+    id?: string;
+    _id?: string;
     name: string;
     price: number;
+    discountedPrice?: number; // Add discounted price field
     description: string;
-    images: string[]; // Use images array instead of colors array
+    images: string[];
     sizes: string[];
     rating: number;
     category?: string; // Add category property to check if it's an accessory
+    sizeChartImage?: string;
   };
   quantity: number;
   updateQuantity: (value: number) => void;
@@ -37,6 +41,15 @@ const ProductInformation: React.FC<ProductInformationProps> = ({
   
   // Check if product is an accessory
   const isAccessory = product.category === "Accessories";
+
+  // Check if product has a discount
+  const hasDiscount = product.discountedPrice !== undefined && 
+                     product.discountedPrice < product.price;
+  
+  // Calculate discount percentage if discounted
+  const discountPercentage = hasDiscount 
+    ? Math.round(((product.price - product.discountedPrice!) / product.price) * 100) 
+    : 0;
 
   // Generate stars for rating
   const renderRatingStars = () => {
@@ -100,8 +113,24 @@ const ProductInformation: React.FC<ProductInformationProps> = ({
         </span>
       </div>
       
-      {/* Price */}
-      <p className="text-2xl font-semibold mb-6">${product.price.toFixed(2)}</p>
+      {/* Price - Updated to show both regular and discounted price */}
+      <div className="mb-6">
+        {hasDiscount ? (
+          <div className="flex items-center gap-2">
+            <p className="text-2xl font-semibold text-red-600">
+              ${product.discountedPrice!.toFixed(2)}
+            </p>
+            <p className="text-lg text-gray-500 line-through">
+              ${product.price.toFixed(2)}
+            </p>
+            <span className="bg-red-100 text-red-700 text-xs font-medium px-2 py-0.5 rounded">
+              -{discountPercentage}%
+            </span>
+          </div>
+        ) : (
+          <p className="text-2xl font-semibold">${product.price.toFixed(2)}</p>
+        )}
+      </div>
       
       {/* Product Images - Replacing color circles */}
       {product.images && product.images.length > 1 && (

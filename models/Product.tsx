@@ -21,6 +21,7 @@ const ProductSchema = new Schema({
   category: { type: String, required: true },
   subCategory: { type: String, required: true },
   regularPrice: { type: Number, required: true },
+  discountedPrice: { type: Number }, // Add discounted price field
   tag: { type: String },
   sizes: [{ type: String }],
   gallery: [GalleryItemSchema],
@@ -47,6 +48,8 @@ const ProductSchema = new Schema({
       length: Number,
     }
   },
+  
+  sizeChartImage: { type: String }, // Add this field for the size chart image
   
   // True to size indicator (-1: runs small, 0: true to size, 1: runs large)
   sizingTrend: {

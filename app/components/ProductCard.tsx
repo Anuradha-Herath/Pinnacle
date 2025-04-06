@@ -14,6 +14,7 @@ interface Product {
   id: string; 
   name: string;
   price: number;
+  discountedPrice?: number;//add discount price
   image: string;
   colors: string[];
   sizes: string[];
@@ -104,7 +105,14 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
       toast.error("Please select a size");
       return;
     }
-    
+    // Check if product has a discount
+  const hasDiscount = product.discountedPrice !== undefined && product.discountedPrice < product.price;
+  
+  // Calculate discount percentage
+  const discountPercentage = hasDiscount 
+    ? Math.round(((product.price - product.discountedPrice!) / product.price) * 100) 
+    : 0;
+
     // Determine which color image is selected (if any)
     const colorImage = selectedColor || currentImage;
     

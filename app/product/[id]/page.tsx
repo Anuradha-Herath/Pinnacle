@@ -92,7 +92,7 @@ export default function EnhancedProductDetailPage() {
     const fetchProductData = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/api/products/${id}`);
+        const response = await fetch(`/api/products?id=${id}`);
 
         if (!response.ok) {
           throw new Error('Failed to fetch product');
@@ -111,6 +111,8 @@ export default function EnhancedProductDetailPage() {
           id: data.product._id,
           name: data.product.productName,
           price: data.product.regularPrice,
+          // Include discounted price if it exists
+          ...(data.product.discountedPrice && { discountedPrice: data.product.discountedPrice }),
           description: data.product.description || 'No description available',
           images: mainImages.filter((src: string) => src && src.trim() !== ''),
           additionalImagesByColor: colorAdditionalImages, // Store all additional images by color index
@@ -125,6 +127,7 @@ export default function EnhancedProductDetailPage() {
           style: data.product.style || [],
           season: data.product.season || [],
           category: data.product.category, // Make sure category is passed for accessory check
+          sizeChartImage: data.product.sizeChartImage, // Include size chart image
         };
 
         // Set the initial additional images based on the first color

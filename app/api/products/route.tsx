@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import Product from '@/models/Product';
 import Inventory from '@/models/Inventory';
+import Discount from '@/models/Discount'; // Add this import
 import cloudinary from "@/lib/cloudinary"; // Uncomment this for image uploads
 
 // Connect to MongoDB
@@ -47,7 +48,59 @@ export async function GET(request: NextRequest) {
     const searchQuery = searchParams.get('q');
     const category = searchParams.get('category');
     const subCategory = searchParams.get('subCategory');
+    const productId = searchParams.get('id'); // For fetching a single product
 
+    // Get active discounts
+    const activeDiscounts = await Discount.find({
+      status: 'Active',
+      startDate: { $lte: new Date().toISOString().split('T')[0] },
+      endDate: { $gte: new Date().toISOString().split('T')[0] }
+    });
+
+    // If fetching a single product by ID
+    if (productId) {
+      const product = await Product.findById(productId);
+      
+      if (!product) {
+        return NextResponse.json({ 
+          success: false, 
+          error: 'Product not found' 
+        }, { status: 404 });
+      }
+      
+      // Calculate discounted price if applicable
+      let discountedPrice = null;
+      
+      // Check if product has an active discount
+      const productSpecificDiscount = activeDiscounts.find(
+        d => (d.type === 'Product' && d.product === product._id.toString()) ||
+             (d.type === 'Category' && d.product === product.category) ||
+             (d.type === 'Sub-category' && d.product === product.subCategory) ||
+             (d.type === 'All' && d.applyToAllProducts)
+      );
+      
+      // Calculate discounted price if discount exists
+      if (productSpecificDiscount) {
+        discountedPrice = product.regularPrice - (product.regularPrice * productSpecificDiscount.percentage / 100);
+        discountedPrice = Math.round(discountedPrice * 100) / 100; // Round to 2 decimal places
+        
+        console.log(`Applied discount of ${productSpecificDiscount.percentage}% to product ${product.productName}`);
+        console.log(`Original price: $${product.regularPrice}, Discounted price: $${discountedPrice}`);
+      }
+      
+      // Include the discounted price in the response
+      const productWithDiscount = product.toObject();
+      if (discountedPrice !== null) {
+        productWithDiscount.discountedPrice = discountedPrice;
+      }
+      
+      return NextResponse.json({
+        success: true,
+        product: productWithDiscount
+      });
+    }
+
+    // For fetching multiple products with pagination
     // Calculate skip value for pagination
     const skip = (page - 1) * limit;
 
@@ -80,14 +133,35 @@ export async function GET(request: NextRequest) {
     const totalPages = Math.ceil(totalProducts / limit);
 
     // Fetch products with pagination
-    const products = await Product.find(query)
-      .sort({ createdAt: -1 }) // Sort by newest first
+    let products = await Product.find(query)
+      .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
+    
+    // Calculate discounted prices for all fetched products
+    const productsWithDiscounts = products.map(product => {
+      const productObj = product.toObject();
+      
+      // Find applicable discount
+      const discount = activeDiscounts.find(
+        d => (d.type === 'Product' && d.product === product._id.toString()) ||
+             (d.type === 'Category' && d.product === product.category) ||
+             (d.type === 'Sub-category' && d.product === product.subCategory) ||
+             (d.type === 'All' && d.applyToAllProducts)
+      );
+      
+      // Calculate discounted price if discount exists
+      if (discount) {
+        const discountedPrice = product.regularPrice - (product.regularPrice * discount.percentage / 100);
+        productObj.discountedPrice = Math.round(discountedPrice * 100) / 100;
+      }
+      
+      return productObj;
+    });
 
     return NextResponse.json({
       success: true,
-      products,
+      products: productsWithDiscounts,
       pagination: {
         total: totalProducts,
         pages: totalPages,
