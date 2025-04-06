@@ -14,9 +14,9 @@ function Checkout() {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [isClient, setIsClient] = useState(false);
-  const { cart, getCartTotal, isLoading } = useCart();
+  const { cart, getCartTotal, isLoading, clearCart } = useCart();
   const router = useRouter();
-  const [successMessage, setSuccessMessage] = useState("");
+  const cartClearedRef = useRef(false);
 
   const [formData, setFormData] = useState({
     email: "",
@@ -31,15 +31,16 @@ function Checkout() {
     phone: "",
   });
 
+  // Handle cart clearing only once
   useEffect(() => {
-    // Ensure this logic runs only on the client
-    const searchParams = new URLSearchParams(window.location.search);
-    if (searchParams.get("success") === "1") {
-      setSuccessMessage(
-        `Payment successful! Your order number is ${searchParams.get("order")}.`
-      );
+    if (isClient && !cartClearedRef.current) {
+      const searchParams = new URLSearchParams(window.location.search);
+      if (searchParams.get("success") === "1") {
+        clearCart();
+        cartClearedRef.current = true;
+      }
     }
-  }, []);
+  }, [isClient, clearCart]);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -166,23 +167,33 @@ function Checkout() {
     );
   }
 
-  if (successMessage) {
+  // Check URL parameters directly in the render function for success message
+  const isSuccess =
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("success") === "1";
+
+  if (isSuccess) {
+    const orderNumber = new URLSearchParams(window.location.search).get(
+      "order"
+    );
     return (
       <div className="min-h-screen flex flex-col bg-gray-50">
-          <Header />
-      <div className="m-3 flex items-center justify-center bg-gray-50">
-        <div className="p-6 bg-white rounded-lg shadow-md text-center">
-          <h1 className="text-2xl font-bold text-green-600 mb-4">Success!</h1>
-          <p className="text-lg text-gray-700">{successMessage}</p>
-          <button
-            onClick={() => router.push("/")}
-            className="mt-6 px-4 py-2 bg-black text-white rounded-md hover:bg-gray-900 transition"
-          >
-            Go to Homepage
-          </button>
+        <Header />
+        <div className="m-3 flex items-center justify-center bg-gray-50">
+          <div className="p-6 bg-white rounded-lg shadow-md text-center">
+            <h1 className="text-2xl font-bold text-green-600 mb-4">Success!</h1>
+            <p className="text-lg text-gray-700">
+              Payment successful! Your order number is {orderNumber}.
+            </p>
+            <button
+              onClick={() => router.push("/")}
+              className="mt-6 px-4 py-2 bg-black text-white rounded-md hover:bg-gray-900 transition"
+            >
+              Go to Homepage
+            </button>
+          </div>
         </div>
-      </div>
-      <Footer />
+        <Footer />
       </div>
     );
   }
