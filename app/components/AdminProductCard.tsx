@@ -2,12 +2,14 @@ import React from 'react'
 import Image from 'next/image';
 import { Eye, Pencil, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 interface Product {
   id: string;
   image: string;
   name: string;
   price: number;
+  discountedPrice?: number;
   sales: number;
   remaining: number;
 }
@@ -31,6 +33,11 @@ const AdminProductCard = ({ product, onDelete }: {
     const handleViewClick = () => {
       router.push(`/admin/productdetails/${product.id}`);
     };
+    // Calculate discount percentage if discounted price exists
+  const hasDiscount = product.discountedPrice !== undefined && product.discountedPrice < product.price;
+  const discountPercentage = hasDiscount ? 
+    Math.round(((product.price - product.discountedPrice!) / product.price) * 100) : 0;
+
 
     // Handle product deletion
     const handleDeleteClick = async () => {
@@ -85,6 +92,8 @@ const AdminProductCard = ({ product, onDelete }: {
         >
           <Trash2 size={16} />
         </button>
+       
+
       </div>
 
       {/* Product Image */}
@@ -103,10 +112,33 @@ const AdminProductCard = ({ product, onDelete }: {
       </div>
 
       {/* Product Info */}
-      <div className="text-center mt-3">
+      {/*<div className="text-center mt-3">
         <h3 className="text-lg font-semibold">{product.name}</h3>
         <p className="text-gray-800 font-bold">${product.price.toFixed(2)}</p>
-      </div>
+      </div>*/}
+      {/* Product Name */}
+      <Link href={`/admin/productedit/${product.id}`}>
+          <h3 className="text-md font-medium text-gray-900 hover:text-black mb-1 truncate">{product.name}</h3>
+        </Link>
+        
+        {/* Product Price - updated to show both prices */}
+        <div className="mb-4">
+          {hasDiscount ? (
+            <div className="flex items-center space-x-2">
+              <span className="text-md font-semibold text-red-600">${product.discountedPrice?.toFixed(2)}</span>
+              <span className="text-sm text-gray-500 line-through">${product.price.toFixed(2)}</span>
+            </div>
+          ) : (
+            <span className="text-md font-semibold">${product.price.toFixed(2)}</span>
+          )}
+          {/* Discount Badge */}
+ {hasDiscount && (
+            <div className="absolute top-2 left-2 bg-red-600 text-white px-2 py-1 rounded-md text-xs font-medium">
+              {discountPercentage}% OFF
+            </div>
+          )}
+        </div>
+ 
 
       {/* Sales & Remaining Products */}
       <div className="mt-4 bg-gray-100 p-3 rounded-lg">

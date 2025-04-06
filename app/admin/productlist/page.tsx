@@ -11,6 +11,7 @@ interface Product {
   productName: string;
   gallery: { src: string; color: string; name: string }[];
   regularPrice: number;
+  discountedPrice?: number; // Add discounted price field
   sales?: number;  // Optional as it might not exist in newly created products
   remaining?: number; // Optional as it might not exist in newly created products
 }
@@ -174,6 +175,7 @@ const ProductsPage = () => {
     name: product.productName,
     image: product.gallery && product.gallery.length > 0 ? product.gallery[0].src : '/placeholder.png',
     price: product.regularPrice,
+    discountedPrice: product.discountedPrice, // Pass discounted price if it exists
     sales: product.sales || 0,  // Default to 0 if sales doesn't exist
     remaining: product.remaining || 100  // Default to 100 if remaining doesn't exist
   }));
