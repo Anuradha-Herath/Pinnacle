@@ -18,6 +18,7 @@ const AdminProductCard = ({ product, onDelete }: {
   product: Product;
   onDelete?: (id: string) => void;  // Optional callback to refresh products list
 }) => {
+  const [isDeleting, setIsDeleting] = useState(false);
     const router = useRouter();
     
     // Calculate percentage for the progress bar with a safety check
