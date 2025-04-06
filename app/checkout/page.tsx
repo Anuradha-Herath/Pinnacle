@@ -281,14 +281,25 @@ function Checkout() {
                     ${getCartTotal().toFixed(2)}
                   </span>
                 </div>
-                <div className="flex justify-between py-1">
-                  <span className="text-gray-600">Shipping</span>
-                  <span className="font-medium">$650.00</span>
-                </div>
-                <div className="flex justify-between py-3 text-lg font-semibold border-t border-gray-200 mt-2">
-                  <span>Total</span>
-                  <span>${(getCartTotal() + 650).toFixed(2)}</span>
-                </div>
+                {shipping === "ship" ? (
+                  <>
+                    <div className="flex justify-between py-1">
+                      <span className="text-gray-600">Shipping</span>
+                      <span className="font-medium">$650.00</span>
+                    </div>
+                    <div className="flex justify-between py-3 text-lg font-semibold border-t border-gray-200 mt-2">
+                      <span>Total</span>
+                      <span>${(getCartTotal() + 650).toFixed(2)}</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex justify-between py-3 text-lg font-semibold border-t border-gray-200 mt-2">
+                      <span>Total</span>
+                      <span>${getCartTotal().toFixed(2)}</span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>

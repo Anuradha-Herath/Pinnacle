@@ -202,7 +202,7 @@ export default function OrdersPage() {
                 filteredOrders.map((order, index) => (
                   <tr key={index} className="border-t">
                     <td className="p-3">{order.orderNumber}</td>
-                    <td className="p-3">{order.createdAt}</td>
+                    <td className="p-3">{order.createdAt.replace('T', ' ').substring(0, 19)}</td>
                     <td className="p-3">{order.customer.firstName}</td>
                     <td className="p-3">
                       <span className="text-orange-500">$</span>{" "}
