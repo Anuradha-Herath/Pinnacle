@@ -253,10 +253,13 @@ export default function EnhancedProductDetailPage() {
       id: productData.id,
       name: productData.name,
       price: productData.price,
+      discountedPrice: productData.discountedPrice, // Include discounted price
       selectedSize,
       selectedColor,
       image: selectedImg,
-      quantity
+      quantity,
+      category: productData.category,
+      subCategory: productData.subCategory
     });
 
     // Ensure we're passing all required data
@@ -264,10 +267,13 @@ export default function EnhancedProductDetailPage() {
       id: productData.id,
       name: productData.name,
       price: productData.price,
+      discountedPrice: productData.discountedPrice, // Include discounted price
       image: selectedImg,
       quantity: quantity,
       size: selectedSize || undefined,
-      color: selectedColor || undefined
+      color: selectedColor || undefined,
+      category: productData.category,
+      subCategory: productData.subCategory
     });
 
     // Use notification service
@@ -297,10 +303,18 @@ export default function EnhancedProductDetailPage() {
     }
 
     // Pass the entire product object with correct ID
+    // IMPORTANT: Include the discountedPrice if it exists
     debouncedAddToCart({
       id: product.id, // Ensure we're using the correct ID
       name: product.name,
       price: product.price,
+      discountedPrice: product.discountedPrice, // Make sure to include discounted price
+      image: getSelectedImage(),
+      quantity,
+      size: selectedSize || undefined,
+      color: selectedColor || undefined,
+      category: product.category,
+      subCategory: product.rawData?.subCategory
     });
 
     // Track this action for preferences

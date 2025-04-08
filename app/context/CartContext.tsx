@@ -11,11 +11,11 @@ export interface CartItem {
   id: string;
   name: string;
   price: number;
+  discountedPrice?: number; // Add this field to the interface
   image: string;
   size?: string;
   color?: string;
   quantity: number;
-  // Add missing properties that are used in trackProductAction
   category?: string;
   subCategory?: string;
 }
@@ -66,6 +66,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 id: item.productId,
                 name: item.name || "Product", // Fallback if name isn't stored
                 price: item.price || 0,
+                discountedPrice: item.discountedPrice, // Include discounted price
                 image: getValidImageUrl(item.image), // Validate image URL
                 size: item.size,
                 color: item.color,
@@ -122,6 +123,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
             productId: item.id,
             name: item.name || "Product", // Ensure name is present
             price: item.price || 0,       // Ensure price is present
+            discountedPrice: item.discountedPrice, // Include discounted price
             image: item.image || "/placeholder.png", // Ensure image is present
             size: item.size,
             color: item.color,
@@ -212,7 +214,8 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           ...item,
           image: item.image || "/placeholder.png",
           colorDisplay: displayColor, // Add a display-friendly color name
-          quantity: itemQuantity
+          quantity: itemQuantity,
+          discountedPrice: item.discountedPrice // Include discounted price
         };
         return [...prevCart, newItem];
       }
@@ -280,7 +283,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const getCartTotal = () => {
-    return cart.reduce((total, item) => total + (item.price * item.quantity), 0);
+    return cart.reduce((total, item) => {
+      // Use discounted price if available, otherwise use regular price
+      const effectivePrice = item.discountedPrice !== undefined ? item.discountedPrice : item.price;
+      return total + (effectivePrice * item.quantity);
+    }, 0);
   };
 
   const getCartCount = () => {

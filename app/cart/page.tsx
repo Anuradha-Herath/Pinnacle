@@ -139,9 +139,12 @@ const CartPage = () => {
                   </thead>
                   <tbody className="divide-y divide-gray-200">
                     {cartItems.map((item, index) => {
+                      // Calculate the effective price (discounted if available)
+                      const effectivePrice = item.discountedPrice !== undefined ? item.discountedPrice : item.price;
+                      
                       const displayColorName = getDisplayColorName(item.color);
                       return (
-                        <tr key={`${item.id}-${item.size}-${item.color}-${index}`}>
+                        <tr key={`${item.id}-${item.size}-${item.color}-${index}`} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
                               <div className="h-16 w-16 relative flex-shrink-0 bg-gray-100 rounded overflow-hidden">
@@ -170,9 +173,14 @@ const CartPage = () => {
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">
-                              ${item.price.toFixed(2)}
-                            </div>
+                            {item.discountedPrice !== undefined ? (
+                              <div>
+                                <span className="text-sm font-medium text-red-600">${item.discountedPrice.toFixed(2)}</span>
+                                <span className="block text-xs text-gray-500 line-through">${item.price.toFixed(2)}</span>
+                              </div>
+                            ) : (
+                              <span className="text-sm font-medium text-gray-900">${item.price.toFixed(2)}</span>
+                            )}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center border rounded-md">
@@ -207,10 +215,8 @@ const CartPage = () => {
                               </button>
                             </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900">
-                              ${(item.price * item.quantity).toFixed(2)}
-                            </div>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            ${(effectivePrice * item.quantity).toFixed(2)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                             <button
