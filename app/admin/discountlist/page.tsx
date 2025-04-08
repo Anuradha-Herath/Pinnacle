@@ -386,7 +386,7 @@ export default function DiscountList() {
             )}
           </div>
           <button
-            onClick={() => router.push("/discountcreate")}
+            onClick={() => router.push("/admin/discountcreate")}
             className="bg-orange-500 text-white px-4 py-2 rounded-md flex items-center gap-2 shadow-md hover:bg-orange-600"
           >
             <PlusIcon className="h-5 w-5" /> Create a Discount
