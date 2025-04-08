@@ -798,10 +798,9 @@ export default function ProductCreate() {
               onClick={() => router.push("/admin/productlist")}
               className="px-20 py-2 border rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
               disabled={isSubmitting}
-            ></button>
+            >CANCEL</button>
             
-            <button>  CANCEL
-            </button>
+            
             <button
               type="button"
               onClick={handleSave}
