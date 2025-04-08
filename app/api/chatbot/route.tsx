@@ -27,6 +27,12 @@ interface ProductMatch {
   method: string;
 }
 
+interface RecommendationStrategy {
+  name: string;
+  execute: (query: string, response: string, products: ProductContextItem[], userPreferences?: any) => ProductMatch[];
+  priority: number; // Lower number = higher priority
+}
+
 // Connect to MongoDB
 const connectDB = async () => {
   try {
@@ -45,11 +51,31 @@ const isGeneralInfoOrFAQ = (query: string, responseText: string): boolean => {
     'policy', 'policies', 'shipping', 'delivery', 'return', 'exchange', 'payment', 
     'order', 'track', 'contact', 'help', 'support', 'faq', 'question', 
     'hours', 'store', 'location', 'warranty', 'guarantee', 'refund',
-    'how do i', 'how can i', 'how long', 'what is', 'do you'
+    'how do i', 'how can i', 'how long', 'what is'
+    // Removed 'do you' as it's too broad and catches product questions
+  ];
+  
+  // New: Product-related keywords that indicate a product query even with FAQ phrasing
+  const productQueryKeywords = [
+    'have', 'sell', 'offer', 'stock', 'available', 'color', 'size', 
+    'price', 'cost', 'shirt', 'top', 'dress', 'pant', 'jean', 'hoodie', 
+    'sweater', 'jacket', 'shoe', 'accessory', 'accessories', 'outfit'
   ];
   
   const queryLower = query.toLowerCase();
   const responseLower = responseText.toLowerCase();
+  
+  // Check if query contains product-specific terms like "do you have [product]"
+  const isProductAvailabilityQuery = 
+    (queryLower.includes('do you have') || 
+     queryLower.includes('do you sell') || 
+     queryLower.includes('do you offer')) && 
+    productQueryKeywords.some(keyword => queryLower.includes(keyword));
+  
+  // If it's clearly asking about product availability, don't classify as FAQ
+  if (isProductAvailabilityQuery) {
+    return false;
+  }
   
   const containsFAQKeyword = faqKeywords.some(keyword => queryLower.includes(keyword));
   const containsPolicyInfo = 
@@ -183,192 +209,141 @@ const prepareProductContext = (products: any[]): ProductContextItem[] => {
   });
 };
 
-const findRecommendedProducts = (responseText: string, productContext: ProductContextItem[], userQuery: string, userPreferences?: any): ProductContextItem[] => {
-  console.log(`Finding product recommendations for: "${userQuery.substring(0, 50)}..."`);
+// Utility function for string similarity calculations
+const stringSimilarity = (str1: string, str2: string): number => {
+  const a = str1.toLowerCase();
+  const b = str2.toLowerCase();
   
-  if (isGeneralInfoOrFAQ(userQuery, responseText)) {
-    console.log("Detected general information or FAQ query - skipping product recommendations");
-    return [];
-  }
+  if (a === b) return 1.0;
+  if (a.includes(b)) return 0.9;
+  if (b.includes(a)) return 0.85;
   
-  const recommendedProducts: ProductContextItem[] = [];
-  const debug = { strategies: {} as any };
+  const aWords = a.split(/\s+/);
+  const bWords = b.split(/\s+/);
   
-  const productPriceRegex = /([A-Za-z0-9\s\-&']+)(\s+\(\$\d+(\.\d+)?\))/g;
-  let matches: RegExpExecArray | null;
-  const explicitProductMatches: string[] = [];
-  
-  while ((matches = productPriceRegex.exec(responseText)) !== null) {
-    const potentialProductName = matches[1].trim();
-    explicitProductMatches.push(potentialProductName);
-  }
-  debug.strategies.explicitFormat = { found: explicitProductMatches.length };
-  
-  const potentialProductRegex = /\b([A-Z][A-Za-z0-9\s\-&']{2,})\b/g;
-  const potentialProductMatches: string[] = [];
-  
-  while ((matches = potentialProductRegex.exec(responseText)) !== null) {
-    const potentialProduct = matches[1].trim();
-    if (potentialProduct !== 'I' && 
-        potentialProduct !== 'Pinnacle' && 
-        !potentialProduct.startsWith('The ') && 
-        potentialProduct.length > 3) {
-      potentialProductMatches.push(potentialProduct);
-    }
-  }
-  debug.strategies.capitalizedPhrases = { found: potentialProductMatches.length };
-  
-  const queryTerms = userQuery.toLowerCase().split(/\s+/);
-  const relevantQueryTerms = queryTerms.filter(term => 
-    term.length > 3 && 
-    !['what', 'which', 'when', 'where', 'show', 'find', 'for', 'me', 'some', 'any', 'the'].includes(term)
-  );
-  debug.strategies.queryTerms = { terms: relevantQueryTerms };
-  
-  const categoryMatches: string[] = [];
-  const productCategories = [
-    'hoodie', 'hoody', 'hoodies', 'sweater', 'jacket', 'tshirt', 't-shirt', 'shirt', 
-    'pants', 'jeans', 'shorts', 'dress', 'skirt', 'blouse', 'coat', 'shoes', 'sneakers', 
-    'boots', 'hat', 'cap', 'socks', 'accessories'
-  ];
-  
-  for (const category of productCategories) {
-    if (userQuery.toLowerCase().includes(category)) {
-      categoryMatches.push(category);
-    }
-  }
-  debug.strategies.categoryMatches = { found: categoryMatches };
-  
-  const stringSimilarity = (str1: string, str2: string): number => {
-    const a = str1.toLowerCase();
-    const b = str2.toLowerCase();
-    
-    if (a === b) return 1.0;
-    if (a.includes(b)) return 0.9;
-    if (b.includes(a)) return 0.85;
-    
-    const aWords = a.split(/\s+/);
-    const bWords = b.split(/\s+/);
-    
-    let wordMatches = 0;
-    for (const aWord of aWords) {
-      if (aWord.length < 3) continue;
-      for (const bWord of bWords) {
-        if (bWord.length < 3) continue;
-        if (aWord === bWord || aWord.includes(bWord) || bWord.includes(aWord)) {
-          wordMatches++;
-          break;
-        }
+  let wordMatches = 0;
+  for (const aWord of aWords) {
+    if (aWord.length < 3) continue;
+    for (const bWord of bWords) {
+      if (bWord.length < 3) continue;
+      if (aWord === bWord || aWord.includes(bWord) || bWord.includes(aWord)) {
+        wordMatches++;
+        break;
       }
     }
-    
-    const wordSimilarity = wordMatches / Math.max(aWords.length, bWords.length);
-    
-    const minLength = Math.min(a.length, b.length);
-    let charMatches = 0;
-    for (let i = 0; i < minLength; i++) {
-      if (a[i] === b[i]) charMatches++;
-    }
-    const charSimilarity = charMatches / Math.max(a.length, b.length);
-    
-    return Math.max(wordSimilarity * 0.7, charSimilarity * 0.3);
-  };
+  }
   
-  if (explicitProductMatches.length > 0) {
-    const matches: ProductMatch[] = [];
+  const wordSimilarity = wordMatches / Math.max(aWords.length, bWords.length);
+  
+  const minLength = Math.min(a.length, b.length);
+  let charMatches = 0;
+  for (let i = 0; i < minLength; i++) {
+    if (a[i] === b[i]) charMatches++;
+  }
+  const charSimilarity = charMatches / Math.max(a.length, b.length);
+  
+  return Math.max(wordSimilarity * 0.7, charSimilarity * 0.3);
+};
+
+// Strategy 1: Explicit Mentions - Find products mentioned with prices
+const explicitMentionsStrategy: RecommendationStrategy = {
+  name: 'explicitMentions',
+  priority: 1,
+  execute: (query: string, response: string, products: ProductContextItem[]): ProductMatch[] => {
+    const productPriceRegex = /([A-Za-z0-9\s\-&']+)(\s+\(\$\d+(\.\d+)?\))/g;
+    let matches: RegExpExecArray | null;
+    const explicitProductMatches: string[] = [];
+    const results: ProductMatch[] = [];
+    
+    while ((matches = productPriceRegex.exec(response)) !== null) {
+      const potentialProductName = matches[1].trim();
+      explicitProductMatches.push(potentialProductName);
+    }
+    
     explicitProductMatches.forEach(productName => {
-      for (const product of productContext) {
+      for (const product of products) {
         const similarity = stringSimilarity(product.name, productName);
         if (similarity > 0.5) {
-          matches.push({product, similarity, method: 'explicit'});
+          results.push({ product, similarity, method: 'explicit' });
         }
       }
     });
     
-    matches.sort((a, b) => b.similarity - a.similarity);
-    for (const match of matches) {
-      if (!recommendedProducts.some(p => p.id === match.product.id)) {
-        recommendedProducts.push(match.product);
-        if (recommendedProducts.length >= 3) break;
-      }
-    }
-    debug.strategies.explicitMatches = { found: matches.length };
+    return results;
   }
-  
-  if (recommendedProducts.length === 0) {
+};
+
+// Strategy 2: Direct Name Match - Direct product name matching from query
+const directNameMatchStrategy: RecommendationStrategy = {
+  name: 'directNameMatch',
+  priority: 2,
+  execute: (query: string, response: string, products: ProductContextItem[]): ProductMatch[] => {
     const matches: ProductMatch[] = [];
-    for (const product of productContext) {
-      const queryLower = userQuery.toLowerCase();
+    const queryLower = query.toLowerCase();
+    
+    for (const product of products) {
       const productNameLower = product.normalizedName;
       
       if (queryLower.includes(productNameLower) || productNameLower.includes(queryLower)) {
         matches.push({
           product,
-          similarity: stringSimilarity(userQuery, product.name),
+          similarity: stringSimilarity(query, product.name),
           method: 'direct-name'
         });
       }
     }
     
-    matches.sort((a, b) => b.similarity - a.similarity);
-    for (const match of matches) {
-      if (!recommendedProducts.some(p => p.id === match.product.id)) {
-        recommendedProducts.push(match.product);
-        if (recommendedProducts.length >= 3) break;
-      }
-    }
-    debug.strategies.directMatches = { found: matches.length };
+    return matches;
   }
-  
-  if (recommendedProducts.length === 0 && categoryMatches.length > 0) {
-    const categoryFiltered = productContext.filter(product => {
-      const productCategories = [product.category, product.subCategory].map(c => c?.toLowerCase() || '');
-      
-      return categoryMatches.some(catMatch => 
-        productCategories.some(prodCat => {
-          if (catMatch === 'hoodie' || catMatch === 'hoodies' || catMatch === 'hoody') {
-            return prodCat === 'hoodies' || prodCat.includes('hood') || 
-                  (product.keywords && product.keywords.includes('hood'));
-          }
-          return prodCat === catMatch || prodCat.includes(catMatch);
-        })
-      );
-    });
-    
-    for (let i = 0; i < Math.min(3, categoryFiltered.length); i++) {
-      if (!recommendedProducts.some(p => p.id === categoryFiltered[i].id)) {
-        recommendedProducts.push(categoryFiltered[i]);
-      }
-    }
-    
-    debug.strategies.categoryFiltered = { count: categoryFiltered.length };
-  }
-  
-  if (recommendedProducts.length === 0 && potentialProductMatches.length > 0) {
+};
+
+// Strategy 3: Category Match - Finding products by category/subcategory
+const categoryMatchStrategy: RecommendationStrategy = {
+  name: 'categoryMatch',
+  priority: 3,
+  execute: (query: string, response: string, products: ProductContextItem[]): ProductMatch[] => {
+    const queryLower = query.toLowerCase();
     const matches: ProductMatch[] = [];
-    potentialProductMatches.forEach(productName => {
-      for (const product of productContext) {
-        const similarity = stringSimilarity(product.name, productName);
-        if (similarity > 0.5) {
-          matches.push({product, similarity, method: 'potential-name'});
-        }
-      }
-    });
     
-    matches.sort((a, b) => b.similarity - a.similarity);
-    for (const match of matches) {
-      if (!recommendedProducts.some(p => p.id === match.product.id)) {
-        recommendedProducts.push(match.product);
-        if (recommendedProducts.length >= 3) break;
+    // Common clothing category terms
+    const productCategories = [
+      'hoodie', 'hoody', 'hoodies', 'sweater', 'jacket', 'tshirt', 't-shirt', 'shirt', 
+      'pants', 'jeans', 'shorts', 'dress', 'skirt', 'blouse', 'coat', 'shoes', 'sneakers', 
+      'boots', 'hat', 'cap', 'socks', 'accessories'
+    ];
+    
+    const categoryMatches: string[] = [];
+    for (const category of productCategories) {
+      if (queryLower.includes(category)) {
+        categoryMatches.push(category);
       }
     }
     
-    debug.strategies.potentialNames = { found: matches.length };
-  }
-  
-  if (recommendedProducts.length === 0) {
-    const queryLower = userQuery.toLowerCase();
+    if (categoryMatches.length > 0) {
+      products.forEach(product => {
+        const productCategories = [product.category, product.subCategory].map(c => c?.toLowerCase() || '');
+        
+        const matchesCategory = categoryMatches.some(catMatch => 
+          productCategories.some(prodCat => {
+            if (catMatch === 'hoodie' || catMatch === 'hoodies' || catMatch === 'hoody') {
+              return prodCat === 'hoodies' || prodCat.includes('hood') || 
+                    (product.keywords && product.keywords.includes('hood'));
+            }
+            return prodCat === catMatch || prodCat.includes(catMatch);
+          })
+        );
+        
+        if (matchesCategory) {
+          matches.push({
+            product,
+            similarity: 0.7,
+            method: 'category'
+          });
+        }
+      });
+    }
     
+    // Match known categories and subcategories
     const matchingCategories = Array.from(knownCategories).filter(cat => 
       queryLower.includes(cat.toLowerCase())
     );
@@ -378,94 +353,112 @@ const findRecommendedProducts = (responseText: string, productContext: ProductCo
     );
     
     if (matchingCategories.length > 0 || matchingSubCategories.length > 0) {
-      console.log("Found matching categories:", matchingCategories);
-      console.log("Found matching subcategories:", matchingSubCategories);
-      
-      const categoryFiltered = productContext.filter(product => {
+      products.forEach(product => {
         const productCat = (product.category || "").toLowerCase();
         const productSubCat = (product.subCategory || "").toLowerCase();
         
-        return matchingCategories.some(cat => productCat.includes(cat.toLowerCase())) ||
-               matchingSubCategories.some(subcat => productSubCat.includes(subcat.toLowerCase()));
+        const matchesCatOrSubCat = 
+          matchingCategories.some(cat => productCat.includes(cat.toLowerCase())) ||
+          matchingSubCategories.some(subcat => productSubCat.includes(subcat.toLowerCase()));
+          
+        if (matchesCatOrSubCat) {
+          matches.push({
+            product,
+            similarity: 0.65,
+            method: 'category-term'
+          });
+        }
+      });
+    }
+    
+    return matches;
+  }
+};
+
+// Strategy 4: New Products - Recommend newest products
+const newProductsStrategy: RecommendationStrategy = {
+  name: 'newProducts',
+  priority: 4,
+  execute: (query: string, response: string, products: ProductContextItem[]): ProductMatch[] => {
+    const queryLower = query.toLowerCase();
+    
+    if (queryLower.includes("new")) {
+      const newestProducts = [...products].sort((a, b) => {
+        const dateA = new Date(a.createdAt);
+        const dateB = new Date(b.createdAt);
+        return dateB.getTime() - dateA.getTime();
       });
       
-      for (let i = 0; i < Math.min(3, categoryFiltered.length); i++) {
-        if (!recommendedProducts.some(p => p.id === categoryFiltered[i].id)) {
-          recommendedProducts.push(categoryFiltered[i]);
-        }
-      }
+      return newestProducts.slice(0, 5).map((product, idx) => ({
+        product,
+        similarity: 0.9 - (idx * 0.1),
+        method: 'new-products'
+      }));
     }
-  }
-  
-  if (recommendedProducts.length === 0 && userQuery.toLowerCase().includes("new")) {
-    const newestProducts = [...productContext].sort((a, b) => {
-      const dateA = new Date(a.createdAt);
-      const dateB = new Date(b.createdAt);
-      return dateB.getTime() - dateA.getTime();
-    }).slice(0, 3);
     
-    for (const product of newestProducts) {
-      if (!recommendedProducts.some(p => p.id === product.id)) {
-        recommendedProducts.push(product);
-      }
-    }
+    return [];
   }
-  
-  if (recommendedProducts.length === 0) {
+};
+
+// Strategy 5: Color Match - Finding products by color mentions
+const colorMatchStrategy: RecommendationStrategy = {
+  name: 'colorMatch',
+  priority: 5,
+  execute: (query: string, response: string, products: ProductContextItem[]): ProductMatch[] => {
     const colorRegex = /\b(red|blue|green|black|white|yellow|purple|pink|orange|brown|grey|gray)\b/gi;
     const mentionedColors: string[] = [];
-    while ((matches = colorRegex.exec(userQuery + ' ' + responseText)) !== null) {
+    let matches: RegExpExecArray | null;
+    const results: ProductMatch[] = [];
+    
+    while ((matches = colorRegex.exec(query + ' ' + response)) !== null) {
       mentionedColors.push(matches[1].toLowerCase());
     }
     
     if (mentionedColors.length > 0) {
-      const colorMatches: ProductContextItem[] = [];
-      productContext.forEach(product => {
+      products.forEach(product => {
         if (Array.isArray(product.colors)) {
           const hasMatchingColor = product.colors.some((color: string) => 
             mentionedColors.includes(color.toLowerCase())
           );
           
           if (hasMatchingColor) {
-            colorMatches.push(product);
+            results.push({
+              product,
+              similarity: 0.7,
+              method: 'color-match'
+            });
           }
         }
       });
-      
-      for (let i = 0; i < Math.min(3, colorMatches.length); i++) {
-        if (!recommendedProducts.some(p => p.id === colorMatches[i].id)) {
-          recommendedProducts.push(colorMatches[i]);
-        }
-      }
-      
-      debug.strategies.colorMatches = { found: colorMatches.length };
-    }
-  }
-  
-  if (recommendedProducts.length === 0) {
-    const newest = productContext.slice(0, 3);
-    for (const product of newest) {
-      recommendedProducts.push(product);
     }
     
-    debug.strategies.fallback = { used: true };
+    return results;
   }
+};
 
-  if (recommendedProducts.length < 3 && userPreferences) {
-    console.log("Using user preferences for recommendations");
+// Strategy 6: User Preference - Using user preferences and history
+const userPreferenceStrategy: RecommendationStrategy = {
+  name: 'userPreference',
+  priority: 6,
+  execute: (query: string, response: string, products: ProductContextItem[], userPreferences?: any): ProductMatch[] => {
+    const results: ProductMatch[] = [];
     
-    const preferenceMatches: ProductMatch[] = [];
+    if (!userPreferences) {
+      return results;
+    }
     
-    for (const product of productContext) {
+    for (const product of products) {
       let score = 0;
       
-      if (product.category && userPreferences.topCategories.includes(product.category.toLowerCase())) {
+      if (product.category && userPreferences.topCategories && 
+          userPreferences.topCategories.includes(product.category.toLowerCase())) {
         score += 3;
       }
       
       if (product.colors && userPreferences.topColors) {
         for (const color of product.colors) {
-          if (userPreferences.topColors.some((c: string) => color.toLowerCase().includes(c.toLowerCase()))) {
+          if (userPreferences.topColors.some((c: string) => 
+              color.toLowerCase().includes(c.toLowerCase()))) {
             score += 2;
             break;
           }
@@ -489,7 +482,7 @@ const findRecommendedProducts = (responseText: string, productContext: ProductCo
       }
       
       if (score > 0) {
-        preferenceMatches.push({
+        results.push({
           product,
           similarity: score / 8,
           method: 'preferences'
@@ -497,17 +490,76 @@ const findRecommendedProducts = (responseText: string, productContext: ProductCo
       }
     }
     
-    preferenceMatches.sort((a, b) => b.similarity - a.similarity);
-    for (const match of preferenceMatches) {
-      if (!recommendedProducts.some(p => p.id === match.product.id)) {
-        recommendedProducts.push(match.product);
-        if (recommendedProducts.length >= 3) break;
-      }
-    }
-    
-    debug.strategies.preferences = { found: preferenceMatches.length };
+    return results;
   }
+};
 
+// Refactored findRecommendedProducts function using strategy pattern
+const findRecommendedProducts = (responseText: string, productContext: ProductContextItem[], userQuery: string, userPreferences?: any): ProductContextItem[] => {
+  console.log(`Finding product recommendations for: "${userQuery.substring(0, 50)}..."`);
+  
+  if (isGeneralInfoOrFAQ(userQuery, responseText)) {
+    console.log("Detected general information or FAQ query - skipping product recommendations");
+    return [];
+  }
+  
+  // Define all recommendation strategies with their priorities
+  const strategies: RecommendationStrategy[] = [
+    explicitMentionsStrategy,
+    directNameMatchStrategy,
+    categoryMatchStrategy,
+    newProductsStrategy,
+    colorMatchStrategy,
+    userPreferenceStrategy
+  ];
+  
+  // Execute all strategies and collect results
+  const strategyResults: Record<string, ProductMatch[]> = {};
+  const debug: Record<string, any> = {};
+  
+  for (const strategy of strategies) {
+    const matches = strategy.execute(userQuery, responseText, productContext, userPreferences);
+    strategyResults[strategy.name] = matches;
+    debug[strategy.name] = { found: matches.length };
+  }
+  
+  // Process results in priority order to build recommendations
+  const recommendedProducts: ProductContextItem[] = [];
+  const seenProductIds = new Set<string>();
+  
+  // Process strategies in priority order (lower number = higher priority)
+  strategies
+    .sort((a, b) => a.priority - b.priority)
+    .forEach(strategy => {
+      const matches = strategyResults[strategy.name];
+      
+      if (matches.length > 0) {
+        // Sort matches by similarity score
+        matches.sort((a, b) => b.similarity - a.similarity);
+        
+        // Add unique products to recommendations
+        for (const match of matches) {
+          if (!seenProductIds.has(match.product.id)) {
+            recommendedProducts.push(match.product);
+            seenProductIds.add(match.product.id);
+            
+            if (recommendedProducts.length >= 3) {
+              break;
+            }
+          }
+        }
+      }
+    });
+  
+  // Fallback: If no products found, use newest products
+  if (recommendedProducts.length === 0) {
+    const newest = productContext.slice(0, 3);
+    for (const product of newest) {
+      recommendedProducts.push(product);
+    }
+    debug.fallback = { used: true };
+  }
+  
   console.log("Recommendation debug info:", JSON.stringify(debug, null, 2));
   console.log(`Found ${recommendedProducts.length} recommended products`);
   if (recommendedProducts.length > 0) {
