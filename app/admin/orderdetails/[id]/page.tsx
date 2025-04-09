@@ -1,14 +1,27 @@
 "use client";
 
+import React from "react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Sidebar from "../../../components/Sidebar";
 import { BellIcon, Cog6ToothIcon, ClockIcon, CheckCircleIcon, TruckIcon, CubeIcon, ShieldCheckIcon } from "@heroicons/react/24/solid";
 import { format } from "date-fns";
-import LoadingSpinner from "@/app/components/LoadingSpinner";
+
+// Define a loading spinner component
+function LoadingSpinner() {
+  return (
+    <div className="flex justify-center items-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500"></div>
+      <span className="ml-2">Loading...</span>
+    </div>
+  );
+}
 
 export default function OrderDetailsPage({ params }: { params: { id: string } }) {
   const router = useRouter();
+  const unwrappedParams = React.use(params); // Unwrap params using React.use()
+  const orderId = unwrappedParams.id;
+  
   const [order, setOrder] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -17,7 +30,7 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
     const fetchOrderDetails = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/api/orders/${params.id}`);
+        const response = await fetch(`/api/orders/${orderId}`);
         
         if (!response.ok) {
           throw new Error(`Failed to fetch order: ${response.statusText}`);
@@ -37,10 +50,10 @@ export default function OrderDetailsPage({ params }: { params: { id: string } })
       }
     };
 
-    if (params.id) {
+    if (orderId) {
       fetchOrderDetails();
     }
-  }, [params.id]);
+  }, [orderId]);
 
   // Function to format dates
   const formatDate = (dateString: string) => {
