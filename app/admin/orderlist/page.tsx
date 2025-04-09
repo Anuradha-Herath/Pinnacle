@@ -275,7 +275,10 @@ export default function OrdersPage() {
                       </span>
                     </td>
                     <td className="p-3">
-                      <button className="p-2 bg-orange-500 text-white rounded-md shadow-md hover:bg-orange-600">
+                      <button 
+                        onClick={() => router.push("/admin/orderdetails")}
+                        className="p-2 bg-orange-500 text-white rounded-md shadow-md hover:bg-orange-600"
+                      >
                         <EyeIcon className="h-5 w-5" />
                       </button>
                     </td>
