@@ -35,6 +35,26 @@ const LineItemSchema = new Schema({
   },
 });
 
+// Timeline event schema
+const TimelineEventSchema = new Schema({
+  event: {
+    type: String,
+    required: true,
+  },
+  confirmedBy: {
+    type: String,
+  },
+  date: {
+    type: Date,
+    default: Date.now,
+  },
+  icon: {
+    type: String,
+    enum: ["packing", "payment", "confirmed", "shipping", "delivered"],
+    default: "confirmed",
+  },
+});
+
 // Main Order schema
 const OrderSchema = new Schema({
   // Customer information
@@ -114,6 +134,27 @@ const OrderSchema = new Schema({
     type: String,
     unique: true,
   },
+
+  // Estimated shipping date
+  estimatedShipping: {
+    type: Date,
+  },
+  
+  // Payment details
+  paymentResult: {
+    id: String,
+    status: String,
+    update_time: String,
+    email_address: String,
+    method: {
+      type: String,
+      enum: ["MasterCard", "Visa", "PayPal", "Other"],
+    },
+    last4Digits: String,
+  },
+  
+  // Order timeline history
+  timeline: [TimelineEventSchema],
 
   // Timestamps
   createdAt: {
