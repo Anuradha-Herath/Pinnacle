@@ -398,10 +398,35 @@ export default function DiscountCreate() {
                                         (e.target as HTMLImageElement).src = '/placeholder.png';
                                       }}
                                     />
+                                    {/* Add discount badge if product already has a discount */}
+                                    {product.discountedPrice && (
+                                      <div className="absolute top-0 right-0 bg-red-500 h-full w-full bg-opacity-20 flex items-center justify-center">
+                                        <span className="transform rotate-45 text-xs font-bold text-red-600 bg-white px-1 py-0.5 rounded">SALE</span>
+                                      </div>
+                                    )}
                                   </div>
-                                  <div>
+                                  <div className="flex-grow">
                                     <p className="font-medium">{product.productName}</p>
-                                    <p className="text-xs text-gray-500 truncate">ID: {product._id}</p>
+                                    <div className="flex items-center justify-between">
+                                      <p className="text-xs text-gray-500 truncate">ID: {product._id}</p>
+                                      {/* Display discount tag */}
+                                      {product.discountedPrice && (
+                                        <span className="text-xs bg-red-500 text-white px-1.5 py-0.5  font-medium">
+                                          Already Discounted
+                                        </span>
+                                      )}
+                                    </div>
+                                    {/* Show both prices when there's a discount */}
+                                    {product.discountedPrice ? (
+                                      <div className="flex items-center text-xs mt-0.5">
+                                        <span className="text-red-600 font-medium">${product.discountedPrice.toFixed(2)}</span>
+                                        <span className="line-through text-gray-400 ml-1">${product.regularPrice?.toFixed(2)}</span>
+                                      </div>
+                                    ) : (
+                                      <div className="text-xs mt-0.5 font-medium">
+                                        ${product.regularPrice?.toFixed(2)}
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                               ))}
