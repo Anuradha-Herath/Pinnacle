@@ -20,17 +20,57 @@ export default function OrdersPage() {
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [displayedOrders, setDisplayedOrders] = useState<Order[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
   
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10); // Show 10 orders per page
   const [totalPages, setTotalPages] = useState(1);
 
+  // Add a CSS style for the spinner
+  const spinnerStyle = {
+    border: '4px solid rgba(0, 0, 0, 0.1)',
+    borderLeft: '4px solid #FF6A00',
+    borderRadius: '50%',
+    width: '40px',
+    height: '40px',
+    animation: 'spin 1s linear infinite',
+  };
+
+  // Add keyframes animation for the spinner
+  useEffect(() => {
+    // Create a style element
+    const styleEl = document.createElement('style');
+    // Add the keyframes animation
+    styleEl.innerHTML = `
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+    `;
+    // Append to the document head
+    document.head.appendChild(styleEl);
+
+    // Clean up
+    return () => {
+      document.head.removeChild(styleEl);
+    };
+  }, []);
+
   useEffect(() => {
     // Fetch orders from the API
     const fetchOrders = async () => {
+      setIsLoading(true);
       try {
-        const response = await fetch("/api/orders");
+        const response = await fetch("/api/orders", {
+          // Adding cache: no-store to prevent caching
+          cache: "no-store",
+          headers: {
+            'pragma': 'no-cache',
+            'cache-control': 'no-cache'
+          }
+        });
         if (!response.ok) {
           throw new Error("Failed to fetch orders");
         }
@@ -43,8 +83,12 @@ export default function OrdersPage() {
         
         // Apply initial pagination
         applyPagination(data);
+        setError("");
       } catch (error) {
         console.error("Error fetching orders:", error);
+        setError("Failed to load orders. Please try again.");
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -91,6 +135,11 @@ export default function OrdersPage() {
     setTotalPages(total > 0 ? total : 1);
     setCurrentPage(1); // Reset to first page when filters change
   }, [filterStatus, filteredOrders.length, itemsPerPage]);
+
+  // Order summary counts
+  const getOrderCountByStatus = (status: string) => {
+    return orders.filter(order => order.status === status).length;
+  };
 
   return (
     <div className="flex">
@@ -148,7 +197,9 @@ export default function OrdersPage() {
             </div>
             <div>
               <h2 className="text-lg font-semibold">Confirmed Orders</h2>
-              <p className="text-2xl font-bold">200</p>
+              <p className="text-2xl font-bold">
+                {isLoading ? "..." : getOrderCountByStatus("Order Confirmed")}
+              </p>
             </div>
           </div>
           <div className="bg-white p-4 rounded-lg shadow-md flex items-center gap-4">
@@ -157,7 +208,9 @@ export default function OrdersPage() {
             </div>
             <div>
               <h2 className="text-lg font-semibold">Order Shipped</h2>
-              <p className="text-2xl font-bold">200</p>
+              <p className="text-2xl font-bold">
+                {isLoading ? "..." : getOrderCountByStatus("Shipping")}
+              </p>
             </div>
           </div>
           <div className="bg-white p-4 rounded-lg shadow-md flex items-center gap-4">
@@ -166,7 +219,9 @@ export default function OrdersPage() {
             </div>
             <div>
               <h2 className="text-lg font-semibold">Out For Delivery</h2>
-              <p className="text-2xl font-bold">200</p>
+              <p className="text-2xl font-bold">
+                {isLoading ? "..." : getOrderCountByStatus("Out For Delivery")}
+              </p>
             </div>
           </div>
         </div>
@@ -179,7 +234,9 @@ export default function OrdersPage() {
             </div>
             <div>
               <h2 className="text-lg font-semibold">Order Processing</h2>
-              <p className="text-2xl font-bold">200</p>
+              <p className="text-2xl font-bold">
+                {isLoading ? "..." : getOrderCountByStatus("Processing")}
+              </p>
             </div>
           </div>
           <div className="bg-white p-4 rounded-lg shadow-md flex items-center gap-4">
@@ -188,7 +245,9 @@ export default function OrdersPage() {
             </div>
             <div>
               <h2 className="text-lg font-semibold">Delivered</h2>
-              <p className="text-2xl font-bold">200</p>
+              <p className="text-2xl font-bold">
+                {isLoading ? "..." : getOrderCountByStatus("Order Completed")}
+              </p>
             </div>
           </div>
           <div className="bg-white p-4 rounded-lg shadow-md flex items-center gap-4">
@@ -199,7 +258,12 @@ export default function OrdersPage() {
               <h2 className="text-lg font-semibold">
                 Order Confirm & Processing
               </h2>
-              <p className="text-2xl font-bold">656</p>
+              <p className="text-2xl font-bold">
+                {isLoading ? "..." : (
+                  getOrderCountByStatus("Order Confirmed") +
+                  getOrderCountByStatus("Processing")
+                )}
+              </p>
             </div>
           </div>
         </div>
@@ -238,13 +302,29 @@ export default function OrdersPage() {
                 <th className="p-3">Created At</th>
                 <th className="p-3">Customer</th>
                 <th className="p-3">Amount</th>
-                {/* <th className="p-3">Delivery Number</th> */}
                 <th className="p-3">Order Status</th>
                 <th className="p-3">Action</th>
               </tr>
             </thead>
             <tbody>
-              {displayedOrders.length > 0 ? (
+              {isLoading ? (
+                /* Circular Loading Animation */
+                <tr>
+                  <td colSpan={6} className="p-10 text-center">
+                    <div className="flex justify-center items-center h-32">
+                      <div style={spinnerStyle}></div>
+                      <span className="ml-3 text-orange-500 font-medium">Loading orders...</span>
+                    </div>
+                  </td>
+                </tr>
+              ) : error ? (
+                /* Error state */
+                <tr>
+                  <td colSpan={6} className="p-3 text-center text-red-500">
+                    {error} <button className="text-blue-500 underline" onClick={() => location.reload()}>Retry</button>
+                  </td>
+                </tr>
+              ) : displayedOrders.length > 0 ? (
                 displayedOrders.map((order, index) => (
                   <tr key={index} className="border-t">
                     <td className="p-3">{order.orderNumber}</td>
@@ -254,7 +334,6 @@ export default function OrdersPage() {
                       <span className="text-orange-500">$</span>{" "}
                       {order.amount.total}
                     </td>
-                    {/* <td className="p-3">{order.deliveryNumber}</td> */}
                     <td className="p-3">
                       <span
                         className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${
@@ -276,7 +355,7 @@ export default function OrdersPage() {
                     </td>
                     <td className="p-3">
                       <button 
-                        onClick={() => router.push("/admin/orderdetails")}
+                        onClick={() => router.push(`/admin/orderdetails/${order._id}`)}
                         className="p-2 bg-orange-500 text-white rounded-md shadow-md hover:bg-orange-600"
                       >
                         <EyeIcon className="h-5 w-5" />
