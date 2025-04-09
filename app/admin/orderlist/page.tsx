@@ -1,24 +1,42 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { EyeIcon, BellIcon, Cog6ToothIcon, ClockIcon, CheckCircleIcon, TruckIcon, CubeIcon, ShieldCheckIcon } from "@heroicons/react/24/solid";
+import {
+  EyeIcon,
+  BellIcon,
+  Cog6ToothIcon,
+  ClockIcon,
+  CheckCircleIcon,
+  TruckIcon,
+  CubeIcon,
+  ShieldCheckIcon,
+} from "@heroicons/react/24/solid";
 import Sidebar from "../../components/Sidebar";
 import { CogIcon, ShoppingCartIcon } from "lucide-react";
 
 export default function OrdersPage() {
   const router = useRouter();
 
-  // Dummy orders data
-  const [orders] = useState([
-    { orderId: "#538765", createdAt: "April 24, 2024", customer: "Robert Hue", items: 3, deliveryNumber: "#31212", status: "Order Confirmed" },
-    { orderId: "#538765", createdAt: "April 24, 2024", customer: "Mari Cury", items: 1, deliveryNumber: "#12111", status: "Order Completed" },
-    { orderId: "#538765", createdAt: "April 24, 2024", customer: "Anjalina Jolly", items: 4, deliveryNumber: "#1244", status: "Out For Delivery" },
-    { orderId: "#538765", createdAt: "April 24, 2024", customer: "Brad Pitt", items: 1, deliveryNumber: "#11121", status: "Shipping" },
-    { orderId: "#538765", createdAt: "April 24, 2024", customer: "Dammika Perera", items: 2, deliveryNumber: "#2121", status: "Order Completed" },
-    { orderId: "#538765", createdAt: "April 24, 2024", customer: "Malinga", items: 1, deliveryNumber: "#12121", status: "Order Completed" },
-    { orderId: "#538765", createdAt: "April 24, 2024", customer: "Kusal", items: 4, deliveryNumber: "#41212", status: "Processing" },
-  ]);
+  const [orders, setOrders] = useState<Order[]>([]);
+
+  useEffect(() => {
+    // Fetch orders from the API
+    const fetchOrders = async () => {
+      try {
+        const response = await fetch("/api/orders");
+        if (!response.ok) {
+          throw new Error("Failed to fetch orders");
+        }
+        const data = await response.json();
+        setOrders(data);
+      } catch (error) {
+        console.error("Error fetching orders:", error);
+      }
+    };
+
+    fetchOrders();
+  }, []);
 
   // State for filtering orders by status
   const [filterStatus, setFilterStatus] = useState("");
@@ -39,23 +57,39 @@ export default function OrdersPage() {
           {/* Top-Right Icons */}
           <div className="flex items-center gap-2">
             {/* Notifications */}
-            <button onClick={() => router.push("/admin/notifications")} className="p-2 hover:bg-gray-200 rounded-lg">
+            <button
+              onClick={() => router.push("/admin/notifications")}
+              className="p-2 hover:bg-gray-200 rounded-lg"
+            >
               <BellIcon className="h-6 w-6 text-gray-600" />
             </button>
 
             {/* Settings */}
-            <button onClick={() => router.push("/admin/settings")} className="p-2 hover:bg-gray-200 rounded-lg">
+            <button
+              onClick={() => router.push("/admin/settings")}
+              className="p-2 hover:bg-gray-200 rounded-lg"
+            >
               <Cog6ToothIcon className="h-6 w-6 text-gray-600" />
             </button>
 
             {/* Clock Icon (e.g., Order History, Activity Log, etc.) */}
-            <button onClick={() => router.push("/admin/history")} className="p-2 hover:bg-gray-200 rounded-lg">
+            <button
+              onClick={() => router.push("/admin/history")}
+              className="p-2 hover:bg-gray-200 rounded-lg"
+            >
               <ClockIcon className="h-6 w-6 text-gray-600" />
             </button>
 
             {/* Profile */}
-            <button onClick={() => router.push("../../profilepage")} className="p-1 rounded-full border-2 border-gray-300">
-              <img src="/p9.webp" alt="Profile" className="h-8 w-8 rounded-full object-cover" />
+            <button
+              onClick={() => router.push("../../profilepage")}
+              className="p-1 rounded-full border-2 border-gray-300"
+            >
+              <img
+                src="/p9.webp"
+                alt="Profile"
+                className="h-8 w-8 rounded-full object-cover"
+              />
             </button>
           </div>
         </div>
@@ -116,7 +150,9 @@ export default function OrdersPage() {
               <ShieldCheckIcon className="h-8 w-8 text-orange-500" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold">Order Confirm & Processing</h2>
+              <h2 className="text-lg font-semibold">
+                Order Confirm & Processing
+              </h2>
               <p className="text-2xl font-bold">656</p>
             </div>
           </div>
@@ -155,56 +191,75 @@ export default function OrdersPage() {
                 <th className="p-3">Order ID</th>
                 <th className="p-3">Created At</th>
                 <th className="p-3">Customer</th>
-                <th className="p-3">Items</th>
-                <th className="p-3">Delivery Number</th>
+                <th className="p-3">Amount</th>
+                {/* <th className="p-3">Delivery Number</th> */}
                 <th className="p-3">Order Status</th>
                 <th className="p-3">Action</th>
               </tr>
             </thead>
             <tbody>
-              {filteredOrders.map((order, index) => (
-                <tr key={index} className="border-t">
-                  <td className="p-3">{order.orderId}</td>
-                  <td className="p-3">{order.createdAt}</td>
-                  <td className="p-3">{order.customer}</td>
-                  <td className="p-3">{order.items}</td>
-                  <td className="p-3">{order.deliveryNumber}</td>
-                  <td className="p-3">
-                    <span
-                      className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${
-                        order.status === "Order Confirmed"
-                          ? "bg-blue-300 text-blue-800"
-                          : order.status === "Order Completed"
-                          ? "bg-green-300 text-green-800"
-                          : order.status === "Out For Delivery"
-                          ? "bg-orange-300 text-orange-800"
-                          : order.status === "Shipping"
-                          ? "bg-cyan-300 text-cyan-800"
-                          : order.status === "Processing"
-                          ? "bg-yellow-300 text-yellow-800"
-                          : "bg-gray-100 text-gray-800"
-                      }`}
-                    >
-                      {order.status}
-                    </span>
-                  </td>
-                  <td className="p-3">
-                    <button className="p-2 bg-orange-500 text-white rounded-md shadow-md hover:bg-orange-600">
-                      <EyeIcon className="h-5 w-5" />
-                    </button>
+              {filteredOrders.length > 0 ? (
+                filteredOrders.map((order, index) => (
+                  <tr key={index} className="border-t">
+                    <td className="p-3">{order.orderNumber}</td>
+                    <td className="p-3">{order.createdAt.replace('T', ' ').substring(0, 19)}</td>
+                    <td className="p-3">{order.customer.firstName}</td>
+                    <td className="p-3">
+                      <span className="text-orange-500">$</span>{" "}
+                      {order.amount.total}
+                    </td>
+                    {/* <td className="p-3">{order.deliveryNumber}</td> */}
+                    <td className="p-3">
+                      <span
+                        className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${
+                          order.status === "Order Confirmed"
+                            ? "bg-blue-300 text-blue-800"
+                            : order.status === "Order Completed"
+                            ? "bg-green-300 text-green-800"
+                            : order.status === "Out For Delivery"
+                            ? "bg-orange-300 text-orange-800"
+                            : order.status === "Shipping"
+                            ? "bg-cyan-300 text-cyan-800"
+                            : order.status === "Processing"
+                            ? "bg-yellow-300 text-yellow-800"
+                            : "bg-gray-100 text-gray-800"
+                        }`}
+                      >
+                        {order.status}
+                      </span>
+                    </td>
+                    <td className="p-3">
+                      <button className="p-2 bg-orange-500 text-white rounded-md shadow-md hover:bg-orange-600">
+                        <EyeIcon className="h-5 w-5" />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={6} className="p-3 text-center text-gray-500">
+                    No orders found
                   </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
 
           {/* Pagination */}
           <div className="flex justify-end mt-6 pr-4">
             <div className="flex items-center border rounded-md overflow-hidden shadow-md">
-              <button className="px-4 py-2 border-r bg-white hover:bg-gray-200">Previous</button>
-              <button className="px-4 py-2 bg-orange-500 text-white font-semibold">1</button>
-              <button className="px-4 py-2 border-l bg-white hover:bg-gray-200">2</button>
-              <button className="px-4 py-2 border-l bg-white hover:bg-gray-200">Next</button>
+              <button className="px-4 py-2 border-r bg-white hover:bg-gray-200">
+                Previous
+              </button>
+              <button className="px-4 py-2 bg-orange-500 text-white font-semibold">
+                1
+              </button>
+              <button className="px-4 py-2 border-l bg-white hover:bg-gray-200">
+                2
+              </button>
+              <button className="px-4 py-2 border-l bg-white hover:bg-gray-200">
+                Next
+              </button>
             </div>
           </div>
         </div>

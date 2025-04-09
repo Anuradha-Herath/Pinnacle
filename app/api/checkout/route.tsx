@@ -1,4 +1,3 @@
-import Product from "@/models/Product";
 import Order from "@/models/Order";
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
@@ -236,7 +235,7 @@ export async function POST(request: Request) {
               mode: "payment",
               success_url: `${
                 process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
-              }/order-success?order=${newOrder.orderNumber}`,
+              }/checkout?success=1&order=${newOrder.orderNumber}`,
               cancel_url: `${
                 process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
               }/checkout?canceled=1`,

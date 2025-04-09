@@ -5,12 +5,14 @@ interface SizeGuideModalProps {
   isOpen: boolean;
   onClose: () => void;
   category?: string;
+  sizeChartImage?: string; // Add prop for product-specific size chart image
 }
 
 const SizeGuideModal: React.FC<SizeGuideModalProps> = ({
   isOpen,
   onClose,
   category = "apparel", // Default to apparel sizing
+  sizeChartImage, // Accept size chart image from props
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
@@ -106,55 +108,29 @@ const SizeGuideModal: React.FC<SizeGuideModalProps> = ({
 
           <div className="overflow-auto max-h-[calc(80vh-64px)]">
             <div className="p-6">
-              {/* Gender tabs */}
-              <div className="flex mb-6 bg-gray-100 rounded-md p-1 w-fit">
-                <button
-                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                    gender === "women" ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-800"
-                  }`}
-                  onClick={() => setGender("women")}
-                >
-                  Women
-                </button>
-                <button
-                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                    gender === "men" ? "bg-white text-gray-900 shadow-sm" : "text-gray-600 hover:text-gray-800"
-                  }`}
-                  onClick={() => setGender("men")}
-                >
-                  Men
-                </button>
-              </div>
-
               <div className="grid md:grid-cols-1 gap-6">
-                <div>
-                  
-
-                  <div className="overflow-x-auto bg-white rounded-md border border-gray-200">
-                    <table className="w-full border-collapse">
-                      <thead>
-                        <tr className="bg-gray-50">
-                          <th className="border-b border-gray-200 px-4 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Size</th>
-                          <th className="border-b border-gray-200 px-4 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">UK Size</th>
-                          <th className="border-b border-gray-200 px-4 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Length (in)</th>
-                          <th className="border-b border-gray-200 px-4 py-2 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">Width (in)</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200">
-                        {currentSizeData.map((size) => (
-                          <tr key={size.size} className="hover:bg-gray-50 transition-colors">
-                            <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
-                              {size.size}
-                            </td>
-                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">{size.ukSize}</td>
-                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">{size.length}</td>
-                            <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700">{size.width}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                {/* If product has a specific size chart, show it */}
+                {sizeChartImage ? (
+                  <div>
+                    <h3 className="font-medium text-gray-900 mb-3 flex items-center">
+                      <ChevronRight size={16} className="text-gray-500 mr-1" />
+                      Product-Specific Size Chart
+                    </h3>
+                    <img
+                      src={sizeChartImage}
+                      alt="Product Size Chart"
+                      className="w-full rounded-md border border-gray-200"
+                    />
                   </div>
-                </div>
+                ) : (
+                  <div>
+                    <img
+                      src="/SizeguidemodelImage.png"
+                      alt="Size guide"
+                      className="w-full rounded-md border border-gray-200"
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="mt-6 bg-gray-50 p-4 rounded-md border border-gray-200">
@@ -163,7 +139,7 @@ const SizeGuideModal: React.FC<SizeGuideModalProps> = ({
                   Additional Notes
                 </h3>
                 <p className="text-sm text-gray-600">
-                  Louis Vuitton sizes may vary slightly by collection. For a precise fit, measure carefully and consult specific product details. If between sizes, consider sizing up for a relaxed fit or down for a tailored silhouette.
+                  Pinnacle sizes may vary slightly by collection. For a precise fit, measure carefully and consult specific product details. If between sizes, consider sizing up for a relaxed fit or down for a tailored silhouette.
                 </p>
               </div>
 

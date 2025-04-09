@@ -6,6 +6,7 @@ import Footer from "../components/Footer";
 import Header from "../components/Header";
 import { useCart } from "../context/CartContext";
 import { getValidImageUrl, handleImageError } from "@/lib/imageUtils";
+import { useRouter } from "next/navigation";
 
 function Checkout() {
   const [shipping, setShipping] = useState("ship");
@@ -13,7 +14,9 @@ function Checkout() {
   const [openDropdown, setOpenDropdown] = useState<string | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [isClient, setIsClient] = useState(false);
-  const { cart, getCartTotal, isLoading } = useCart();
+  const { cart, getCartTotal, isLoading, clearCart } = useCart();
+  const router = useRouter();
+  const cartClearedRef = useRef(false);
 
   const [formData, setFormData] = useState({
     email: "",
@@ -27,6 +30,17 @@ function Checkout() {
     postalCode: "",
     phone: "",
   });
+
+  // Handle cart clearing only once
+  useEffect(() => {
+    if (isClient && !cartClearedRef.current) {
+      const searchParams = new URLSearchParams(window.location.search);
+      if (searchParams.get("success") === "1") {
+        clearCart();
+        cartClearedRef.current = true;
+      }
+    }
+  }, [isClient, clearCart]);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -153,6 +167,37 @@ function Checkout() {
     );
   }
 
+  // Check URL parameters directly in the render function for success message
+  const isSuccess =
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("success") === "1";
+
+  if (isSuccess) {
+    const orderNumber = new URLSearchParams(window.location.search).get(
+      "order"
+    );
+    return (
+      <div className="min-h-screen flex flex-col bg-gray-50">
+        <Header />
+        <div className="m-3 flex items-center justify-center bg-gray-50">
+          <div className="p-6 bg-white rounded-lg shadow-md text-center">
+            <h1 className="text-2xl font-bold text-green-600 mb-4">Success!</h1>
+            <p className="text-lg text-gray-700">
+              Payment successful! Your order number is {orderNumber}.
+            </p>
+            <button
+              onClick={() => router.push("/")}
+              className="mt-6 px-4 py-2 bg-black text-white rounded-md hover:bg-gray-900 transition"
+            >
+              Go to Homepage
+            </button>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Header />
@@ -236,14 +281,25 @@ function Checkout() {
                     ${getCartTotal().toFixed(2)}
                   </span>
                 </div>
-                <div className="flex justify-between py-1">
-                  <span className="text-gray-600">Shipping</span>
-                  <span className="font-medium">$650.00</span>
-                </div>
-                <div className="flex justify-between py-3 text-lg font-semibold border-t border-gray-200 mt-2">
-                  <span>Total</span>
-                  <span>${(getCartTotal() + 650).toFixed(2)}</span>
-                </div>
+                {shipping === "ship" ? (
+                  <>
+                    <div className="flex justify-between py-1">
+                      <span className="text-gray-600">Shipping</span>
+                      <span className="font-medium">$650.00</span>
+                    </div>
+                    <div className="flex justify-between py-3 text-lg font-semibold border-t border-gray-200 mt-2">
+                      <span>Total</span>
+                      <span>${(getCartTotal() + 650).toFixed(2)}</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex justify-between py-3 text-lg font-semibold border-t border-gray-200 mt-2">
+                      <span>Total</span>
+                      <span>${getCartTotal().toFixed(2)}</span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>

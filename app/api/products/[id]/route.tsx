@@ -131,6 +131,15 @@ export async function PUT(
       })
     );
     
+    // Process size chart image if it exists
+    let sizeChartImageUrl = body.sizeChartImage;
+    if (body.sizeChartImage && typeof body.sizeChartImage === 'string' && 
+        (body.sizeChartImage.startsWith('data:image') || 
+         body.sizeChartImage.match(/^[A-Za-z0-9+/=]+$/))) {
+      sizeChartImageUrl = await uploadToCloudinary(body.sizeChartImage);
+      console.log("Size chart image uploaded:", sizeChartImageUrl);
+    }
+    
     // Create an update object that handles accessories appropriately
     const updateData = {
       productName: body.productName,
@@ -147,6 +156,9 @@ export async function PUT(
       ...(body.occasions ? { occasions: body.occasions } : {}),
       ...(body.style ? { style: body.style } : {}),
       ...(body.season ? { season: body.season } : {}),
+      
+      // Include size chart image URL if it exists
+      ...(sizeChartImageUrl ? { sizeChartImage: sizeChartImageUrl } : {}),
       
       // Only include fit/sizing fields if not an accessory
       ...(body.category !== "Accessories" ? {

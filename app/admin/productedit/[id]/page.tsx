@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import TopBar from "../../../components/TopBar";
 import Sidebar from "../../../components/Sidebar";
@@ -40,6 +40,7 @@ interface ProductFormData {
   sizingTrend: number;
   sizingNotes: string;
   sizeChart: Record<string, any>;
+  sizeChartImage: string | ArrayBuffer | null;
 }
 
 export default function ProductEdit() {
@@ -62,7 +63,8 @@ export default function ProductEdit() {
     fitType: "Regular Fit",
     sizingTrend: 0,
     sizingNotes: "",
-    sizeChart: {}
+    sizeChart: {},
+    sizeChartImage: null
   });
 
   const [categories, setCategories] = useState<Category[]>([]);
@@ -71,6 +73,8 @@ export default function ProductEdit() {
   const [filteredSubCategories, setFilteredSubCategories] = useState<Category[]>([]);
   const [mainProductImage, setMainProductImage] = useState<string | ArrayBuffer | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const sizeChartInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setIsClient(true);
@@ -140,7 +144,8 @@ export default function ProductEdit() {
           fitType: product.fitType || "Regular Fit",
           sizingTrend: product.sizingTrend || 0,
           sizingNotes: product.sizingNotes || "",
-          sizeChart: product.sizeChart || {}
+          sizeChart: product.sizeChart || {},
+          sizeChartImage: product.sizeChartImage || null
         });
 
         if (processedGallery && processedGallery.length > 0) {
@@ -251,6 +256,20 @@ export default function ProductEdit() {
     });
   };
 
+  const handleSizeChartUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData(prev => ({
+          ...prev,
+          sizeChartImage: reader.result
+        }));
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSave = async () => {
     if (
       !formData.productName ||
@@ -276,6 +295,10 @@ export default function ProductEdit() {
         ...item,
         additionalImages: item.additionalImages || []
       }));
+
+      if (formData.sizeChartImage) {
+        dataToSend.sizeChartImage = formData.sizeChartImage;
+      }
 
       const res = await fetch(`/api/products/${id}`, {
         method: "PUT",
@@ -627,6 +650,52 @@ export default function ProductEdit() {
                   className="w-full p-3 border rounded-md h-32 focus:ring-2 focus:ring-blue-500"
                 ></textarea>
               </div>
+
+              {formData.category !== "Accessories" && (
+                <div className="border-t pt-4 mt-4">
+                  <label className="block text-sm font-medium mb-2">Size Chart Image</label>
+                  <div className="mt-2">
+                    <input
+                      type="file"
+                      ref={sizeChartInputRef}
+                      accept="image/*"
+                      onChange={handleSizeChartUpload}
+                      className="hidden"
+                    />
+                    
+                    {formData.sizeChartImage ? (
+                      <div className="relative border rounded-md p-2">
+                        <img
+                          src={typeof formData.sizeChartImage === 'string' ? formData.sizeChartImage : ''}
+                          alt="Size Chart"
+                          className="max-h-48 mx-auto"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setFormData(prev => ({ ...prev, sizeChartImage: null }))}
+                          className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-sm text-gray-500 hover:text-gray-700"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => sizeChartInputRef.current?.click()}
+                        className="w-full border-2 border-dashed border-gray-300 rounded-md p-6 flex flex-col items-center justify-center hover:border-blue-500 transition-colors"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+                          <path fillRule="evenodd" d="M4 5a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2h-1.586a1 1 0 01-.707-.293l-1.121-1.121A2 2 0 0011.172 3H8.828a2 2 0 00-1.414.586L6.293 4.707A1 1 0 015.586 5H4zm6 9a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+                        </svg>
+                        <span className="mt-2 text-sm text-gray-500">Upload Size Chart</span>
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Upload a detailed size chart image for this product. This will help customers find their perfect fit.
+                  </p>
+                </div>
+              )}
             </form>
             <div className="space-y-6">
               <div className="w-full h-64 bg-gray-200 rounded-md flex items-center justify-center">
