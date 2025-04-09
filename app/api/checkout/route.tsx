@@ -1,9 +1,10 @@
 import Order from "@/models/Order";
-import { NextResponse } from "next/server";
+import User from "@/models/User"; // Add this import
+import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
+import { authenticateUser } from "@/middleware/auth"; // Add this import
 
 // Safely initialize Stripe with error handling
-
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
 // Define TypeScript interfaces for better type safety
@@ -15,6 +16,22 @@ interface CartItem {
   image?: string;
   size?: string;
   color?: string;
+}
+
+// Define the structure used for line items in Stripe and order storage
+interface LineItem {
+  quantity: number;
+  price_data: {
+    currency: string;
+    product_data: string;
+    unit_amount: number;
+  };
+  metadata: {
+    productId: string;
+    color: string;
+    size: string;
+    imageUrl: string;
+  };
 }
 
 interface CheckoutData {
@@ -34,7 +51,7 @@ interface CheckoutData {
   total: number;
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   let requestBody = null;
 
   try {
@@ -91,12 +108,12 @@ export async function POST(request: Request) {
 
     // Step 4: Extract unique product IDs
     const uniqueProductIds = [
-      ...new Set(requestBody.cart.map((item: any) => item.id)),
+      ...new Set(requestBody.cart.map((item: CartItem) => item.id)),
     ];
     console.log("Unique product IDs:", uniqueProductIds);
 
     // Modified Step 5: Format line items with simplified structure for database compatibility
-    const simpleLineItems = requestBody.cart.map((item: any) => {
+    const simpleLineItems = requestBody.cart.map((item: CartItem): LineItem => {
       // Create a more detailed product name that includes color and size
       const productName = item.name;
       const productDetails = [];
@@ -151,34 +168,81 @@ export async function POST(request: Request) {
     // Step 6: Create a simplified order object to store
     try {
       console.log("Creating order object");
+      
+      // Check if the request is from an authenticated user
+      const authResult = await authenticateUser(request);
+      let userId = null;
+      
+      if (authResult.authenticated && authResult.user) {
+        console.log("User is authenticated, linking order to user account:", authResult.user.id);
+        userId = authResult.user.id;
+      } else {
+        console.log("Guest checkout - no user account associated");
+      }
+      
+      // Transform cart items to match the expected OrderItem structure
+      const orderItems = requestBody.cart.map((item: CartItem) => ({
+        productId: item.id,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        image: item.image || '',
+        size: item.size || undefined,
+        color: item.color || undefined,
+        metadata: {
+          additionalInfo: '',
+          customizations: ''
+        }
+      }));
+      
+      // Calculate points - 10% of total
+      const pointsEarned = Math.round(requestBody.total * 0.1);
+      
+      // Create order data object that matches our consolidated Order schema
       const orderData = {
+        // Add user ID if authenticated
+        user: userId ? new mongoose.Types.ObjectId(userId) : undefined,
+        
+        // Customer is saved as guest checkout info
         customer: {
           email: requestBody.email,
           firstName: requestBody.firstName,
           lastName: requestBody.lastName,
           phone: requestBody.phone,
-          emailOffers: requestBody.emailOffers || false,
+          marketingConsent: requestBody.emailOffers || false,
         },
-        shipping: {
-          deliveryMethod: requestBody.deliveryMethod,
-          address:
-            requestBody.deliveryMethod === "ship"
-              ? {
-                  country: requestBody.country,
-                  address: requestBody.address,
-                  city: requestBody.city,
-                  postalCode: requestBody.postalCode,
-                }
-              : null,
+        
+        // Required payment method field
+        paymentMethod: 'card',
+        
+        // Required order items
+        orderItems: orderItems,
+        
+        // Required shipping address - properly structured
+        shippingAddress: {
+          fullName: `${requestBody.firstName} ${requestBody.lastName}`,
+          address: requestBody.address || 'Pickup in store',
+          city: requestBody.city || 'N/A',
+          postalCode: requestBody.postalCode || '00000',
+          country: requestBody.country || 'N/A',
+          phone: requestBody.phone,
         },
-        line_items: simpleLineItems,
-        amount: {
-          subtotal: requestBody.subtotal,
-          shippingCost: requestBody.shippingCost,
-          total: requestBody.total,
-        },
-        status: "pending",
-        paymentStatus: "pending",
+        
+        // Map to our schema's expected format
+        deliveryMethod: requestBody.deliveryMethod === 'ship' ? 'shipping' : 'pickup',
+        
+        // Price details
+        itemsPrice: requestBody.subtotal,
+        shippingPrice: requestBody.shippingCost,
+        taxPrice: 0, // Default or calculate
+        totalPrice: requestBody.total,
+        
+        // Status - use valid enum value from the schema ('Processing', not 'pending')
+        status: 'Processing',
+        paymentStatus: 'pending',
+        
+        // Points calculation - store in order
+        pointsEarned: pointsEarned
       };
 
       console.log("Order data prepared for saving");
@@ -202,6 +266,29 @@ export async function POST(request: Request) {
 
         console.log("Order saved successfully with ID:", newOrder._id);
 
+        // If order is from authenticated user, update their points immediately
+        if (userId) {
+          try {
+            console.log(`Adding ${pointsEarned} reward points to user ${userId}'s account`);
+            
+            // Update user points atomically
+            const updatedUser = await User.findOneAndUpdate(
+              { _id: userId },
+              { $inc: { points: pointsEarned } },
+              { new: true }
+            );
+            
+            if (updatedUser) {
+              console.log(`User points updated successfully. New total: ${updatedUser.points}`);
+            } else {
+              console.error("Failed to update user points: User not found");
+            }
+          } catch (pointsError) {
+            console.error("Error updating user points:", pointsError);
+            // Continue with checkout process even if points update fails
+          }
+        }
+
         // Step 8: Create Stripe checkout session if Stripe is available
         let redirectUrl = "/payment"; // Default fallback
 
@@ -210,7 +297,7 @@ export async function POST(request: Request) {
             console.log("Creating Stripe checkout session");
 
             // Format line items for Stripe API requirements
-            const stripeLineItems = simpleLineItems.map((item) => ({
+            const stripeLineItems = simpleLineItems.map((item: LineItem) => ({
               price_data: {
                 currency: "USD",
                 product_data: {
@@ -255,7 +342,7 @@ export async function POST(request: Request) {
         }
 
         // When sending to the client, include images in the response
-        const clientLineItems = simpleLineItems.map((item) => ({
+        const clientLineItems = simpleLineItems.map((item: LineItem) => ({
           quantity: item.quantity,
           price_data: {
             currency: item.price_data.currency,

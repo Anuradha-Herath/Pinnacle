@@ -38,7 +38,7 @@ export default function ProfilePage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  
+
   const { user } = useAuth();
   const router = useRouter();
 
@@ -68,13 +68,15 @@ export default function ProfilePage() {
           });
         }
 
-        // Fetch user orders
-        const ordersRes = await fetch('/api/profile/orders');
-        if (!ordersRes.ok) throw new Error('Failed to fetch orders');
-        
-        const ordersData = await ordersRes.json();
-        if (ordersData.success) {
-          setOrders(ordersData.orders);
+        // Only fetch orders for regular users, not for admins
+        if (user.role !== 'admin') {
+          const ordersRes = await fetch('/api/profile/orders');
+          if (!ordersRes.ok) throw new Error('Failed to fetch orders');
+          
+          const ordersData = await ordersRes.json();
+          if (ordersData.success) {
+            setOrders(ordersData.orders);
+          }
         }
       } catch (err) {
         setError("Failed to load profile data");
@@ -125,22 +127,20 @@ export default function ProfilePage() {
     <>
       <Header />
       <div className="max-w-4xl mx-auto p-6">
+        {/* Basic profile information - shown to all users */}
         <div className="flex items-center gap-4 mb-6">
           <div className="w-16 h-16 bg-gray-300 rounded-full"></div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
-            {profile?.firstName} {profile?.lastName} {(profile?.points ?? 0) >= 200 && <FaCrown className="text-yellow-500" title="Premium customer" />}
+            {profile?.firstName} {profile?.lastName} 
+            {user?.role !== 'admin' && (profile?.points ?? 0) >= 200 && 
+              <FaCrown className="text-yellow-500" title="Premium customer" />
+            }
           </h1>
         </div>
-        <div className="flex justify-end space-x-6 text-lg font-semibold">
-          <Link href="/wishlist" className="hover:underline">
-            Wishlist
-          </Link>
-          <Link href="/payment-options" className="hover:underline">
-            Payment Options
-          </Link>
-        </div>
+
+        {/* Basic customer details - shown to all users */}
         <div className="bg-gray-100 p-4 rounded-lg mt-6 shadow-md">
-          <h2 className="font-semibold text-lg mb-2">Customer Details</h2>
+          <h2 className="font-semibold text-lg mb-2">Profile Details</h2>
           <p>
             <strong>Name:</strong> {profile?.firstName} {profile?.lastName}
           </p>
@@ -150,87 +150,130 @@ export default function ProfilePage() {
           <p>
             <strong>Phone:</strong> {profile?.phone || 'Not provided'}
           </p>
-          <p>
-            <strong>Delivery Address:</strong> {profile?.address || 'Not provided'}
-          </p>
+          {user?.role !== 'admin' && (
+            <p>
+              <strong>Delivery Address:</strong> {profile?.address || 'Not provided'}
+            </p>
+          )}
           <Button className="mt-3 flex items-center gap-2" onClick={handleEditProfile}>
             <FiEdit /> Edit Details
           </Button>
         </div>
-        <div className="grid grid-cols-2 gap-4 mt-6">
-          <div className="bg-gray-100 p-4 rounded-lg shadow-md text-center">
-            <div className="text-2xl">&#x1F4B3;</div>
-            <p>Collect coupon to get discounts!</p>
-            <Button className="mt-2">Collect</Button>
-          </div>
-          <div className="bg-gray-100 p-4 rounded-lg shadow-md text-center">
-            <div className="text-2xl">&#x2728;</div>
-            <p className="text-3xl font-bold">{profile?.points || 0}</p>
-            <p>Reward Points</p>
-          </div>
-        </div>
-        <div className="mt-10">
-          <h2 className="text-2xl font-bold mb-4">My Orders</h2>
-          <ProfilePageToNav />
-        </div>
-        
-        {orders.length === 0 ? (
-          <div className="bg-gray-100 p-8 rounded-lg shadow-md text-center">
-            <p className="text-lg">You haven't placed any orders yet.</p>
-            <Button 
-              variant="contained" 
-              className="mt-4"
-              onClick={() => router.push('/')}
-            >
-              Start Shopping
-            </Button>
-          </div>
-        ) : (
-          orders.map((order) => (
-            <div
-              key={order._id}
-              className="bg-gray-100 p-4 rounded-lg shadow-md mb-4"
-            >
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold">Order #{order._id.substring(0, 8)}</h3>
-                <span className="bg-black text-white px-3 py-1 rounded-lg">
-                  {order.status}
-                </span>
+
+        {/* Customer-specific content - only shown if user role is not admin */}
+        {user?.role !== 'admin' && (
+          <>
+            {/* Links section */}
+            <div className="flex justify-end space-x-6 text-lg font-semibold">
+              <Link href="/wishlist" className="hover:underline">
+                Wishlist
+              </Link>
+              <Link href="/payment-options" className="hover:underline">
+                Payment Options
+              </Link>
+            </div>
+
+            {/* Rewards & Coupons section */}
+            <div className="grid grid-cols-2 gap-4 mt-6">
+              <div className="bg-gray-100 p-4 rounded-lg shadow-md text-center">
+                <div className="text-2xl">&#x1F4B3;</div>
+                <p>Collect coupon to get discounts!</p>
+                <Button className="mt-2">Collect</Button>
               </div>
-              {order.orderItems.map((item, index) => (
-                <div key={index} className="flex items-center gap-4 mt-4">
-                  <img
-                    src={item.image}
-                    alt={item.name}
-                    className="w-16 h-16 rounded-lg"
-                  />
-                  <div>
-                    <p className="font-semibold">{item.name}</p>
-                    <p className="text-lg font-bold">
-                      Rs. {item.price.toFixed(2)}
-                    </p>
-                  </div>
-                  <p className="ml-auto">Qty: {item.quantity}</p>
-                </div>
-              ))}
-              {order.pointsEarned > 0 && (
-                <div className="mt-2">
-                  <span className="text-green-600 text-sm font-medium">
-                    You earned {order.pointsEarned} reward points from this order!
-                  </span>
-                </div>
-              )}
-              <ReviewButton status={order.status} />
-              <div className="text-right mt-2">
-                <Button 
-                  className="text-sm font-semibold hover:underline"
-                  onClick={() => router.push(`/orders/${order._id}`)}
-                >
-                  View Details
-                </Button>
+              <div className="bg-gray-100 p-4 rounded-lg shadow-md text-center">
+                <div className="text-2xl">&#x2728;</div>
+                <p className="text-3xl font-bold">{profile?.points || 0}</p>
+                <p>Reward Points</p>
               </div>
             </div>
-          ))
+
+            {/* Orders section */}
+            <div className="mt-10">
+              <h2 className="text-2xl font-bold mb-4">My Orders</h2>
+              <ProfilePageToNav />
+            </div>
+            
+            {orders.length === 0 ? (
+              <div className="bg-gray-100 p-8 rounded-lg shadow-md text-center">
+                <p className="text-lg">You haven't placed any orders yet.</p>
+                <Button 
+                  variant="contained" 
+                  className="mt-4"
+                  onClick={() => router.push('/')}
+                >
+                  Start Shopping
+                </Button>
+              </div>
+            ) : (
+              orders.map((order) => (
+                <div
+                  key={order._id}
+                  className="bg-gray-100 p-4 rounded-lg shadow-md mb-4"
+                >
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-semibold">Order #{order._id.substring(0, 8)}</h3>
+                    <span className="bg-black text-white px-3 py-1 rounded-lg">
+                      {order.status}
+                    </span>
+                  </div>
+                  {order.orderItems.map((item, index) => (
+                    <div key={index} className="flex items-center gap-4 mt-4">
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        className="w-16 h-16 rounded-lg"
+                      />
+                      <div>
+                        <p className="font-semibold">{item.name}</p>
+                        <p className="text-lg font-bold">
+                          Rs. {item.price.toFixed(2)}
+                        </p>
+                      </div>
+                      <p className="ml-auto">Qty: {item.quantity}</p>
+                    </div>
+                  ))}
+                  {order.pointsEarned > 0 && (
+                    <div className="mt-2">
+                      <span className="text-green-600 text-sm font-medium">
+                        You earned {order.pointsEarned} reward points from this order!
+                      </span>
+                    </div>
+                  )}
+                  <ReviewButton status={order.status} />
+                  <div className="text-right mt-2">
+                    <Button 
+                      className="text-sm font-semibold hover:underline"
+                      onClick={() => router.push(`/orders/${order._id}`)}
+                    >
+                      View Details
+                    </Button>
+                  </div>
+                </div>
+              ))
+            )}
+          </>
+        )}
+
+        {/* Admin-specific content */}
+        {user?.role === 'admin' && (
+          <div className="mt-6 bg-gray-100 p-4 rounded-lg shadow-md">
+            <h2 className="font-semibold text-lg mb-4">Admin Options</h2>
+            <div className="grid grid-cols-2 gap-4">
+              <Button 
+                variant="contained" 
+                onClick={() => router.push('/admin/dashboard')}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                Admin Dashboard
+              </Button>
+              <Button 
+                variant="outlined" 
+                onClick={() => router.push('/admin/settings')}
+              >
+                Admin Settings
+              </Button>
+            </div>
+          </div>
         )}
       </div>
       <Footer />

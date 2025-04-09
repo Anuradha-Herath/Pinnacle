@@ -15,6 +15,20 @@ import {
 import Sidebar from "../../components/Sidebar";
 import { CogIcon, ShoppingCartIcon } from "lucide-react";
 
+// Define Order interface for type safety
+interface Order {
+  _id: string;
+  orderNumber: string;
+  createdAt: string;
+  customer: {
+    firstName: string;
+    lastName?: string;
+    email?: string;
+  };
+  totalPrice: number;
+  status: string;
+}
+
 export default function OrdersPage() {
   const router = useRouter();
 
@@ -185,65 +199,64 @@ export default function OrdersPage() {
             </div>
           </div>
 
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="bg-gray-100 text-left">
-                <th className="p-3">Order ID</th>
-                <th className="p-3">Created At</th>
-                <th className="p-3">Customer</th>
-                <th className="p-3">Amount</th>
-                {/* <th className="p-3">Delivery Number</th> */}
-                <th className="p-3">Order Status</th>
-                <th className="p-3">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredOrders.length > 0 ? (
-                filteredOrders.map((order, index) => (
-                  <tr key={index} className="border-t">
-                    <td className="p-3">{order.orderNumber}</td>
-                    <td className="p-3">{order.createdAt.replace('T', ' ').substring(0, 19)}</td>
-                    <td className="p-3">{order.customer.firstName}</td>
-                    <td className="p-3">
-                      <span className="text-orange-500">$</span>{" "}
-                      {order.amount.total}
-                    </td>
-                    {/* <td className="p-3">{order.deliveryNumber}</td> */}
-                    <td className="p-3">
-                      <span
-                        className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${
-                          order.status === "Order Confirmed"
-                            ? "bg-blue-300 text-blue-800"
-                            : order.status === "Order Completed"
-                            ? "bg-green-300 text-green-800"
-                            : order.status === "Out For Delivery"
-                            ? "bg-orange-300 text-orange-800"
-                            : order.status === "Shipping"
-                            ? "bg-cyan-300 text-cyan-800"
-                            : order.status === "Processing"
-                            ? "bg-yellow-300 text-yellow-800"
-                            : "bg-gray-100 text-gray-800"
-                        }`}
-                      >
-                        {order.status}
-                      </span>
-                    </td>
-                    <td className="p-3">
-                      <button className="p-2 bg-orange-500 text-white rounded-md shadow-md hover:bg-orange-600">
-                        <EyeIcon className="h-5 w-5" />
-                      </button>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-gray-100 text-left">
+                  <th className="p-3">Order ID</th>
+                  <th className="p-3">Created At</th>
+                  <th className="p-3">Customer</th>
+                  <th className="p-3">Amount</th>
+                  <th className="p-3">Order Status</th>
+                  <th className="p-3">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredOrders.length > 0 ? (
+                  filteredOrders.map((order, index) => (
+                    <tr key={index} className="border-b hover:bg-gray-50">
+                      <td className="p-3">{order.orderNumber}</td>
+                      <td className="p-3">{order.createdAt.replace('T', ' ').substring(0, 19)}</td>
+                      <td className="p-3">{order.customer.firstName}</td>
+                      <td className="px-4 py-3">
+                        Rs. {order.totalPrice?.toFixed(2) || 'N/A'}
+                      </td>
+                      <td className="p-3">
+                        <span
+                          className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${
+                            order.status === "Order Confirmed"
+                              ? "bg-blue-300 text-blue-800"
+                              : order.status === "Order Completed"
+                              ? "bg-green-300 text-green-800"
+                              : order.status === "Out For Delivery"
+                              ? "bg-orange-300 text-orange-800"
+                              : order.status === "Shipping"
+                              ? "bg-cyan-300 text-cyan-800"
+                              : order.status === "Processing"
+                              ? "bg-yellow-300 text-yellow-800"
+                              : "bg-gray-100 text-gray-800"
+                          }`}
+                        >
+                          {order.status}
+                        </span>
+                      </td>
+                      <td className="p-3">
+                        <button className="p-2 bg-orange-500 text-white rounded-md shadow-md hover:bg-orange-600">
+                          <EyeIcon className="h-5 w-5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={6} className="p-3 text-center text-gray-500">
+                      No orders found
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={6} className="p-3 text-center text-gray-500">
-                    No orders found
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+                )}
+              </tbody>
+            </table>
+          </div>
 
           {/* Pagination */}
           <div className="flex justify-end mt-6 pr-4">

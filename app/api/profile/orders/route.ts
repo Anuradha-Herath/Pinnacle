@@ -29,9 +29,13 @@ export async function GET(req: NextRequest) {
       }, { status: 401 });
     }
 
+    console.log("Fetching orders for user:", authResult.user?.id);
+    
     // Get orders for the authenticated user
     const orders = await Order.find({ user: authResult.user?.id })
       .sort({ createdAt: -1 }); // Most recent orders first
+    
+    console.log(`Found ${orders.length} orders for user`);
     
     return NextResponse.json({
       success: true,
