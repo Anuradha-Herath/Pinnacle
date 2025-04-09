@@ -398,10 +398,35 @@ export default function DiscountCreate() {
                                         (e.target as HTMLImageElement).src = '/placeholder.png';
                                       }}
                                     />
+                                    {/* Add discount badge if product already has a discount */}
+                                    {product.discountedPrice && (
+                                      <div className="absolute top-0 right-0 bg-red-500 h-full w-full bg-opacity-20 flex items-center justify-center">
+                                        <span className="transform rotate-45 text-xs font-bold text-red-600 bg-white px-1 py-0.5 rounded">SALE</span>
+                                      </div>
+                                    )}
                                   </div>
-                                  <div>
+                                  <div className="flex-grow">
                                     <p className="font-medium">{product.productName}</p>
-                                    <p className="text-xs text-gray-500 truncate">ID: {product._id}</p>
+                                    <div className="flex items-center justify-between">
+                                      <p className="text-xs text-gray-500 truncate">ID: {product._id}</p>
+                                      {/* Display discount tag */}
+                                      {product.discountedPrice && (
+                                        <span className="text-xs bg-red-500 text-white px-1.5 py-0.5  font-medium">
+                                          Already Discounted
+                                        </span>
+                                      )}
+                                    </div>
+                                    {/* Show both prices when there's a discount */}
+                                    {product.discountedPrice ? (
+                                      <div className="flex items-center text-xs mt-0.5">
+                                        <span className="text-red-600 font-medium">${product.discountedPrice.toFixed(2)}</span>
+                                        <span className="line-through text-gray-400 ml-1">${product.regularPrice?.toFixed(2)}</span>
+                                      </div>
+                                    ) : (
+                                      <div className="text-xs mt-0.5 font-medium">
+                                        ${product.regularPrice?.toFixed(2)}
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                               ))}
@@ -424,33 +449,14 @@ export default function DiscountCreate() {
                   ) : (
                     <div className="mb-4">
                       <div className="mb-4 flex items-center gap-4">
-                        <div className="flex-1">
-                          <label className="block text-sm mb-1">Filter by Category (Optional)</label>
-                          <select
-                            className="w-full p-2 border rounded-md"
-                            value={formData.categoryId}
-                            onChange={(e) =>
-                              setFormData({
-                                ...formData,
-                                categoryId: e.target.value,
-                              })
-                            }
-                          >
-                            <option value="">All Categories</option>
-                            {categories.map((category) => (
-                              <option key={category._id} value={category._id}>
-                                {category.title}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
+                        
 
                         <div className="flex-1">
-                          <label className="block text-sm mb-1">Search Products</label>
+                          <label className="block text-sm mb-1">Search Categories</label>
                           <div className="relative">
                             <input
                               type="text"
-                              placeholder="Search by product name..."
+                              placeholder="Search by category name..."
                               value={productFilter}
                               onChange={(e) => setProductFilter(e.target.value)}
                               className="w-full p-2 border rounded-md pl-10"
