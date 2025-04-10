@@ -14,6 +14,7 @@ import {
 } from "@heroicons/react/24/solid";
 import Sidebar from "../../components/Sidebar";
 import { CogIcon, ShoppingCartIcon } from "lucide-react";
+import { useAuth } from "@/app/context/AuthContext";
 
 // Define Order interface for type safety
 interface Order {
@@ -31,7 +32,7 @@ interface Order {
 
 export default function OrdersPage() {
   const router = useRouter();
-
+  const { user } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -42,6 +43,27 @@ export default function OrdersPage() {
     delivered: 0,
     confirmed: 0,
   });
+  // Add state for profile picture
+  const [profilePicture, setProfilePicture] = useState<string>('/p9.webp');
+
+  // Fetch profile data to get the current profile picture
+  useEffect(() => {
+    const fetchProfilePicture = async () => {
+      try {
+        const response = await fetch('/api/profile?t=' + Date.now()); // Add cache-busting parameter
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.user.profilePicture) {
+            setProfilePicture(data.user.profilePicture);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching profile picture:", error);
+      }
+    };
+
+    fetchProfilePicture();
+  }, []); // Dependency array empty to only run on mount
 
   useEffect(() => {
     // Fetch orders from the API
@@ -129,15 +151,19 @@ export default function OrdersPage() {
               <ClockIcon className="h-6 w-6 text-gray-600" />
             </button>
 
-            {/* Profile */}
+            {/* Profile - Updated to use dynamic image and go to adminprofile */}
             <button
-              onClick={() => router.push("../../profilepage")}
+              onClick={() => router.push("/adminprofile")}
               className="p-1 rounded-full border-2 border-gray-300"
             >
               <img
-                src="/p9.webp"
+                src={`${profilePicture}?t=${Date.now()}`} // Add cache-busting timestamp
                 alt="Profile"
                 className="h-8 w-8 rounded-full object-cover"
+                onError={(e) => {
+                  // Fallback if image fails to load
+                  (e.target as HTMLImageElement).src = '/p9.webp';
+                }}
               />
             </button>
           </div>
