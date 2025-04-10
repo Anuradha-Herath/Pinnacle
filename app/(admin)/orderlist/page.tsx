@@ -6,6 +6,20 @@ import { EyeIcon, BellIcon, Cog6ToothIcon, ClockIcon, CheckCircleIcon, TruckIcon
 import Sidebar from "../../components/Sidebar";
 import { CogIcon, ShoppingCartIcon } from "lucide-react";
 
+// Define Order interface for type safety
+interface Order {
+  _id: string;
+  orderNumber: string;
+  createdAt: string;
+  customer: {
+    firstName: string;
+    lastName?: string;
+    email?: string;
+  };
+  totalPrice: number;
+  status: string;
+}
+
 export default function OrdersPage() {
 
   const [orders, setOrders] = useState<Order[]>([]);
@@ -29,17 +43,6 @@ export default function OrdersPage() {
   },[])
 
   const router = useRouter();
-
-  // Dummy orders data
-  // const [orders] = useState([
-  //   { orderId: "#538765", createdAt: "April 24, 2024", customer: "Robert Hue", items: 3, deliveryNumber: "#31212", status: "Order Confirmed" },
-  //   { orderId: "#538765", createdAt: "April 24, 2024", customer: "Mari Cury", items: 1, deliveryNumber: "#12111", status: "Order Completed" },
-  //   { orderId: "#538765", createdAt: "April 24, 2024", customer: "Anjalina Jolly", items: 4, deliveryNumber: "#1244", status: "Out For Delivery" },
-  //   { orderId: "#538765", createdAt: "April 24, 2024", customer: "Brad Pitt", items: 1, deliveryNumber: "#11121", status: "Shipping" },
-  //   { orderId: "#538765", createdAt: "April 24, 2024", customer: "Dammika Perera", items: 2, deliveryNumber: "#2121", status: "Order Completed" },
-  //   { orderId: "#538765", createdAt: "April 24, 2024", customer: "Malinga", items: 1, deliveryNumber: "#12121", status: "Order Completed" },
-  //   { orderId: "#538765", createdAt: "April 24, 2024", customer: "Kusal", items: 4, deliveryNumber: "#41212", status: "Processing" },
-  // ]);
 
   // State for filtering orders by status
   const [filterStatus, setFilterStatus] = useState("");
@@ -188,7 +191,7 @@ export default function OrdersPage() {
                   <td className="p-3">{order.orderNumber}</td>
                   <td className="p-3">{order.createdAt}</td>
                   <td className="p-3">{order.customer.firstName}</td>
-                  <td className="p-3"><span className="text-orange-500">$</span> {order.amount.total}</td>
+                  <td className="p-3"><span className="text-orange-500">$</span> {order.totalPrice}</td>
                   {/* <td className="p-3">{order.deliveryNumber}</td> */}
                   <td className="p-3">
                     <span
@@ -210,7 +213,12 @@ export default function OrdersPage() {
                     </span>
                   </td>
                   <td className="p-3">
-                    <button className="p-2 bg-orange-500 text-white rounded-md shadow-md hover:bg-orange-600">
+                    <button 
+                      className="p-2 bg-orange-500 text-white rounded-md shadow-md hover:bg-orange-600"
+                      onClick={() => router.push(`/admin/order-details/${order._id}`)}
+                      aria-label="View order details"
+                      title="View order details"
+                    >
                       <EyeIcon className="h-5 w-5" />
                     </button>
                   </td>

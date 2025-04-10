@@ -79,6 +79,8 @@ export default function OrderDetail() {
         }
         
         const data = await res.json();
+        console.log("Order details:", data);
+        
         if (data.success) {
           setOrder(data.order);
         } else {
@@ -199,10 +201,11 @@ export default function OrderDetail() {
             <span>Rs. {order?.totalPrice.toFixed(2)}</span>
           </div>
           
-          {order && order.pointsEarned > 0 && (
+          {/* Enhanced points earned display */}
+          {order && (order.pointsEarned > 0 || order.pointsEarned === 0) && (
             <div className="flex justify-between py-2 text-green-600 mt-2 border-t border-gray-200">
-              <span>Reward Points Earned:</span>
-              <span>{order.pointsEarned} points</span>
+              <span className="font-medium">Reward Points Earned:</span>
+              <span className="font-medium">{order.pointsEarned} points</span>
             </div>
           )}
         </div>

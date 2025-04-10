@@ -33,19 +33,54 @@ export default function OrdersPage() {
   const router = useRouter();
 
   const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [counts, setCounts] = useState({
+    processing: 0,
+    shipping: 0,
+    outForDelivery: 0,
+    delivered: 0,
+    confirmed: 0,
+  });
 
   useEffect(() => {
     // Fetch orders from the API
     const fetchOrders = async () => {
+      setLoading(true);
       try {
         const response = await fetch("/api/orders");
         if (!response.ok) {
-          throw new Error("Failed to fetch orders");
+          throw new Error(`Failed to fetch orders: ${response.status}`);
         }
         const data = await response.json();
+
+        console.log("Fetched orders:", data);
         setOrders(data);
+
+        // Count orders by status
+        const statusCounts = {
+          processing: 0,
+          shipping: 0,
+          outForDelivery: 0,
+          delivered: 0,
+          confirmed: 0,
+        };
+
+        data.forEach((order: Order) => {
+          if (order.status === "Processing") statusCounts.processing++;
+          else if (order.status === "Shipping") statusCounts.shipping++;
+          else if (order.status === "Out For Delivery")
+            statusCounts.outForDelivery++;
+          else if (order.status === "Delivered") statusCounts.delivered++;
+          else if (order.status === "Order Confirmed") statusCounts.confirmed++;
+        });
+
+        setCounts(statusCounts);
       } catch (error) {
         console.error("Error fetching orders:", error);
+        setError("Failed to load orders");
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -116,7 +151,7 @@ export default function OrdersPage() {
             </div>
             <div>
               <h2 className="text-lg font-semibold">Confirmed Orders</h2>
-              <p className="text-2xl font-bold">200</p>
+              <p className="text-2xl font-bold">{counts.confirmed}</p>
             </div>
           </div>
           <div className="bg-white p-4 rounded-lg shadow-md flex items-center gap-4">
@@ -125,7 +160,7 @@ export default function OrdersPage() {
             </div>
             <div>
               <h2 className="text-lg font-semibold">Order Shipped</h2>
-              <p className="text-2xl font-bold">200</p>
+              <p className="text-2xl font-bold">{counts.shipping}</p>
             </div>
           </div>
           <div className="bg-white p-4 rounded-lg shadow-md flex items-center gap-4">
@@ -134,7 +169,7 @@ export default function OrdersPage() {
             </div>
             <div>
               <h2 className="text-lg font-semibold">Out For Delivery</h2>
-              <p className="text-2xl font-bold">200</p>
+              <p className="text-2xl font-bold">{counts.outForDelivery}</p>
             </div>
           </div>
         </div>
@@ -147,7 +182,7 @@ export default function OrdersPage() {
             </div>
             <div>
               <h2 className="text-lg font-semibold">Order Processing</h2>
-              <p className="text-2xl font-bold">200</p>
+              <p className="text-2xl font-bold">{counts.processing}</p>
             </div>
           </div>
           <div className="bg-white p-4 rounded-lg shadow-md flex items-center gap-4">
@@ -156,7 +191,7 @@ export default function OrdersPage() {
             </div>
             <div>
               <h2 className="text-lg font-semibold">Delivered</h2>
-              <p className="text-2xl font-bold">200</p>
+              <p className="text-2xl font-bold">{counts.delivered}</p>
             </div>
           </div>
           <div className="bg-white p-4 rounded-lg shadow-md flex items-center gap-4">
@@ -167,7 +202,9 @@ export default function OrdersPage() {
               <h2 className="text-lg font-semibold">
                 Order Confirm & Processing
               </h2>
-              <p className="text-2xl font-bold">656</p>
+              <p className="text-2xl font-bold">
+                {counts.confirmed + counts.processing}
+              </p>
             </div>
           </div>
         </div>
@@ -191,7 +228,7 @@ export default function OrdersPage() {
               >
                 <option value="">All Statuses</option>
                 <option value="Order Confirmed">Order Confirmed</option>
-                <option value="Order Completed">Order Completed</option>
+                <option value="Delivered">Delivered</option>
                 <option value="Out For Delivery">Out For Delivery</option>
                 <option value="Shipping">Shipping</option>
                 <option value="Processing">Processing</option>
@@ -212,21 +249,41 @@ export default function OrdersPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredOrders.length > 0 ? (
+                {loading ? (
+                  <tr>
+                    <td colSpan={6} className="p-3 text-center">
+                      <div className="flex justify-center">
+                        <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-gray-900"></div>
+                      </div>
+                    </td>
+                  </tr>
+                ) : error ? (
+                  <tr>
+                    <td colSpan={6} className="p-3 text-center text-red-500">
+                      {error}
+                    </td>
+                  </tr>
+                ) : filteredOrders.length > 0 ? (
                   filteredOrders.map((order, index) => (
                     <tr key={index} className="border-b hover:bg-gray-50">
-                      <td className="p-3">{order.orderNumber}</td>
-                      <td className="p-3">{order.createdAt.replace('T', ' ').substring(0, 19)}</td>
-                      <td className="p-3">{order.customer.firstName}</td>
+                      <td className="p-3">
+                        {order.orderNumber || order._id.substring(0, 8)}
+                      </td>
+                      <td className="p-3">
+                        {new Date(order.createdAt).toLocaleString()}
+                      </td>
+                      <td className="p-3">
+                        {order.customer.firstName} {order.customer.lastName}
+                      </td>
                       <td className="px-4 py-3">
-                        Rs. {order.totalPrice?.toFixed(2) || 'N/A'}
+                        Rs. {order.totalPrice?.toFixed(2) || "N/A"}
                       </td>
                       <td className="p-3">
                         <span
                           className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${
                             order.status === "Order Confirmed"
                               ? "bg-blue-300 text-blue-800"
-                              : order.status === "Order Completed"
+                              : order.status === "Delivered"
                               ? "bg-green-300 text-green-800"
                               : order.status === "Out For Delivery"
                               ? "bg-orange-300 text-orange-800"
@@ -241,7 +298,10 @@ export default function OrdersPage() {
                         </span>
                       </td>
                       <td className="p-3">
-                        <button className="p-2 bg-orange-500 text-white rounded-md shadow-md hover:bg-orange-600">
+                        <button
+                          className="p-2 bg-orange-500 text-white rounded-md shadow-md hover:bg-orange-600"
+                          onClick={() => router.push(`/orders/${order._id}`)}
+                        >
                           <EyeIcon className="h-5 w-5" />
                         </button>
                       </td>

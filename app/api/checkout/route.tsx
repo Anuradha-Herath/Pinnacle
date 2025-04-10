@@ -1,8 +1,8 @@
 import Order from "@/models/Order";
-import User from "@/models/User"; // Add this import
+import User from "@/models/User";
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
-import { authenticateUser } from "@/middleware/auth"; // Add this import
+import { authenticateUser } from "@/middleware/auth";
 
 // Safely initialize Stripe with error handling
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
@@ -114,18 +114,15 @@ export async function POST(request: NextRequest) {
 
     // Modified Step 5: Format line items with simplified structure for database compatibility
     const simpleLineItems = requestBody.cart.map((item: CartItem): LineItem => {
-      // Create a more detailed product name that includes color and size
       const productName = item.name;
       const productDetails = [];
 
       if (item.color) {
-        // Extract just the filename from the color URL if it's a URL
         let colorName = item.color;
         if (colorName.startsWith("http") || colorName.includes("/")) {
-          // Extract the filename without extension
           const parts = colorName.split("/");
           const fileName = parts[parts.length - 1];
-          colorName = fileName.split(".")[0]; // Remove file extension
+          colorName = fileName.split(".")[0];
         }
         productDetails.push(`Color: ${colorName}`);
       }
@@ -134,24 +131,20 @@ export async function POST(request: NextRequest) {
         productDetails.push(`Size: ${item.size}`);
       }
 
-      // Full product description including variants
       const fullProductName =
         productDetails.length > 0
           ? `${productName} (${productDetails.join(", ")})`
           : productName;
 
-      // Store image URL separately for session storage
       const imageUrl = item.image || "";
 
       return {
         quantity: item.quantity,
         price_data: {
           currency: "USD",
-          // Convert to string to match the schema expectation
           product_data: fullProductName,
-          unit_amount: Math.round(item.price * 100), // Convert to cents
+          unit_amount: Math.round(item.price * 100),
         },
-        // Include metadata as a separate field
         metadata: {
           productId: item.id,
           color: item.color || "N/A",
@@ -168,42 +161,38 @@ export async function POST(request: NextRequest) {
     // Step 6: Create a simplified order object to store
     try {
       console.log("Creating order object");
-      
-      // Check if the request is from an authenticated user
+
       const authResult = await authenticateUser(request);
       let userId = null;
-      
+
       if (authResult.authenticated && authResult.user) {
-        console.log("User is authenticated, linking order to user account:", authResult.user.id);
+        console.log(
+          "User is authenticated, linking order to user account:",
+          authResult.user.id
+        );
         userId = authResult.user.id;
       } else {
         console.log("Guest checkout - no user account associated");
       }
-      
-      // Transform cart items to match the expected OrderItem structure
+
       const orderItems = requestBody.cart.map((item: CartItem) => ({
         productId: item.id,
         name: item.name,
         price: item.price,
         quantity: item.quantity,
-        image: item.image || '',
+        image: item.image || "",
         size: item.size || undefined,
         color: item.color || undefined,
         metadata: {
-          additionalInfo: '',
-          customizations: ''
-        }
+          additionalInfo: "",
+          customizations: "",
+        },
       }));
-      
-      // Calculate points - 10% of total
+
       const pointsEarned = Math.round(requestBody.total * 0.1);
-      
-      // Create order data object that matches our consolidated Order schema
+
       const orderData = {
-        // Add user ID if authenticated
         user: userId ? new mongoose.Types.ObjectId(userId) : undefined,
-        
-        // Customer is saved as guest checkout info
         customer: {
           email: requestBody.email,
           firstName: requestBody.firstName,
@@ -211,38 +200,25 @@ export async function POST(request: NextRequest) {
           phone: requestBody.phone,
           marketingConsent: requestBody.emailOffers || false,
         },
-        
-        // Required payment method field
-        paymentMethod: 'card',
-        
-        // Required order items
+        paymentMethod: "card",
         orderItems: orderItems,
-        
-        // Required shipping address - properly structured
         shippingAddress: {
           fullName: `${requestBody.firstName} ${requestBody.lastName}`,
-          address: requestBody.address || 'Pickup in store',
-          city: requestBody.city || 'N/A',
-          postalCode: requestBody.postalCode || '00000',
-          country: requestBody.country || 'N/A',
+          address: requestBody.address || "Pickup in store",
+          city: requestBody.city || "N/A",
+          postalCode: requestBody.postalCode || "00000",
+          country: requestBody.country || "N/A",
           phone: requestBody.phone,
         },
-        
-        // Map to our schema's expected format
-        deliveryMethod: requestBody.deliveryMethod === 'ship' ? 'shipping' : 'pickup',
-        
-        // Price details
+        deliveryMethod:
+          requestBody.deliveryMethod === "ship" ? "shipping" : "pickup",
         itemsPrice: requestBody.subtotal,
         shippingPrice: requestBody.shippingCost,
-        taxPrice: 0, // Default or calculate
+        taxPrice: 0,
         totalPrice: requestBody.total,
-        
-        // Status - use valid enum value from the schema ('Processing', not 'pending')
-        status: 'Processing',
-        paymentStatus: 'pending',
-        
-        // Points calculation - store in order
-        pointsEarned: pointsEarned
+        status: "Processing",
+        paymentStatus: "pending",
+        pointsEarned: pointsEarned,
       };
 
       console.log("Order data prepared for saving");
@@ -250,58 +226,94 @@ export async function POST(request: NextRequest) {
       // Step 7: Create a new order document
       try {
         console.log("Checking MongoDB connection");
-        // Ensure MongoDB is connected
         if (mongoose.connection.readyState !== 1) {
-          await mongoose.connect(
-            process.env.MONGODB_URI || "mongodb://localhost:27017/pinnacle"
-          );
-          console.log("Connected to MongoDB");
+          console.log("MongoDB not connected, connecting now...");
+          if (!process.env.MONGODB_URI) {
+            console.error("MONGODB_URI environment variable is not set");
+            return NextResponse.json(
+              { error: "Database configuration error" },
+              { status: 500 }
+            );
+          }
+
+          try {
+            await mongoose.connect(process.env.MONGODB_URI);
+            console.log("Connected to MongoDB successfully");
+          } catch (connError) {
+            console.error("Failed to connect to MongoDB:", connError);
+            return NextResponse.json(
+              { error: "Database connection failed" },
+              { status: 500 }
+            );
+          }
+        } else {
+          console.log("MongoDB already connected");
         }
 
-        console.log("Creating new Order instance");
+        console.log(
+          "Creating new Order instance with data:",
+          JSON.stringify(orderData, null, 2)
+        );
         const newOrder = new Order(orderData);
 
-        console.log("Saving order to database");
-        await newOrder.save();
+        console.log("Saving order to database...");
+        try {
+          await newOrder.save();
+          console.log("Order saved successfully with ID:", newOrder._id);
+        } catch (saveError: any) {
+          console.error("Error saving order:", saveError);
+          console.error("Error details:", saveError.message);
 
-        console.log("Order saved successfully with ID:", newOrder._id);
+          return NextResponse.json(
+            {
+              error: "Failed to save order",
+              details: saveError.message,
+              validationErrors: saveError.errors
+                ? Object.keys(saveError.errors).map((key) => ({
+                    field: key,
+                    message: saveError.errors[key].message,
+                  }))
+                : [],
+            },
+            { status: 500 }
+          );
+        }
 
-        // If order is from authenticated user, update their points immediately
         if (userId) {
           try {
-            console.log(`Adding ${pointsEarned} reward points to user ${userId}'s account`);
-            
-            // Update user points atomically
+            console.log(
+              `Adding ${pointsEarned} reward points to user ${userId}'s account`
+            );
+
             const updatedUser = await User.findOneAndUpdate(
               { _id: userId },
               { $inc: { points: pointsEarned } },
               { new: true }
             );
-            
+
             if (updatedUser) {
-              console.log(`User points updated successfully. New total: ${updatedUser.points}`);
+              console.log(
+                `User points updated successfully. New total: ${updatedUser.points}`
+              );
             } else {
               console.error("Failed to update user points: User not found");
             }
           } catch (pointsError) {
             console.error("Error updating user points:", pointsError);
-            // Continue with checkout process even if points update fails
           }
         }
 
-        // Step 8: Create Stripe checkout session if Stripe is available
-        let redirectUrl = "/payment"; // Default fallback
+        let redirectUrl = "/payment";
 
         if (stripe) {
           try {
             console.log("Creating Stripe checkout session");
 
-            // Format line items for Stripe API requirements
             const stripeLineItems = simpleLineItems.map((item: LineItem) => ({
               price_data: {
                 currency: "USD",
                 product_data: {
-                  name: item.price_data.product_data, // Includes color and size
+                  name: item.price_data.product_data,
                   images: [item.metadata.imageUrl].filter(Boolean),
                 },
                 unit_amount: item.price_data.unit_amount,
@@ -309,13 +321,11 @@ export async function POST(request: NextRequest) {
               quantity: item.quantity,
             }));
 
-            // Log the items being sent to Stripe
             console.log(
               "Stripe line items:",
               JSON.stringify(stripeLineItems, null, 2)
             );
 
-            // Create the Stripe session
             const session = await stripe.checkout.sessions.create({
               payment_method_types: ["card"],
               line_items: stripeLineItems,
@@ -331,17 +341,14 @@ export async function POST(request: NextRequest) {
 
             console.log("Stripe session created:", session.id);
 
-            // Use Stripe's checkout URL
             redirectUrl = session.url;
           } catch (stripeError) {
             console.error("Stripe session creation failed:", stripeError);
-            // Continue with local payment processing when Stripe fails
           }
         } else {
           console.log("Skipping Stripe - not initialized");
         }
 
-        // When sending to the client, include images in the response
         const clientLineItems = simpleLineItems.map((item: LineItem) => ({
           quantity: item.quantity,
           price_data: {
@@ -355,11 +362,10 @@ export async function POST(request: NextRequest) {
           metadata: item.metadata,
         }));
 
-        // Return success with order info and appropriate redirect
         return NextResponse.json({
           success: true,
           orderId: newOrder.orderNumber || newOrder._id.toString(),
-          line_items: clientLineItems, // Send the enriched version to client
+          line_items: clientLineItems,
           redirect: redirectUrl,
         });
       } catch (dbError: any) {
