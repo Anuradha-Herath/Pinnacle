@@ -18,13 +18,15 @@ const connectDB = async () => {
 // PUT - Update order status
 export async function PUT(
   req: NextRequest,
-  context: { params: { id: string } }
+  context: { params: { id: string } | Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
 
-    // Get the orderId from params
-    const { id: orderId } = context.params;
+    // Properly handle params as a potential promise
+    const params = context.params;
+    const resolvedParams = params instanceof Promise ? await params : params;
+    const orderId = resolvedParams.id;
     
     if (!orderId || !mongoose.Types.ObjectId.isValid(orderId)) {
       return NextResponse.json({

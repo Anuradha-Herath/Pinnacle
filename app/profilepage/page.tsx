@@ -39,6 +39,10 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const ordersPerPage = 5;
+
   const { user } = useAuth();
   const router = useRouter();
 
@@ -89,6 +93,21 @@ export default function ProfilePage() {
     fetchProfileData();
   }, [user, router]);
 
+  // Calculate pagination values
+  const indexOfLastOrder = currentPage * ordersPerPage;
+  const indexOfFirstOrder = indexOfLastOrder - ordersPerPage;
+  const currentOrders = orders.slice(indexOfFirstOrder, indexOfLastOrder);
+  const totalPages = Math.ceil(orders.length / ordersPerPage);
+
+  // Change page handler
+  const paginate = (pageNumber: number) => {
+    if (pageNumber > 0 && pageNumber <= totalPages) {
+      setCurrentPage(pageNumber);
+      // Scroll to top of orders section for better UX
+      document.getElementById("orders-section")?.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
   // Handle edit profile redirect
   const handleEditProfile = () => {
     router.push('/profile/edit');
@@ -136,6 +155,7 @@ export default function ProfilePage() {
               <FaCrown className="text-yellow-500" title="Premium customer" />
             }
           </h1>
+
         </div>
 
         {/* Basic customer details - shown to all users */}
@@ -150,27 +170,22 @@ export default function ProfilePage() {
           <p>
             <strong>Phone:</strong> {profile?.phone || 'Not provided'}
           </p>
-          {user?.role !== 'admin' && (
-            <p>
-              <strong>Delivery Address:</strong> {profile?.address || 'Not provided'}
-            </p>
-          )}
-          <Button className="mt-3 flex items-center gap-2" onClick={handleEditProfile}>
+          <button className="mt-3 flex items-center gap-2 text-orange-500" onClick={handleEditProfile}>
             <FiEdit /> Edit Details
-          </Button>
+          </button>
         </div>
 
         {/* Customer-specific content - only shown if user role is not admin */}
         {user?.role !== 'admin' && (
           <>
             {/* Links section */}
-            <div className="flex justify-end space-x-6 text-lg font-semibold">
-              <Link href="/wishlist" className="hover:underline">
+            <div className="flex justify-end space-x-6 text-lg font-semibold mt-8 ">
+              <a href="/wishlist" className="hover:underline text-orange-500">
                 Wishlist
-              </Link>
-              <Link href="/payment-options" className="hover:underline">
+              </a>
+              <a href="/payment-options" className="hover:underline text-orange-500">
                 Payment Options
-              </Link>
+              </a>
             </div>
 
             {/* Rewards & Coupons section */}
@@ -178,7 +193,7 @@ export default function ProfilePage() {
               <div className="bg-gray-100 p-4 rounded-lg shadow-md text-center">
                 <div className="text-2xl">&#x1F4B3;</div>
                 <p>Collect coupon to get discounts!</p>
-                <Button className="mt-2">Collect</Button>
+                <button className="mt-2 text-orange-500 text-md hover:underline">Collect</button>
               </div>
               <div className="bg-gray-100 p-4 rounded-lg shadow-md text-center">
                 <div className="text-2xl">&#x2728;</div>
@@ -187,10 +202,10 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            {/* Orders section */}
-            <div className="mt-10">
+            {/* Orders section with pagination */}
+            <div className="mt-10" id="orders-section">
               <h2 className="text-2xl font-bold mb-4">My Orders</h2>
-              <ProfilePageToNav />
+              
             </div>
             
             {orders.length === 0 ? (
@@ -205,51 +220,105 @@ export default function ProfilePage() {
                 </Button>
               </div>
             ) : (
-              orders.map((order) => (
-                <div
-                  key={order._id}
-                  className="bg-gray-100 p-4 rounded-lg shadow-md mb-4"
-                >
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-semibold">Order #{order._id.substring(0, 8)}</h3>
-                    <span className="bg-black text-white px-3 py-1 rounded-lg">
-                      {order.status}
-                    </span>
-                  </div>
-                  {order.orderItems.map((item, index) => (
-                    <div key={index} className="flex items-center gap-4 mt-4">
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        className="w-16 h-16 rounded-lg"
-                      />
-                      <div>
-                        <p className="font-semibold">{item.name}</p>
-                        <p className="text-lg font-bold">
-                          Rs. {item.price.toFixed(2)}
-                        </p>
-                      </div>
-                      <p className="ml-auto">Qty: {item.quantity}</p>
-                    </div>
-                  ))}
-                  {order.pointsEarned > 0 && (
-                    <div className="mt-2">
-                      <span className="text-green-600 text-sm font-medium">
-                        You earned {order.pointsEarned} reward points from this order!
+              <>
+                {currentOrders.map((order) => (
+                  <div
+                    key={order._id}
+                    className="bg-gray-100 p-4 rounded-lg shadow-md mb-4"
+                  >
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-lg font-semibold">Order #{order._id.substring(0, 8)}</h3>
+                      <span 
+                        className={`px-3 py-1 rounded-lg text-sm font-medium ${
+                          order.status === "Order Confirmed"
+                            ? "bg-blue-300 text-blue-800"
+                            : order.status === "Order Completed" || order.status === "Delivered"
+                            ? "bg-green-300 text-green-800"
+                            : order.status === "Out For Delivery"
+                            ? "bg-orange-300 text-orange-800"
+                            : order.status === "Shipping"
+                            ? "bg-cyan-300 text-cyan-800"
+                            : order.status === "Processing"
+                            ? "bg-yellow-300 text-yellow-800"
+                            : "bg-gray-700 text-white"
+                        }`}
+                      >
+                        {order.status}
                       </span>
                     </div>
-                  )}
-                  <ReviewButton status={order.status} />
-                  <div className="text-right mt-2">
-                    <Button 
-                      className="text-sm font-semibold hover:underline"
-                      onClick={() => router.push(`/orders/${order._id}`)}
-                    >
-                      View Details
-                    </Button>
+                    {order.orderItems.map((item, index) => (
+                      <div key={index} className="flex items-center gap-4 mt-4">
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          className="w-16 h-16 rounded-lg"
+                        />
+                        <div>
+                          <p className="font-semibold">{item.name}</p>
+                          <p className="text-lg font-bold">
+                            Rs. {item.price.toFixed(2)}
+                          </p>
+                        </div>
+                        <p className="ml-auto">Qty: {item.quantity}</p>
+                      </div>
+                    ))}
+                    {order.pointsEarned > 0 && (
+                      <div className="mt-2">
+                        <span className="text-black text-sm font-medium">
+                          You earned {order.pointsEarned} reward points from this order!
+                        </span>
+                      </div>
+                    )}
+                  
+                    <div className="text-right mt-2">
+                      <button 
+                        className="text-md bg-orange-500  px-4 py-2 rounded-lg hover:bg-orange-600"
+                        onClick={() => router.push(`/orders/${order._id}`)}
+                      >
+                        View Details
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))
+                ))}
+
+                {/* Pagination controls - only show if there are multiple pages */}
+                {totalPages > 1 && (
+                  <div className="flex justify-end my-6">
+                    <div className="flex items-center border rounded-md overflow-hidden shadow-md">
+                      <button 
+                        className="px-4 py-2 border-r bg-white hover:bg-gray-200 disabled:opacity-50 disabled:hover:bg-white"
+                        onClick={() => paginate(currentPage - 1)}
+                        disabled={currentPage === 1}
+                      >
+                        Previous
+                      </button>
+                      
+                      {/* Page number buttons */}
+                      {[...Array(totalPages)].map((_, index) => (
+                        <button 
+                          key={index}
+                          className={`px-4 py-2 ${
+                            currentPage === index + 1 
+                              ? 'bg-orange-500 text-white font-semibold' 
+                              : 'border-x bg-white hover:bg-gray-200'
+                          }`}
+                          onClick={() => paginate(index + 1)}
+                        >
+                          {index + 1}
+                        </button>
+                      ))}
+                      
+                      <button 
+                        className="px-4 py-2 border-l bg-white hover:bg-gray-200 disabled:opacity-50 disabled:hover:bg-white"
+                        onClick={() => paginate(currentPage + 1)}
+                        disabled={currentPage === totalPages}
+                      >
+                        Next
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </>
         )}
@@ -262,7 +331,7 @@ export default function ProfilePage() {
               <Button 
                 variant="contained" 
                 onClick={() => router.push('/admin/dashboard')}
-                className="bg-blue-600 hover:bg-blue-700"
+                className="bg-orange-600 hover:bg-orange-700"
               >
                 Admin Dashboard
               </Button>

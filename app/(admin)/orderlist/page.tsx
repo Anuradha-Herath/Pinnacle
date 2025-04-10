@@ -215,7 +215,10 @@ export default function OrdersPage() {
                   <td className="p-3">
                     <button 
                       className="p-2 bg-orange-500 text-white rounded-md shadow-md hover:bg-orange-600"
-                      onClick={() => router.push(`/admin/order-details/${order._id}`)}
+                      onClick={() => {
+                        console.log(`Navigating to admin order details: /admin/order-details/${order._id}`);
+                        router.push(`/admin/order-details/${order._id}`);
+                      }}
                       aria-label="View order details"
                       title="View order details"
                     >

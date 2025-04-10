@@ -18,13 +18,15 @@ const connectDB = async () => {
 // GET - Get a specific order by ID
 export async function GET(
   req: NextRequest,
-  context: { params: { id: string } }
+  context: { params: { id: string } | Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
 
-    // Properly handle params by ensuring it's resolved
-    const { id: orderId } = context.params;
+    // Properly handle params as a potential promise
+    const params = context.params;
+    const resolvedParams = params instanceof Promise ? await params : params;
+    const orderId = resolvedParams.id;
     
     if (!orderId || !mongoose.Types.ObjectId.isValid(orderId)) {
       return NextResponse.json({

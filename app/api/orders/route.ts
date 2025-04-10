@@ -24,6 +24,7 @@ export async function GET(req: NextRequest) {
     // Check if user is authenticated and is an admin
     const authResult = await authenticateUser(req);
     if (!authResult.authenticated) {
+      console.error('Authentication failed:', authResult.error);
       return NextResponse.json({
         success: false,
         error: 'Authentication required',
@@ -32,6 +33,7 @@ export async function GET(req: NextRequest) {
 
     // For non-admin users, return forbidden
     if (authResult.user?.role !== 'admin') {
+      console.log('Non-admin attempted to access admin-only route:', authResult.user?.id);
       return NextResponse.json({
         success: false,
         error: 'Admin access required',
@@ -47,7 +49,7 @@ export async function GET(req: NextRequest) {
       orderNumber: order.orderNumber || `ORD-${order._id.toString().substr(-8)}`,
       createdAt: order.createdAt,
       customer: {
-        firstName: order.user ? 'Registered User' : (order.customer?.firstName || 'Guest'),
+        firstName:  order.customer?.firstName || 'Guest',
         lastName: order.customer?.lastName || '',
         email: order.customer?.email || '',
       },

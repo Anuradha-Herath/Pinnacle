@@ -139,9 +139,23 @@ export default function OrderDetail() {
       <div className="max-w-4xl mx-auto p-6">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">Order #{orderId.substring(0, 8)}</h1>
-          <span className="bg-black text-white px-3 py-1 rounded-lg">
-            {order?.status}
-          </span>
+          <span 
+                        className={`px-3 py-1 rounded-lg text-sm font-medium ${
+                          order?.status === "Order Confirmed"
+                            ? "bg-blue-300 text-blue-800"
+                            : order?.status === "Order Completed" || order?.status === "Delivered"
+                            ? "bg-green-300 text-green-800"
+                            : order?.status === "Out For Delivery"
+                            ? "bg-orange-300 text-orange-800"
+                            : order?.status === "Shipping"
+                            ? "bg-cyan-300 text-cyan-800"
+                            : order?.status === "Processing"
+                            ? "bg-yellow-300 text-yellow-800"
+                            : "bg-gray-700 text-white"
+                        }`}
+                      >
+                        {order?.status}
+                      </span>
         </div>
         
         <div className="bg-gray-100 p-4 rounded-lg shadow-md mb-6">
@@ -203,23 +217,20 @@ export default function OrderDetail() {
           
           {/* Enhanced points earned display */}
           {order && (order.pointsEarned > 0 || order.pointsEarned === 0) && (
-            <div className="flex justify-between py-2 text-green-600 mt-2 border-t border-gray-200">
+            <div className="flex justify-between py-2 text-black mt-2 border-t border-gray-200">
               <span className="font-medium">Reward Points Earned:</span>
               <span className="font-medium">{order.pointsEarned} points</span>
             </div>
           )}
         </div>
         
-        <div className="mt-6 flex justify-between">
-          <Button variant="outlined" onClick={() => router.push('/profilepage')}>
+        <div className="mt-6 flex justify-between ">
+          <button className="text-black font-md bg-orange-500 hover:bg-orange-600 rounded-lg px-4 py-2"
+           onClick={() => router.push('/profilepage')}>
             Back to Profile
-          </Button>
+          </button>
           
-          {order && order.status === 'Delivered' && (
-            <Button variant="contained" color="primary">
-              Write a Review
-            </Button>
-          )}
+          
         </div>
       </div>
       <Footer />
