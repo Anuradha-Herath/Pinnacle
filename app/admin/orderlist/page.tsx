@@ -201,12 +201,18 @@ export default function OrdersPage() {
               {filteredOrders.length > 0 ? (
                 filteredOrders.map((order, index) => (
                   <tr key={index} className="border-t">
-                    <td className="p-3">{order.orderNumber}</td>
-                    <td className="p-3">{order.createdAt.replace('T', ' ').substring(0, 19)}</td>
-                    <td className="p-3">{order.customer.firstName}</td>
+                    <td className="p-3">{order.orderNumber || "N/A"}</td>
+                    <td className="p-3">
+                      {order.createdAt
+                        ? order.createdAt.replace("T", " ").substring(0, 19)
+                        : "N/A"}
+                    </td>
+                    <td className="p-3">
+                      {order.customer?.firstName || "N/A"}
+                    </td>
                     <td className="p-3">
                       <span className="text-orange-500">$</span>{" "}
-                      {order.amount.total}
+                      {order.amount?.total || "N/A"}
                     </td>
                     {/* <td className="p-3">{order.deliveryNumber}</td> */}
                     <td className="p-3">
@@ -220,12 +226,13 @@ export default function OrdersPage() {
                             ? "bg-orange-300 text-orange-800"
                             : order.status === "Shipping"
                             ? "bg-cyan-300 text-cyan-800"
-                            : order.status === "Processing"
+                            : order.status === "Processing" ||
+                              order.status === "pending"
                             ? "bg-yellow-300 text-yellow-800"
                             : "bg-gray-100 text-gray-800"
                         }`}
                       >
-                        {order.status}
+                        {order.status || "pending"}
                       </span>
                     </td>
                     <td className="p-3">
