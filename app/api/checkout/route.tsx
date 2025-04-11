@@ -1,4 +1,3 @@
-import Product from "@/models/Product";
 import Order from "@/models/Order";
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
@@ -211,7 +210,7 @@ export async function POST(request: Request) {
             console.log("Creating Stripe checkout session");
 
             // Format line items for Stripe API requirements
-            const stripeLineItems = simpleLineItems.map((item) => ({
+            const stripeLineItems = simpleLineItems.map((item: { price_data: { product_data: any; unit_amount: any; }; metadata: { imageUrl: any; }; quantity: any; }) => ({
               price_data: {
                 currency: "USD",
                 product_data: {
@@ -236,13 +235,13 @@ export async function POST(request: Request) {
               mode: "payment",
               success_url: `${
                 process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
-              }/order-success?order=${newOrder.orderNumber}`,
+              }/checkout?success=1&order=${newOrder.orderNumber}`,
               cancel_url: `${
                 process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
               }/checkout?canceled=1`,
               metadata: { orderId: newOrder._id.toString() },
             });
-
+            console.log("metadata:", session.metadata);
             console.log("Stripe session created:", session.id);
 
             // Use Stripe's checkout URL
@@ -256,7 +255,7 @@ export async function POST(request: Request) {
         }
 
         // When sending to the client, include images in the response
-        const clientLineItems = simpleLineItems.map((item) => ({
+        const clientLineItems = simpleLineItems.map((item: { quantity: any; price_data: { currency: any; product_data: any; unit_amount: any; }; metadata: { imageUrl: any; }; }) => ({
           quantity: item.quantity,
           price_data: {
             currency: item.price_data.currency,

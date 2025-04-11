@@ -1,31 +1,51 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { EyeIcon, BellIcon, Cog6ToothIcon, ClockIcon, CheckCircleIcon, TruckIcon, CubeIcon, ShieldCheckIcon } from "@heroicons/react/24/solid";
 import Sidebar from "../../components/Sidebar";
 import { CogIcon, ShoppingCartIcon } from "lucide-react";
 
 export default function OrdersPage() {
+
+  const [orders, setOrders] = useState<Order[]>([]);
+  
+  useEffect(() => {
+    // Fetch orders from the API
+    const fetchOrders = async () => {
+      try {
+        const response = await fetch("/api/orders");
+        if (!response.ok) {
+          throw new Error("Failed to fetch orders");
+        }
+        const data = await response.json();
+        setOrders(data);
+      } catch (error) {
+        console.error("Error fetching orders:", error);
+      }
+    };
+
+    fetchOrders();
+  },[])
+
   const router = useRouter();
 
   // Dummy orders data
-  const [orders] = useState([
-    { orderId: "#538765", createdAt: "April 24, 2024", customer: "Robert Hue", items: 3, deliveryNumber: "#31212", status: "Order Confirmed" },
-    { orderId: "#538765", createdAt: "April 24, 2024", customer: "Mari Cury", items: 1, deliveryNumber: "#12111", status: "Order Completed" },
-    { orderId: "#538765", createdAt: "April 24, 2024", customer: "Anjalina Jolly", items: 4, deliveryNumber: "#1244", status: "Out For Delivery" },
-    { orderId: "#538765", createdAt: "April 24, 2024", customer: "Brad Pitt", items: 1, deliveryNumber: "#11121", status: "Shipping" },
-    { orderId: "#538765", createdAt: "April 24, 2024", customer: "Dammika Perera", items: 2, deliveryNumber: "#2121", status: "Order Completed" },
-    { orderId: "#538765", createdAt: "April 24, 2024", customer: "Malinga", items: 1, deliveryNumber: "#12121", status: "Order Completed" },
-    { orderId: "#538765", createdAt: "April 24, 2024", customer: "Kusal", items: 4, deliveryNumber: "#41212", status: "Processing" },
-  ]);
+  // const [orders] = useState([
+  //   { orderId: "#538765", createdAt: "April 24, 2024", customer: "Robert Hue", items: 3, deliveryNumber: "#31212", status: "Order Confirmed" },
+  //   { orderId: "#538765", createdAt: "April 24, 2024", customer: "Mari Cury", items: 1, deliveryNumber: "#12111", status: "Order Completed" },
+  //   { orderId: "#538765", createdAt: "April 24, 2024", customer: "Anjalina Jolly", items: 4, deliveryNumber: "#1244", status: "Out For Delivery" },
+  //   { orderId: "#538765", createdAt: "April 24, 2024", customer: "Brad Pitt", items: 1, deliveryNumber: "#11121", status: "Shipping" },
+  //   { orderId: "#538765", createdAt: "April 24, 2024", customer: "Dammika Perera", items: 2, deliveryNumber: "#2121", status: "Order Completed" },
+  //   { orderId: "#538765", createdAt: "April 24, 2024", customer: "Malinga", items: 1, deliveryNumber: "#12121", status: "Order Completed" },
+  //   { orderId: "#538765", createdAt: "April 24, 2024", customer: "Kusal", items: 4, deliveryNumber: "#41212", status: "Processing" },
+  // ]);
 
   // State for filtering orders by status
   const [filterStatus, setFilterStatus] = useState("");
 
-  // Filter orders based on selected status
   const filteredOrders = filterStatus
-    ? orders.filter((order) => order.status === filterStatus)
+    ? orders.filter((o) => o.status === filterStatus)
     : orders;
 
   return (
@@ -155,20 +175,21 @@ export default function OrdersPage() {
                 <th className="p-3">Order ID</th>
                 <th className="p-3">Created At</th>
                 <th className="p-3">Customer</th>
-                <th className="p-3">Items</th>
-                <th className="p-3">Delivery Number</th>
+                <th className="p-3">Amount</th>
+                {/* <th className="p-3">Delivery Number</th> */}
                 <th className="p-3">Order Status</th>
                 <th className="p-3">Action</th>
               </tr>
             </thead>
             <tbody>
-              {filteredOrders.map((order, index) => (
+              {filteredOrders.length > 0 ? 
+              (filteredOrders.map((order, index) => (
                 <tr key={index} className="border-t">
-                  <td className="p-3">{order.orderId}</td>
+                  <td className="p-3">{order.orderNumber}</td>
                   <td className="p-3">{order.createdAt}</td>
-                  <td className="p-3">{order.customer}</td>
-                  <td className="p-3">{order.items}</td>
-                  <td className="p-3">{order.deliveryNumber}</td>
+                  <td className="p-3">{order.customer.firstName}</td>
+                  <td className="p-3"><span className="text-orange-500">$</span> {order.amount.total}</td>
+                  {/* <td className="p-3">{order.deliveryNumber}</td> */}
                   <td className="p-3">
                     <span
                       className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${
@@ -194,7 +215,12 @@ export default function OrdersPage() {
                     </button>
                   </td>
                 </tr>
-              ))}
+              ))
+            ): (
+              <tr>
+                <td colSpan={6} className="p-3 text-center text-gray-500">No orders found</td>
+              </tr>
+            )}
             </tbody>
           </table>
 

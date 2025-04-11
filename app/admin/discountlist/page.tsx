@@ -56,6 +56,19 @@ export default function DiscountList() {
   // New state to store product/category details
   const [itemDetails, setItemDetails] = useState<Record<string, ItemDetails>>({});
   
+  // Add a cache for product/category details to persist across page navigations
+  const [itemDetailsCache, setItemDetailsCache] = useState<Record<string, ItemDetails>>(() => {
+    // Try to retrieve from sessionStorage on initial load
+    if (typeof window !== 'undefined') {
+      const cached = sessionStorage.getItem('discount-items-cache');
+      return cached ? JSON.parse(cached) : {};
+    }
+    return {};
+  });
+  
+  // Add loading state for images
+  const [loadingItems, setLoadingItems] = useState<Set<string>>(new Set());
+
   const parseDate = (dateString: string) => {
     try {
       // Try to parse the date string directly
@@ -73,6 +86,13 @@ export default function DiscountList() {
       return null;
     }
   };
+
+  useEffect(() => {
+    // Save cache to sessionStorage when it updates
+    if (Object.keys(itemDetailsCache).length > 0) {
+      sessionStorage.setItem('discount-items-cache', JSON.stringify(itemDetailsCache));
+    }
+  }, [itemDetailsCache]);
 
   useEffect(() => {
     // Fetch discounts from API
@@ -113,18 +133,37 @@ export default function DiscountList() {
     fetchDiscounts();
   }, []);
 
-  // Fetch product or category details for the discounts
+  // Optimized fetch for product/category details - parallel fetching
   useEffect(() => {
     if (discounts.length === 0) return;
     
     const fetchItemDetails = async () => {
-      const detailsMap: Record<string, ItemDetails> = {};
+      // Track which items we're currently loading
+      const itemsToLoad = new Set<string>();
       
-      for (const discount of discounts) {
-        try {
-          if (discount.type === 'Product') {
-            // Fetch product details
-            const response = await fetch(`/api/products/${discount.product}`);
+      // Filter to only fetch items we don't already have in cache
+      const uncachedProductIds = discounts
+        .filter(discount => discount.type === 'Product' && !itemDetailsCache[discount.product])
+        .map(discount => discount.product);
+      
+      const uncachedCategoryIds = discounts
+        .filter(discount => discount.type === 'Category' && !itemDetailsCache[discount.product])
+        .map(discount => discount.product);
+      
+      // If nothing new to fetch, exit early
+      if (uncachedProductIds.length === 0 && uncachedCategoryIds.length === 0) {
+        setItemDetails(itemDetailsCache);
+        return;
+      }
+      
+      // Mark all uncached items as loading
+      setLoadingItems(new Set([...uncachedProductIds, ...uncachedCategoryIds]));
+      
+      // Fetch product details in parallel
+      if (uncachedProductIds.length > 0) {
+        const productPromises = uncachedProductIds.map(async (productId) => {
+          try {
+            const response = await fetch(`/api/products/${productId}`);
             if (response.ok) {
               const data = await response.json();
               if (data.product) {
@@ -132,37 +171,84 @@ export default function DiscountList() {
                   ? data.product.gallery[0].src
                   : "/placeholder.png";
                   
-                detailsMap[discount.product] = {
-                  id: data.product._id,
-                  name: data.product.productName,
-                  image: galleryImage
+                return {
+                  id: productId,
+                  details: {
+                    id: data.product._id,
+                    name: data.product.productName,
+                    image: galleryImage
+                  }
                 };
               }
             }
-          } else if (discount.type === 'Category') {
-            // Fetch category details
-            const response = await fetch(`/api/categories/${discount.product}`);
+            return null;
+          } catch (err) {
+            console.error(`Error fetching product ${productId}:`, err);
+            return null;
+          }
+        });
+        
+        // Wait for all product fetches to complete
+        const productResults = await Promise.all(productPromises);
+        const newProductDetails = productResults
+          .filter(result => result !== null)
+          .reduce((acc, result) => {
+            if (result) acc[result.id] = result.details;
+            return acc;
+          }, {} as Record<string, ItemDetails>);
+          
+        // Update cache with new product details
+        setItemDetailsCache(prev => ({...prev, ...newProductDetails}));
+      }
+      
+      // Fetch category details in parallel
+      if (uncachedCategoryIds.length > 0) {
+        const categoryPromises = uncachedCategoryIds.map(async (categoryId) => {
+          try {
+            const response = await fetch(`/api/categories/${categoryId}`);
             if (response.ok) {
               const data = await response.json();
               if (data.category) {
-                detailsMap[discount.product] = {
-                  id: data.category._id,
-                  name: data.category.title,
-                  image: data.category.thumbnailImage || "/placeholder.png"
+                return {
+                  id: categoryId,
+                  details: {
+                    id: data.category._id,
+                    name: data.category.title,
+                    image: data.category.thumbnailImage || "/placeholder.png"
+                  }
                 };
               }
             }
+            return null;
+          } catch (err) {
+            console.error(`Error fetching category ${categoryId}:`, err);
+            return null;
           }
-        } catch (err) {
-          console.error(`Error fetching details for ${discount.type} ${discount.product}:`, err);
-        }
+        });
+        
+        // Wait for all category fetches to complete
+        const categoryResults = await Promise.all(categoryPromises);
+        const newCategoryDetails = categoryResults
+          .filter(result => result !== null)
+          .reduce((acc, result) => {
+            if (result) acc[result.id] = result.details;
+            return acc;
+          }, {} as Record<string, ItemDetails>);
+          
+        // Update cache with new category details
+        setItemDetailsCache(prev => ({...prev, ...newCategoryDetails}));
       }
       
-      setItemDetails(detailsMap);
+      // Clear loading state
+      setLoadingItems(new Set());
     };
     
+    // Set itemDetails from cache immediately while we fetch new data
+    setItemDetails(itemDetailsCache);
+    
+    // Then fetch any missing details
     fetchItemDetails();
-  }, [discounts]);
+  }, [discounts, itemDetailsCache]);
 
   // Apply pagination when filtered discounts or page changes
   useEffect(() => {
@@ -386,7 +472,7 @@ export default function DiscountList() {
             )}
           </div>
           <button
-            onClick={() => router.push("/discountcreate")}
+            onClick={() => router.push("/admin/discountcreate")}
             className="bg-orange-500 text-white px-4 py-2 rounded-md flex items-center gap-2 shadow-md hover:bg-orange-600"
           >
             <PlusIcon className="h-5 w-5" /> Create a Discount
@@ -500,22 +586,36 @@ export default function DiscountList() {
                   <tr key={discount._id} className="border-t">
                     <td className="p-3">
                       <div className="flex items-center">
-                        {/* Display image and name if available, fallback to ID */}
                         {itemDetails[discount.product] ? (
                           <>
-                            <div className="h-10 w-10 relative mr-3 overflow-hidden rounded">
-                              <img
-                                src={itemDetails[discount.product].image}
-                                alt={itemDetails[discount.product].name}
-                                className="h-full w-full object-cover"
-                              />
+                            <div className="h-10 w-10 relative mr-3 overflow-hidden rounded bg-gray-100">
+                              {loadingItems.has(discount.product) ? (
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <div className="w-5 h-5 border-2 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+                                </div>
+                              ) : (
+                                <img
+                                  src={itemDetails[discount.product].image}
+                                  alt={itemDetails[discount.product].name}
+                                  className="h-full w-full object-cover"
+                                  onError={(e) => {
+                                    (e.target as HTMLImageElement).src = '/placeholder.png';
+                                  }}
+                                  loading="eager"
+                                />
+                              )}
                             </div>
                             <span className="font-medium">
                               {itemDetails[discount.product].name}
                             </span>
                           </>
                         ) : (
-                          <span>{discount.product}</span>
+                          <>
+                            <div className="h-10 w-10 relative mr-3 overflow-hidden rounded bg-gray-100 flex items-center justify-center">
+                              <div className="w-5 h-5 border-2 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+                            </div>
+                            <span>{discount.product}</span>
+                          </>
                         )}
                       </div>
                     </td>

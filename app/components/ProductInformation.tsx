@@ -1,25 +1,29 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Star, Minus, Plus, ChevronDown } from "lucide-react";
 import Image from "next/image";
 import SizeGuideModal from "./SizeGuideModal";
 
 interface ProductInformationProps {
   product: {
+    id?: string;          // Make id optional as it might be _id from MongoDB
+    _id?: string;         // Add support for MongoDB's _id
     name: string;
     price: number;
+    discountedPrice?: number; // Add discounted price field
     description: string;
-    images: string[]; // Use images array instead of colors array
+    images: string[];
     sizes: string[];
     rating: number;
-    category?: string; // Add category property to check if it's an accessory
+    category?: string;
+    sizeChartImage?: string; // Add field for size chart image
   };
   quantity: number;
   updateQuantity: (value: number) => void;
   selectedSize: string | null;
   setSelectedSize: (size: string) => void;
-  onImageSelect?: (index: number) => void; // Add callback to handle image selection
+  onImageSelect?: (index: number) => void;
 }
 
 const ProductInformation: React.FC<ProductInformationProps> = ({ 
@@ -30,14 +34,33 @@ const ProductInformation: React.FC<ProductInformationProps> = ({
   setSelectedSize,
   onImageSelect 
 }) => {
-  // Add state for size guide modal
+  // State for size guide modal
   const [isSizeGuideOpen, setIsSizeGuideOpen] = useState(false);
-  // Add state for description expansion
+  // State for description expansion
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
+  // State for category data including size guide image
+  const [categoryData, setCategoryData] = useState<{
+    title?: string;
+    sizeGuideImage?: string | null;
+  } | null>(null);
+  // State for loading indicator
+  const [isLoadingSizeGuide, setIsLoadingSizeGuide] = useState(false);
+  
+  // Determine product ID
+  const productId = product.id || product._id;
   
   // Check if product is an accessory
   const isAccessory = product.category === "Accessories";
 
+  // Check if product has a discount
+  const hasDiscount = product.discountedPrice !== undefined && 
+                     product.discountedPrice < product.price;
+  
+  // Calculate discount percentage if discounted
+  const discountPercentage = hasDiscount 
+    ? Math.round(((product.price - product.discountedPrice!) / product.price) * 100) 
+    : 0;
+  
   // Generate stars for rating
   const renderRatingStars = () => {
     const stars = [];
@@ -100,8 +123,24 @@ const ProductInformation: React.FC<ProductInformationProps> = ({
         </span>
       </div>
       
-      {/* Price */}
-      <p className="text-2xl font-semibold mb-6">${product.price.toFixed(2)}</p>
+      {/* Price - Updated to show both regular and discounted price */}
+      <div className="mb-6">
+        {hasDiscount ? (
+          <div className="flex items-center gap-2">
+            <p className="text-2xl font-semibold text-red-600">
+              ${product.discountedPrice!.toFixed(2)}
+            </p>
+            <p className="text-lg text-gray-500 line-through">
+              ${product.price.toFixed(2)}
+            </p>
+            <span className="bg-red-100 text-red-700 text-xs font-medium px-2 py-0.5 rounded">
+              -{discountPercentage}%
+            </span>
+          </div>
+        ) : (
+          <p className="text-2xl font-semibold">${product.price.toFixed(2)}</p>
+        )}
+      </div>
       
       {/* Product Images - Replacing color circles */}
       {product.images && product.images.length > 1 && (
@@ -135,10 +174,31 @@ const ProductInformation: React.FC<ProductInformationProps> = ({
           <div className="flex justify-between items-center mb-2">
             <h2 className="text-sm font-medium">Size</h2>
             <button 
-              onClick={() => setIsSizeGuideOpen(true)} 
-              className="text-xs text-blue-600 underline hover:text-blue-800"
+              onClick={() => {
+                console.log("Opening size guide modal with:", {
+                  category: product.category,
+                  sizeChartImage: product.sizeChartImage // Pass product's size chart image
+                });
+                setIsSizeGuideOpen(true);
+              }} 
+              className="text-xs flex items-center gap-1 text-blue-600 underline hover:text-blue-800"
+              disabled={isLoadingSizeGuide}
             >
-              Size Guide
+              {isLoadingSizeGuide ? (
+                <>
+                  <span className="inline-block h-3 w-3 rounded-full border-2 border-t-blue-600 border-r-transparent border-b-transparent border-l-transparent animate-spin mr-1"></span>
+                  Loading...
+                </>
+              ) : (
+                <>
+                  Size Guide
+                  {product.sizeChartImage ? (
+                    <span className="inline-block w-2 h-2 rounded-full bg-green-500 ml-1" title="Size guide available"></span>
+                  ) : (
+                    <span className="inline-block w-2 h-2 rounded-full bg-gray-300 ml-1" title="No size guide found"></span>
+                  )}
+                </>
+              )}
             </button>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -180,7 +240,7 @@ const ProductInformation: React.FC<ProductInformationProps> = ({
         </div>
       </div>
       
-      {/* Description - Moved below sizes and quantity with enhanced styling */}
+      {/* Description */}
       <div className="my-8 rounded-lg border border-gray-200 overflow-hidden bg-gray-50">
         <button 
           onClick={() => setIsDescriptionExpanded(!isDescriptionExpanded)}
@@ -207,7 +267,8 @@ const ProductInformation: React.FC<ProductInformationProps> = ({
         <SizeGuideModal 
           isOpen={isSizeGuideOpen} 
           onClose={() => setIsSizeGuideOpen(false)} 
-          category="apparel" 
+          category="apparel"
+          sizeChartImage={product.sizeChartImage} // Pass the sizeChartImage to SizeGuideModal
         />
       )}
     </div>
