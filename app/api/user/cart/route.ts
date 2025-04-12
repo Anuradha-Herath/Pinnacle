@@ -64,10 +64,20 @@ export async function PUT(request: NextRequest) {
     
     const { cart } = await request.json();
     
+    // Log the cart update operation with more details
+    console.log(`Updating cart for user ${authResult.user?.id}`);
+    console.log(`Cart items: ${cart?.length || 0}`);
+    
+    // Special handling for clearing the cart
+    const isClearing = Array.isArray(cart) && cart.length === 0;
+    if (isClearing) {
+      console.log(`CLEARING CART for user ${authResult.user?.id}`);
+    }
+    
     await connectDB();
     const user = await User.findByIdAndUpdate(
       authResult.user?.id,
-      { $set: { cart } },
+      { $set: { cart: cart || [] } }, // Ensure we handle null/undefined cart
       { new: true }
     );
     
@@ -76,6 +86,16 @@ export async function PUT(request: NextRequest) {
         success: false, 
         error: 'User not found' 
       }, { status: 404 });
+    }
+    
+    // Special response for clearing cart
+    if (isClearing) {
+      console.log(`Cart cleared successfully for user ${authResult.user?.id}`);
+      return NextResponse.json({
+        success: true,
+        cleared: true,
+        cart: []
+      });
     }
     
     return NextResponse.json({
@@ -88,6 +108,50 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ 
       success: false, 
       error: 'Failed to update cart' 
+    }, { status: 500 });
+  }
+}
+
+// New: Add a special DELETE method just for clearing the cart
+export async function DELETE(request: NextRequest) {
+  try {
+    const authResult = await authenticateUser(request);
+    
+    if (!authResult.authenticated) {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'Authentication required' 
+      }, { status: 401 });
+    }
+    
+    console.log(`DELETE request to clear cart for user ${authResult.user?.id}`);
+    
+    await connectDB();
+    const user = await User.findByIdAndUpdate(
+      authResult.user?.id,
+      { $set: { cart: [] } },
+      { new: true }
+    );
+    
+    if (!user) {
+      return NextResponse.json({ 
+        success: false, 
+        error: 'User not found' 
+      }, { status: 404 });
+    }
+    
+    console.log(`Cart successfully cleared via DELETE for user ${authResult.user?.id}`);
+    
+    return NextResponse.json({
+      success: true,
+      message: 'Cart cleared successfully'
+    });
+    
+  } catch (error) {
+    console.error('Error clearing cart:', error);
+    return NextResponse.json({ 
+      success: false, 
+      error: 'Failed to clear cart' 
     }, { status: 500 });
   }
 }

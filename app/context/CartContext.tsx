@@ -24,7 +24,7 @@ export interface CartContextType {
   cart: CartItem[];
   addToCart: (item: Omit<CartItem, 'quantity'> & { quantity?: number }, showNotification?: boolean) => void;
   removeFromCart: (id: string, size?: string, color?: string) => void;
-  clearCart: () => void;
+  clearCart: () => Promise<void>;
   updateQuantity: (id: string, quantity: number, size?: string, color?: string) => void;
   getCartTotal: () => number;
   getCartCount: () => number;
@@ -35,7 +35,7 @@ const CartContext = createContext<CartContextType>({
   cart: [],
   addToCart: () => {},
   removeFromCart: () => {},
-  clearCart: () => {},
+  clearCart: async () => {},
   updateQuantity: () => {},
   getCartTotal: () => 0,
   getCartCount: () => 0,
@@ -48,19 +48,28 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [cart, setCart] = useState<CartItem[]>([]);
   const [initialized, setInitialized] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isClearing, setIsClearing] = useState(false); // New flag to track clearing state
   const { user } = useAuth();
   
   // Load cart from localStorage or API when component mounts or user changes
   useEffect(() => {
+    // Don't reload cart if we're in the process of clearing it
+    if (isClearing) {
+      console.log("Skipping cart reload because cart is being cleared");
+      return;
+    }
+    
     const loadCart = async () => {
       try {
         setIsLoading(true);
         if (user) {
           // User is logged in, fetch cart from API
+          console.log("Fetching cart from server for user:", user.id);
           const response = await fetch('/api/user/cart');
           if (response.ok) {
             const data = await response.json();
             if (data.success && data.cart) {
+              console.log("Successfully loaded cart from server with", data.cart.length, "items");
               // Convert API cart format to our CartItem format with validated images
               const apiCart = data.cart.map((item: any) => ({
                 id: item.productId,
@@ -73,9 +82,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
               }));
               setCart(apiCart);
             }
+          } else {
+            console.log("Failed to load cart from server:", response.status);
           }
         } else {
           // User is not logged in, load from localStorage
+          console.log("Loading cart from localStorage (not logged in)");
           const savedCart = localStorage.getItem('cart');
           if (savedCart) {
             try {
@@ -104,7 +116,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     loadCart();
-  }, [user]);
+  }, [user, isClearing]);
 
   // Save cart to localStorage and API when it changes
   useEffect(() => {
@@ -254,8 +266,55 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
-  const clearCart = () => {
-    setCart([]);
+  const clearCart = async (): Promise<void> => {
+    try {
+      console.log("Starting cart clearing process...");
+      setIsClearing(true); // Set flag to prevent reload during clearing
+      setIsLoading(true);
+      
+      // Clear local state first
+      setCart([]);
+      
+      // Always clear localStorage
+      localStorage.removeItem('cart');
+      console.log("Cleared cart from localStorage");
+      
+      // For logged-in users, explicitly clear the cart on the server
+      if (user) {
+        console.log("Clearing cart on server for user:", user.id);
+        try {
+          const response = await fetch('/api/user/cart', {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ cart: [] }),
+          });
+          
+          if (!response.ok) {
+            console.error('Failed to clear cart on server:', await response.text());
+            throw new Error('Failed to clear cart on server');
+          } else {
+            console.log('Cart successfully cleared on server');
+          }
+        } catch (error) {
+          console.error('Error clearing cart on server:', error);
+          throw error; // Re-throw to be caught by the outer try-catch
+        }
+      }
+      
+      console.log("Cart clearing completed successfully");
+      return Promise.resolve();
+    } catch (error) {
+      console.error("Cart clearing failed:", error);
+      return Promise.reject(error);
+    } finally {
+      setIsLoading(false);
+      // Keep isClearing true for a short duration to prevent immediate reload
+      setTimeout(() => {
+        setIsClearing(false);
+      }, 2000); // 2-second delay before allowing reload
+    }
   };
 
   const updateQuantity = (id: string, quantity: number, size?: string, color?: string) => {
