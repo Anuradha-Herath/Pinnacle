@@ -33,16 +33,18 @@ const ProductsPage = () => {
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
   const router = useRouter();
+  const [filter, setFilter] = useState('All'); // Add state for filter
   const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
 
-  const fetchProducts = async (page = 1, query = searchQuery) => {
+  const fetchProducts = async (page = 1, query = searchQuery, category = filter) => {
     try {
       setLoading(true);
       // Include the search query in the API call if it exists
       const queryParam = query ? `&q=${encodeURIComponent(query)}` : '';
-      const response = await fetch(`/api/products?page=${page}&limit=${itemsPerPage}${queryParam}`);
+      const categoryParam = category && category !== 'All' ? `&category=${encodeURIComponent(category)}` : '';
+      const response = await fetch(`/api/products?page=${page}&limit=${itemsPerPage}${queryParam}${categoryParam}`);
       
       if (!response.ok) {
         throw new Error('Failed to fetch products');
@@ -204,38 +206,7 @@ const ProductsPage = () => {
             
             {/* Search bar with suggestions */}
             <div ref={searchRef} className="relative w-full max-w-md">
-              <form onSubmit={handleSearch} className="flex w-full">
-                <div className="relative flex-grow">
-                  <input
-                    type="text"
-                    placeholder="Search products..."
-                    value={searchQuery}
-                    onChange={handleSearchInputChange}
-                    onFocus={() => searchQuery.length >= 2 && setShowSuggestions(true)}
-                    className="w-full pl-10 pr-10 py-2 border rounded-l-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  />
-                  <MagnifyingGlassIcon className="h-5 w-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
-                  
-                  {/* Clear search button - only show when there's text */}
-                  {searchQuery && (
-                    <button
-                      type="button"
-                      onClick={handleClearSearch}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    >
-                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                      </svg>
-                    </button>
-                  )}
-                </div>
-                <button 
-                  type="submit"
-                  className="bg-orange-500 text-white px-4 py-2 rounded-r-md hover:bg-orange-600"
-                >
-                  Search
-                </button>
-              </form>
+           
               
               {/* Search Suggestions with Images */}
               {showSuggestions && suggestions.length > 0 && (
@@ -269,7 +240,63 @@ const ProductsPage = () => {
                 </div>
               )}
             </div>
-          </header>
+            {/* Main Category Filter */}
+            <div className="flex items-center mt-4 md:mt-0 w-full justify-between">
+              <div className="relative w-full max-w-md">
+              {/* Search bar remains on the left */}
+              <form onSubmit={handleSearch} className="flex w-full">
+                <div className="relative flex-grow">
+                <input
+                  type="text"
+                  placeholder="Search products..."
+                  value={searchQuery}
+                  onChange={handleSearchInputChange}
+                  onFocus={() => searchQuery.length >= 2 && setShowSuggestions(true)}
+                  className="w-full pl-10 pr-10 py-2 border rounded-l-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                />
+                <MagnifyingGlassIcon className="h-5 w-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+                {searchQuery && (
+                  <button
+                  type="button"
+                  onClick={handleClearSearch}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                  </button>
+                )}
+                </div>
+                <button 
+                type="submit"
+                className="bg-orange-500 text-white px-4 py-2 rounded-r-md hover:bg-orange-600"
+                >
+                Search
+                </button>
+              </form>
+              </div>
+
+              {/* Dropdown filter moved to the right */}
+              <div className="relative ml-4">
+              <select
+                value={filter}
+                onChange={(e) => {
+                const selectedFilter = e.target.value;
+                setFilter(selectedFilter);
+                fetchProducts(1, searchQuery, selectedFilter);
+                }}
+                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+              >
+                <option value="All">All Products</option>
+                <option value="Men">Men</option>
+                <option value="Women">Women</option>
+                <option value="Accessories">Accessories</option>
+              </select>
+              </div>
+            </div>
+            </header>
+
+          
 
           {/* Loading state */}
           {loading && (
