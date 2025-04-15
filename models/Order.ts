@@ -54,7 +54,15 @@ export interface IOrder extends Document {
   totalPrice: number;
   pointsEarned: number;
   orderNumber: string;  // Human-readable order ID
-  deliveryMethod: 'shipping' | 'pickup';
+  deliveryMethod: 'shipping' | 'pickup' | 'standard';
+  shipping?: {
+    deliveryMethod: 'shipping' | 'pickup' | 'standard';
+  };
+  amount?: {
+    subtotal: number;
+    shippingCost: number;
+    total: number;
+  };
   status: 'Processing' | 'Out For Delivery' | 'Delivered' | 'Cancelled';
   paymentStatus: 'pending' | 'paid' | 'failed' | 'refunded';
   deliveredAt?: Date;
@@ -107,10 +115,25 @@ const OrderSchema = new Schema<IOrder>(
       phone: { type: String, required: true },
     },
     
+    // Add required fields from Order.tsx for compatibility
+    shipping: {
+      deliveryMethod: {
+        type: String,
+        enum: ['shipping', 'pickup', 'standard'],
+        required: true,
+      }
+    },
+    
+    amount: {
+      subtotal: { type: Number, required: true },
+      shippingCost: { type: Number, required: true },
+      total: { type: Number, required: true }
+    },
+    
     // Delivery method
     deliveryMethod: {
       type: String,
-      enum: ['shipping', 'pickup'],
+      enum: ['shipping', 'pickup', 'standard'],
       default: 'shipping',
     },
     

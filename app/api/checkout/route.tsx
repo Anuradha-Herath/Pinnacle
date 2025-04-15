@@ -191,6 +191,7 @@ export async function POST(request: NextRequest) {
 
       const pointsEarned = Math.round(requestBody.total * 0.1);
 
+      // Updated order data structure to match schema requirements
       const orderData = {
         user: userId ? new mongoose.Types.ObjectId(userId) : undefined,
         customer: {
@@ -210,8 +211,18 @@ export async function POST(request: NextRequest) {
           country: requestBody.country || "N/A",
           phone: requestBody.phone,
         },
-        deliveryMethod:
-          requestBody.deliveryMethod === "ship" ? "shipping" : "pickup",
+        // Add the required amount object with proper fields
+        amount: {
+          subtotal: requestBody.subtotal,
+          shippingCost: requestBody.shippingCost,
+          total: requestBody.total
+        },
+        // Use the correct enum value for shipping.deliveryMethod
+        shipping: {
+          deliveryMethod: requestBody.deliveryMethod === "ship" ? "shipping" : "pickup"
+        },
+        // Keep these fields for backward compatibility
+        deliveryMethod: requestBody.deliveryMethod === "ship" ? "shipping" : "pickup",
         itemsPrice: requestBody.subtotal,
         shippingPrice: requestBody.shippingCost,
         taxPrice: 0,
