@@ -298,12 +298,14 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
         </div>
       )}
       
-      <button 
-        onClick={handleAddToCart}
-        className="mt-3 w-full bg-black text-white py-2 rounded hover:bg-gray-800 transition-colors"
-      >
-        Add to Cart
-      </button>
+      <div className="flex justify-start mt-4">
+        <button 
+          onClick={handleAddToCart}
+          className="px-10 bg-black text-white py-2.5 rounded-full hover:bg-gray-800 transition-colors text-base font-medium"
+        >
+          Add to Cart
+        </button>
+      </div>
     </div>
   );
 };
