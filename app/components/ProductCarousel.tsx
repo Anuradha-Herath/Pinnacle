@@ -155,7 +155,9 @@ const ProductCarousel = ({ title, products, loading = false }: ProductCarouselPr
 
   return (
     <div className="px-4 md:px-8 lg:px-12 my-8">
-      {title && <h2 className="text-2xl font-bold text-white mb-6">{title}</h2>}
+      {title && (
+        <h2 className="text-2xl font-bold text-gray-800 mb-6">{title}</h2>
+      )}
 
       {loading ? (
         <div className="flex justify-center items-center h-40">
@@ -165,7 +167,7 @@ const ProductCarousel = ({ title, products, loading = false }: ProductCarouselPr
         <div className="relative">
           {scrollPosition > 0 && (
             <button
-              className="absolute left-0 z-10 top-1/2 -translate-y-1/2 -translate-x-6 bg-gray-800 hover:bg-gray-700 text-white p-2 rounded-full shadow-lg opacity-80 hover:opacity-100 transition-opacity"
+              className="absolute left-0 z-10 top-1/2 -translate-y-1/2 -translate-x-6 bg-gray-200 hover:bg-gray-300 text-gray-800 p-2 rounded-full shadow-lg opacity-80 hover:opacity-100 transition-opacity"
               onClick={() => scroll("left")}
             >
               <ChevronLeft size={24} />
@@ -186,7 +188,7 @@ const ProductCarousel = ({ title, products, loading = false }: ProductCarouselPr
 
           {scrollPosition < maxScroll && maxScroll > 0 && (
             <button
-              className="absolute right-0 z-10 top-1/2 -translate-y-1/2 translate-x-6 bg-gray-800 hover:bg-gray-700 text-white p-2 rounded-full shadow-lg opacity-80 hover:opacity-100 transition-opacity"
+              className="absolute right-0 z-10 top-1/2 -translate-y-1/2 translate-x-6 bg-gray-200 hover:bg-gray-300 text-gray-800 p-2 rounded-full shadow-lg opacity-80 hover:opacity-100 transition-opacity"
               onClick={() => scroll("right")}
             >
               <ChevronRight size={24} />
@@ -194,28 +196,30 @@ const ProductCarousel = ({ title, products, loading = false }: ProductCarouselPr
           )}
 
           {products.length > cardsPerView && (
-            <div className="relative h-2 bg-gray-700 rounded-full mt-6 overflow-hidden">
+            <div className="relative h-2 bg-gray-200 rounded-full mt-6 overflow-hidden">
               <div className="absolute inset-0 flex">
                 {Array.from({ length: products.length }).map((_, idx) => (
                   <div
                     key={idx}
-                    className="flex-grow border-r border-gray-600 last:border-0"
+                    className="flex-grow border-r border-gray-300 last:border-0"
                   />
                 ))}
               </div>
 
               <div
-                className="absolute top-0 left-0 h-full bg-orange-500 will-change-transform"
+                className="absolute top-0 left-0 h-full bg-[#1D1D1D] will-change-transform"
                 style={{
                   width: "100%",
-                  transform: `scaleX(${maxScroll > 0 ? scrollPosition / maxScroll : 0})`,
+                  transform: `scaleX(${
+                    maxScroll > 0 ? scrollPosition / maxScroll : 0
+                  })`,
                   transformOrigin: "left",
                   transition: isProgrammaticScrollRef.current
                     ? "transform 0.4s ease-out"
                     : "none",
                 }}
               >
-                <div className="absolute inset-0 bg-gradient-to-r from-orange-400 to-orange-500 opacity-70" />
+                <div className="absolute inset-0 bg-gradient-to-r from-gray-800 to-black opacity-70" />
               </div>
 
               <div
@@ -257,7 +261,7 @@ const ProductCarousel = ({ title, products, loading = false }: ProductCarouselPr
           )}
         </div>
       ) : (
-        <div className="text-center py-8 text-white">No products found.</div>
+        <div className="text-center py-8 text-gray-800">No products found.</div>
       )}
     </div>
   );
