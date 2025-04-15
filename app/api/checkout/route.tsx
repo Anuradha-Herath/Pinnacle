@@ -309,6 +309,7 @@ export async function POST(request: NextRequest) {
           try {
             console.log("Creating Stripe checkout session");
 
+            // Format line items for Stripe API requirements
             const stripeLineItems = simpleLineItems.map((item: LineItem) => ({
               price_data: {
                 currency: "USD",
@@ -338,7 +339,7 @@ export async function POST(request: NextRequest) {
               }/checkout?canceled=1`,
               metadata: { orderId: newOrder._id.toString() },
             });
-
+            console.log("metadata:", session.metadata);
             console.log("Stripe session created:", session.id);
 
             redirectUrl = session.url;
@@ -349,6 +350,7 @@ export async function POST(request: NextRequest) {
           console.log("Skipping Stripe - not initialized");
         }
 
+        // When sending to the client, include images in the response
         const clientLineItems = simpleLineItems.map((item: LineItem) => ({
           quantity: item.quantity,
           price_data: {

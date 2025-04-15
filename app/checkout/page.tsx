@@ -36,8 +36,23 @@ function Checkout() {
     if (isClient && !cartClearedRef.current) {
       const searchParams = new URLSearchParams(window.location.search);
       if (searchParams.get("success") === "1") {
-        clearCart();
-        cartClearedRef.current = true;
+        // Use async IIFE to properly handle the async clearCart
+        (async () => {
+          try {
+            console.log("Success parameter detected, clearing cart");
+            cartClearedRef.current = true; // Set the flag first to prevent multiple attempts
+            
+            await clearCart();
+            console.log("Cart cleared successfully after payment");
+            
+            // Force reload the page to ensure clean state
+            // This is optional but can help ensure a fresh start
+            // setTimeout(() => window.location.reload(), 500);
+          } catch (error) {
+            console.error("Error clearing cart:", error);
+            // Still mark as cleared even if there was an error to prevent endless retries
+          }
+        })();
       }
     }
   }, [isClient, clearCart]);

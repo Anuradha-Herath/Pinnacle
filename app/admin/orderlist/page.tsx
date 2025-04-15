@@ -43,14 +43,22 @@ export default function OrdersPage() {
     delivered: 0,
     confirmed: 0,
   });
-  // Add state for profile picture
   const [profilePicture, setProfilePicture] = useState<string>('/p9.webp');
+  
+  // State for filtering orders by status
+  const [filterStatus, setFilterStatus] = useState("");
+
+  // Add pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10); // Show 10 orders per page
+  const [totalPages, setTotalPages] = useState(1);
+  const [displayedOrders, setDisplayedOrders] = useState<Order[]>([]);
 
   // Fetch profile data to get the current profile picture
   useEffect(() => {
     const fetchProfilePicture = async () => {
       try {
-        const response = await fetch('/api/profile?t=' + Date.now()); // Add cache-busting parameter
+        const response = await fetch('/api/profile?t=' + Date.now());
         if (response.ok) {
           const data = await response.json();
           if (data.success && data.user.profilePicture) {
@@ -63,7 +71,7 @@ export default function OrdersPage() {
     };
 
     fetchProfilePicture();
-  }, []); // Dependency array empty to only run on mount
+  }, []);
 
   useEffect(() => {
     // Fetch orders from the API
@@ -109,13 +117,35 @@ export default function OrdersPage() {
     fetchOrders();
   }, []);
 
-  // State for filtering orders by status
-  const [filterStatus, setFilterStatus] = useState("");
-
   // Filter orders based on selected status
   const filteredOrders = filterStatus
     ? orders.filter((order) => order.status === filterStatus)
     : orders;
+
+  // Apply pagination when filtered orders or page changes
+  useEffect(() => {
+    // Calculate total pages
+    const total = Math.ceil(filteredOrders.length / itemsPerPage);
+    setTotalPages(total > 0 ? total : 1);
+    
+    // Apply pagination
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    setDisplayedOrders(filteredOrders.slice(startIndex, endIndex));
+  }, [currentPage, filteredOrders, itemsPerPage]);
+
+  // Handle pagination navigation
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
 
   return (
     <div className="flex">
@@ -157,7 +187,7 @@ export default function OrdersPage() {
               className="p-1 rounded-full border-2 border-gray-300"
             >
               <img
-                src={`${profilePicture}?t=${Date.now()}`} // Add cache-busting timestamp
+                src={`${profilePicture}?t=${Date.now()}`}
                 alt="Profile"
                 className="h-8 w-8 rounded-full object-cover"
                 onError={(e) => {
@@ -249,7 +279,10 @@ export default function OrdersPage() {
               {/* Order Status Filter Dropdown */}
               <select
                 value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
+                onChange={(e) => {
+                  setFilterStatus(e.target.value);
+                  setCurrentPage(1); // Reset to page 1 when filter changes
+                }}
                 className="border px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
               >
                 <option value="">All Statuses</option>
@@ -289,8 +322,8 @@ export default function OrdersPage() {
                       {error}
                     </td>
                   </tr>
-                ) : filteredOrders.length > 0 ? (
-                  filteredOrders.map((order, index) => (
+                ) : displayedOrders.length > 0 ? (
+                  displayedOrders.map((order, index) => (
                     <tr key={index} className="border-b hover:bg-gray-50">
                       <td className="p-3">
                         {order.orderNumber || order._id.substring(0, 8)}
@@ -344,23 +377,38 @@ export default function OrdersPage() {
             </table>
           </div>
 
-          {/* Pagination */}
-          <div className="flex justify-end mt-6 pr-4">
-            <div className="flex items-center border rounded-md overflow-hidden shadow-md">
-              <button className="px-4 py-2 border-r bg-white hover:bg-gray-200">
-                Previous
-              </button>
-              <button className="px-4 py-2 bg-orange-500 text-white font-semibold">
-                1
-              </button>
-              <button className="px-4 py-2 border-l bg-white hover:bg-gray-200">
-                2
-              </button>
-              <button className="px-4 py-2 border-l bg-white hover:bg-gray-200">
-                Next
-              </button>
+          {/* Pagination - Updated */}
+          {filteredOrders.length > 0 && (
+            <div className="flex justify-center mt-6">
+              <div className="flex items-center gap-2">
+                <button
+                  className={`px-4 py-2 rounded-md ${
+                    currentPage === 1
+                      ? "bg-orange-200 text-gray-700 cursor-not-allowed"
+                      : "bg-orange-500 text-white hover:bg-orange-600"
+                  }`}
+                  onClick={handlePreviousPage}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </button>
+                <span className="mx-2 text-gray-600">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  className={`px-4 py-2 rounded-md ${
+                    currentPage === totalPages
+                      ? "bg-orange-200 text-gray-700 cursor-not-allowed"
+                      : "bg-orange-500 text-white hover:bg-orange-600"
+                  }`}
+                  onClick={handleNextPage}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                </button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>
