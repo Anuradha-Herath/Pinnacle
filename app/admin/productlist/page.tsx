@@ -33,7 +33,7 @@ const ProductsPage = () => {
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
   const router = useRouter();
-  const [filter, setFilter] = useState('All'); // Add state for filter
+const [filter, setFilter] = useState('All'); // Add state for filter
   const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
@@ -43,7 +43,7 @@ const ProductsPage = () => {
       setLoading(true);
       // Include the search query in the API call if it exists
       const queryParam = query ? `&q=${encodeURIComponent(query)}` : '';
-      const categoryParam = category && category !== 'All' ? `&category=${encodeURIComponent(category)}` : '';
+const categoryParam = category && category !== 'All' ? `&category=${encodeURIComponent(category)}` : '';
       const response = await fetch(`/api/products?page=${page}&limit=${itemsPerPage}${queryParam}${categoryParam}`);
       
       if (!response.ok) {
@@ -177,7 +177,7 @@ const ProductsPage = () => {
     name: product.productName,
     image: product.gallery && product.gallery.length > 0 ? product.gallery[0].src : '/placeholder.png',
     price: product.regularPrice,
-    discountedPrice: product.discountedPrice, // Pass discounted price if it exists
+discountedPrice: product.discountedPrice, // Pass discounted price if it exists
     sales: product.sales || 0,  // Default to 0 if sales doesn't exist
     remaining: product.remaining || 100  // Default to 100 if remaining doesn't exist
   }));
@@ -206,7 +206,7 @@ const ProductsPage = () => {
             
             {/* Search bar with suggestions */}
             <div ref={searchRef} className="relative w-full max-w-md">
-           
+              
               
               {/* Search Suggestions with Images */}
               {showSuggestions && suggestions.length > 0 && (
@@ -240,7 +240,7 @@ const ProductsPage = () => {
                 </div>
               )}
             </div>
-            {/* Main Category Filter */}
+{/* Main Category Filter */}
             <div className="flex items-center mt-4 md:mt-0 w-full justify-between">
               <div className="relative w-full max-w-md">
               {/* Search bar remains on the left */}
@@ -294,9 +294,9 @@ const ProductsPage = () => {
               </select>
               </div>
             </div>
-            </header>
+          </header>
 
-          
+
 
           {/* Loading state */}
           {loading && (
