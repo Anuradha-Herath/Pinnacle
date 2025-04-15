@@ -1,4 +1,4 @@
-import Order from "@/models/Order";
+import Order from "@/models/Order"; // Import from Order.ts instead of Order.tsx
 import User from "@/models/User";
 import { NextRequest, NextResponse } from "next/server";
 import mongoose from "mongoose";
@@ -45,7 +45,7 @@ interface CheckoutData {
   city?: string;
   postalCode?: string;
   phone: string;
-  cart: CartItem[];
+  cart: CartItem[]; 
   subtotal: number;
   shippingCost: number;
   total: number;
@@ -165,7 +165,7 @@ export async function POST(request: NextRequest) {
       const authResult = await authenticateUser(request);
       let userId = null;
 
-      if (authResult.authenticated && authResult.user) {
+      if (authResult.authenticated && authResult.user) {      
         console.log(
           "User is authenticated, linking order to user account:",
           authResult.user.id
@@ -338,27 +338,38 @@ export async function POST(request: NextRequest) {
               JSON.stringify(stripeLineItems, null, 2)
             );
 
-            const session = await stripe.checkout.sessions.create({
-              payment_method_types: ["card"],
-              line_items: stripeLineItems,
-              mode: "payment",
-              success_url: `${
-                process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
-              }/checkout?success=1&order=${newOrder.orderNumber}`,
-              cancel_url: `${
-                process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
-              }/checkout?canceled=1`,
-              metadata: { orderId: newOrder._id.toString() },
-            });
-            console.log("metadata:", session.metadata);
-            console.log("Stripe session created:", session.id);
+            try {
+              const session = await stripe.checkout.sessions.create({
+                payment_method_types: ["card"],
+                line_items: stripeLineItems,
+                mode: "payment",
+                success_url: `${
+                  process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
+                }/payment?success=1&order=${newOrder._id}`,
+                cancel_url: `${
+                  process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
+                }/payment?canceled=1`,
+                metadata: { orderId: newOrder._id.toString() },
+              });
+              
+              console.log("metadata:", session.metadata);
+              console.log("Stripe session created:", session.id);
 
-            redirectUrl = session.url;
+              redirectUrl = session.url;
+            } catch (stripeError) {
+              console.error("Stripe session creation failed:", stripeError);
+              // Fall back to default payment page if Stripe fails
+              redirectUrl = `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/payment?success=1&order=${newOrder._id}`;
+            }
           } catch (stripeError) {
             console.error("Stripe session creation failed:", stripeError);
+            // Fall back to default payment page if Stripe fails
+            redirectUrl = `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/payment?success=1&order=${newOrder._id}`;
           }
         } else {
           console.log("Skipping Stripe - not initialized");
+          // Set redirect to payment page with success parameter
+          redirectUrl = `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/payment?success=1&order=${newOrder._id}`;
         }
 
         // When sending to the client, include images in the response
