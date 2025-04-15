@@ -59,7 +59,7 @@ const Header = () => {
   let timeout: NodeJS.Timeout;
 
   // Refs for click outside detection
-  const searchRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLDivElement>(null!); // Add non-null assertion operator
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Handle scroll events
