@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { CheckCircleIcon, TruckIcon, XCircleIcon } from "@heroicons/react/24/solid";
+import { CheckCircleIcon, TruckIcon, XCircleIcon, BellIcon, Cog6ToothIcon } from "@heroicons/react/24/solid";
 import Sidebar from "../../../components/Sidebar";
 
 // Define necessary interfaces
@@ -57,10 +57,31 @@ export default function AdminOrderDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [statusUpdateLoading, setStatusUpdateLoading] = useState(false);
+  // Add state for profile picture
+  const [profilePicture, setProfilePicture] = useState<string>('/p9.webp');
   
   const router = useRouter();
   const params = useParams();
   const orderId = params?.id as string;
+
+  // Fetch profile data to get the current profile picture
+  useEffect(() => {
+    const fetchProfilePicture = async () => {
+      try {
+        const response = await fetch('/api/profile?t=' + Date.now()); // Add cache-busting parameter
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.user.profilePicture) {
+            setProfilePicture(data.user.profilePicture);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching profile picture:", error);
+      }
+    };
+
+    fetchProfilePicture();
+  }, []); // Dependency array empty to only run on mount
 
   useEffect(() => {
     const fetchOrderDetails = async () => {
@@ -192,12 +213,28 @@ export default function AdminOrderDetailsPage() {
             <p className="text-gray-500">Order #{order?.orderNumber || (order?._id.substring(0, 8))}</p>
           </div>
           
-          <button 
-            className="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600"
-            onClick={() => router.push('/admin/orderlist')}
-          >
-            Back to Order List
-          </button>
+          {/* Add top-right icons including profile */}
+          <div className="flex items-center gap-2">
+            <button onClick={() => router.push("/notifications")} className="p-2 hover:bg-gray-200 rounded-lg">
+              <BellIcon className="h-6 w-6 text-gray-600" />
+            </button>
+            <button onClick={() => router.push("/settings")} className="p-2 hover:bg-gray-200 rounded-lg">
+              <Cog6ToothIcon className="h-6 w-6 text-gray-600" />
+            </button>
+            <button
+              onClick={() => router.push("/adminprofile")}
+              className="p-1 rounded-full border-2 border-gray-300"
+            >
+              <img
+                src={`${profilePicture}?t=${Date.now()}`} // Add cache-busting timestamp
+                alt="Profile"
+                className="h-8 w-8 rounded-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = '/p9.webp';
+                }}
+              />
+            </button>
+          </div>
         </div>
 
         {/* Order Status and Quick Actions */}

@@ -155,6 +155,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (response.ok) {
         setUser(data.user);
         
+        // Set localStorage flag based on user role and login source
+        if (data.user.role === 'admin') {
+          // Check if we're on the admin login page
+          const isAdminLoginPage = window.location.pathname.includes('/adminlogin');
+          localStorage.setItem('adminLoginSource', isAdminLoginPage ? 'admin' : 'regular');
+        }
+        
         // After successful login, sync local data with server
         await syncUserData();
         

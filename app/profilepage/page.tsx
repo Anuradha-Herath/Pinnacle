@@ -5,6 +5,7 @@ import { FaCrown } from "react-icons/fa";
 import { Button, Link, CircularProgress } from "@mui/material";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
+import Sidebar from "../components/Sidebar"; // Import the Sidebar component
 import ReviewButton from "../components/ViewDetailsButtonInReivew";
 import ProfilePageToNav from "../components/ProfilePageToNav";
 import { useAuth } from "@/app/context/AuthContext";
@@ -31,6 +32,7 @@ interface UserProfile {
   phone: string;
   address: string;
   points: number;
+  profilePicture?: string; // Add profilePicture field
 }
 
 export default function ProfilePage() {
@@ -54,6 +56,12 @@ export default function ProfilePage() {
         router.push('/login');
         return;
       }
+      
+      // Redirect admin users to admin profile page
+      if (user.role === 'admin') {
+        router.push('/adminprofile');
+        return;
+      }
 
       try {
         // Fetch user profile
@@ -68,7 +76,8 @@ export default function ProfilePage() {
             email: profileData.user.email,
             phone: profileData.user.phone || '',
             address: profileData.user.address || '',
-            points: profileData.user.points || 0
+            points: profileData.user.points || 0,
+            profilePicture: profileData.user.profilePicture || '' // Set profilePicture
           });
         }
 
@@ -115,6 +124,21 @@ export default function ProfilePage() {
 
   // Loading state
   if (loading) {
+    // For admin, use Sidebar layout even during loading
+    if (user?.role === 'admin') {
+      return (
+        <div className="flex">
+          <Sidebar />
+          <div className="min-h-screen flex-1 bg-gray-50 p-6">
+            <div className="flex justify-center items-center h-[60vh]">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500"></div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
+    // For regular users, keep the original layout
     return (
       <>
         <Header />
@@ -128,6 +152,24 @@ export default function ProfilePage() {
 
   // Error state
   if (error) {
+    // Different layouts for admin vs regular user on error
+    if (user?.role === 'admin') {
+      return (
+        <div className="flex">
+          <Sidebar />
+          <div className="min-h-screen flex-1 bg-gray-50 p-6">
+            <div className="flex justify-center items-center h-[60vh] flex-col">
+              <div className="text-red-500 mb-4">{error}</div>
+              <Button variant="contained" onClick={() => window.location.reload()}>
+                Try Again
+              </Button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+    
+    // For regular users, keep the original layout
     return (
       <>
         <Header />
@@ -142,20 +184,89 @@ export default function ProfilePage() {
     );
   }
 
+  // Main content - different layouts for admin vs regular user
+  if (user?.role === 'admin') {
+    return (
+      <div className="flex">
+        <Sidebar />
+        <div className="min-h-screen flex-1 bg-gray-50 p-6">
+          <div className="max-w-4xl mx-auto">
+            {/* The main profile content stays the same */}
+            <div className="flex items-center gap-4 mb-6">
+              <div className="w-16 h-16 bg-gray-300 rounded-full overflow-hidden relative">
+                <img 
+                  src={profile?.profilePicture || '/p9.webp'}
+                  alt="Profile" 
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = '/p9.webp';
+                  }}
+                />
+              </div>
+              <h1 className="text-2xl font-bold flex items-center gap-2">
+                {profile?.firstName} {profile?.lastName} 
+              </h1>
+            </div>
+
+            {/* Basic profile details */}
+            <div className="bg-gray-100 p-4 rounded-lg mt-6 shadow-md">
+              <h2 className="font-semibold text-lg mb-2">Profile Details</h2>
+              <p><strong>Name:</strong> {profile?.firstName} {profile?.lastName}</p>
+              <p><strong>Email:</strong> {profile?.email}</p>
+              <p><strong>Phone:</strong> {profile?.phone || 'Not provided'}</p>
+              <button className="mt-3 flex items-center gap-2 text-orange-500" onClick={handleEditProfile}>
+                <FiEdit /> Edit Details
+              </button>
+            </div>
+
+            {/* Admin-specific content */}
+            <div className="mt-6 bg-gray-100 p-4 rounded-lg shadow-md">
+              <h2 className="font-semibold text-lg mb-4">Admin Options</h2>
+              <div className="grid grid-cols-2 gap-4">
+                <button 
+                  onClick={() => router.push('/admin/dashboard')}
+                  className="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600"
+                >
+                  Admin Dashboard
+                </button>
+                <button 
+                  onClick={() => router.push('/admin/settings')}
+                  className="px-4 py-2 border border-orange-500 text-orange-500 bg-white rounded-md hover:bg-orange-50"
+                >
+                  Admin Settings
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // For regular users, keep the original layout with Header and Footer
   return (
     <>
       <Header />
       <div className="max-w-4xl mx-auto p-6">
         {/* Basic profile information - shown to all users */}
         <div className="flex items-center gap-4 mb-6">
-          <div className="w-16 h-16 bg-gray-300 rounded-full"></div>
+          <div className="w-16 h-16 bg-gray-300 rounded-full overflow-hidden relative">
+            <img 
+              src={profile?.profilePicture || '/p9.webp'} // Change fallback from '/default-profile.png'
+              alt="Profile" 
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                // If image fails to load, use an existing image file
+                (e.target as HTMLImageElement).src = '/p9.webp';
+              }}
+            />
+          </div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             {profile?.firstName} {profile?.lastName} 
             {user?.role !== 'admin' && (profile?.points ?? 0) >= 200 && 
               <FaCrown className="text-yellow-500" title="Premium customer" />
             }
           </h1>
-
         </div>
 
         {/* Basic customer details - shown to all users */}
@@ -328,19 +439,18 @@ export default function ProfilePage() {
           <div className="mt-6 bg-gray-100 p-4 rounded-lg shadow-md">
             <h2 className="font-semibold text-lg mb-4">Admin Options</h2>
             <div className="grid grid-cols-2 gap-4">
-              <Button 
-                variant="contained" 
+              <button 
                 onClick={() => router.push('/admin/dashboard')}
-                className="bg-orange-600 hover:bg-orange-700"
+                className="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600"
               >
                 Admin Dashboard
-              </Button>
-              <Button 
-                variant="outlined" 
+              </button>
+              <button 
                 onClick={() => router.push('/admin/settings')}
+                className="px-4 py-2 border border-orange-500 text-orange-500 bg-white rounded-md hover:bg-orange-50"
               >
                 Admin Settings
-              </Button>
+              </button>
             </div>
           </div>
         )}

@@ -23,6 +23,7 @@ interface Order {
 export default function OrdersPage() {
 
   const [orders, setOrders] = useState<Order[]>([]);
+  const [profilePicture, setProfilePicture] = useState<string>('/p9.webp');
   
   useEffect(() => {
     // Fetch orders from the API
@@ -40,7 +41,26 @@ export default function OrdersPage() {
     };
 
     fetchOrders();
-  },[])
+  },[]);
+
+  // Fetch profile data to get the current profile picture
+  useEffect(() => {
+    const fetchProfilePicture = async () => {
+      try {
+        const response = await fetch('/api/profile?t=' + Date.now());
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.user.profilePicture) {
+            setProfilePicture(data.user.profilePicture);
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching profile picture:", error);
+      }
+    };
+
+    fetchProfilePicture();
+  }, []);
 
   const router = useRouter();
 
@@ -77,8 +97,18 @@ export default function OrdersPage() {
             </button>
 
             {/* Profile */}
-            <button onClick={() => router.push("../../profilepage")} className="p-1 rounded-full border-2 border-gray-300">
-              <img src="/p9.webp" alt="Profile" className="h-8 w-8 rounded-full object-cover" />
+            <button
+              onClick={() => router.push("../../adminprofile")}
+              className="p-1 rounded-full border-2 border-gray-300"
+            >
+              <img
+                src={`${profilePicture}?t=${Date.now()}`}
+                alt="Profile"
+                className="h-8 w-8 rounded-full object-cover"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).src = '/p9.webp';
+                }}
+              />
             </button>
           </div>
         </div>
