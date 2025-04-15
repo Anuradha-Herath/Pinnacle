@@ -201,7 +201,7 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
 
   return (
     <div 
-      className="w-[300px] min-w-[300px] bg-white shadow-md rounded-lg p-4 relative cursor-pointer hover:shadow-lg transition-shadow"
+      className="w-[360px] min-w-[360px] bg-white shadow-md rounded-lg p-5 relative cursor-pointer hover:shadow-lg transition-shadow"
       onClick={navigateToProductDetail}
     >
       {/* Tag display - NEW tag stays at top-left */}
@@ -227,12 +227,12 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
         </div>
       )}
 
-      <div className="w-full h-60 flex items-center justify-center">
+      <div className="w-full h-80 flex items-center justify-center">
         <Image
           src={productImage}
           alt={product.name}
-          width={240}
-          height={240}
+          width={300}
+          height={300}
           className="w-full h-full object-contain rounded-md"
           onError={(e) => {
             (e.target as HTMLImageElement).src = placeholderImage;
