@@ -357,44 +357,51 @@ export default function AdminOrderDetailsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {order?.orderItems.map((item, index) => (
-                  <tr key={index}>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center">
-                        <div className="h-16 w-16 mr-4 flex-shrink-0">
-                          <img src={item.image} alt={item.name} className="h-16 w-16 rounded object-cover" />
-                        </div>
-                        <div>
-                          <p className="font-medium">{item.name}</p>
-                          <div className="text-sm text-gray-500">
-                            {item.size && <p>Size: {item.size}</p>}
-                            {item.color && <p>Color: {item.color}</p>}
+                {order?.orderItems && order.orderItems.length > 0 ? (
+                  order.orderItems.map((item, index) => (
+                    <tr key={index}>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center">
+                          <div className="h-16 w-16 mr-4 flex-shrink-0">
+                            <img src={item.image} alt={item.name} className="h-16 w-16 rounded object-cover" />
+                          </div>
+                          <div>
+                            <p className="font-medium">{item.name}</p>
+                            <div className="text-sm text-gray-500">
+                              {item.size && <p>Size: {item.size}</p>}
+                              {item.color && <p>Color: {item.color}</p>}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">Rs. {item.price.toFixed(2)}</td>
-                    <td className="px-4 py-3">{item.quantity}</td>
-                    <td className="px-4 py-3 text-right font-medium">Rs. {(item.price * item.quantity).toFixed(2)}</td>
+                      </td>
+                      <td className="px-4 py-3">Rs. {item.price.toFixed(2)}</td>
+                      <td className="px-4 py-3">{item.quantity}</td>
+                      <td className="px-4 py-3 text-right font-medium">Rs. {(item.price * item.quantity).toFixed(2)}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={4} className="px-4 py-3 text-center text-gray-500">No items in this order</td>
                   </tr>
-                ))}
+                )}
               </tbody>
+              
               <tfoot className="bg-gray-50">
                 <tr>
                   <td colSpan={3} className="px-4 py-3 text-right font-medium">Subtotal:</td>
-                  <td className="px-4 py-3 text-right font-medium">Rs. {order?.itemsPrice.toFixed(2)}</td>
+                  <td className="px-4 py-3 text-right font-medium">Rs. {order?.itemsPrice?.toFixed(2) || '0.00'}</td>
                 </tr>
                 <tr>
                   <td colSpan={3} className="px-4 py-3 text-right font-medium">Shipping:</td>
-                  <td className="px-4 py-3 text-right font-medium">Rs. {order?.shippingPrice.toFixed(2)}</td>
+                  <td className="px-4 py-3 text-right font-medium">Rs. {order?.shippingPrice?.toFixed(2) || '0.00'}</td>
                 </tr>
                 <tr>
                   <td colSpan={3} className="px-4 py-3 text-right font-medium">Tax:</td>
-                  <td className="px-4 py-3 text-right font-medium">Rs. {order?.taxPrice.toFixed(2)}</td>
+                  <td className="px-4 py-3 text-right font-medium">Rs. {order?.taxPrice?.toFixed(2) || '0.00'}</td>
                 </tr>
                 <tr className="bg-gray-100">
                   <td colSpan={3} className="px-4 py-3 text-right font-semibold">Total:</td>
-                  <td className="px-4 py-3 text-right font-semibold">Rs. {order?.totalPrice.toFixed(2)}</td>
+                  <td className="px-4 py-3 text-right font-semibold">Rs. {order?.totalPrice?.toFixed(2) || '0.00'}</td>
                 </tr>
               </tfoot>
             </table>
