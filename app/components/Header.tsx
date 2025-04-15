@@ -667,14 +667,6 @@ const Header = () => {
                         </div>
                       </>
                     )}
-                    <div className="col-span-3 border-t border-gray-200 mt-4 pt-2">
-                      <Link
-                        href="/category/Men"
-                        className="block px-4 py-2 hover:bg-gray-200 rounded-md text-center font-semibold"
-                      >
-                        Shop All Men's
-                      </Link>
-                    </div>
                   </div>
 
                   <div
@@ -751,14 +743,6 @@ const Header = () => {
                         </div>
                       </>
                     )}
-                    <div className="col-span-3 border-t border-gray-200 mt-4 pt-2">
-                      <Link
-                        href="/category/Women"
-                        className="block px-4 py-2 hover:bg-gray-200 rounded-md text-center font-semibold"
-                      >
-                        Shop All Women's
-                      </Link>
-                    </div>
                   </div>
 
                   <div
@@ -835,14 +819,6 @@ const Header = () => {
                         </div>
                       </>
                     )}
-                    <div className="col-span-3 border-t border-gray-200 mt-4 pt-2">
-                      <Link
-                        href="/category/Accessories"
-                        className="block px-4 py-2 hover:bg-gray-200 rounded-md text-center font-semibold"
-                      >
-                        Shop All Accessories
-                      </Link>
-                    </div>
                   </div>
 
                   <div
