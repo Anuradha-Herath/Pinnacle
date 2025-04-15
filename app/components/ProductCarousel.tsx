@@ -18,11 +18,11 @@ const ProductCarousel = ({ title, products, loading = false }: ProductCarouselPr
   const [cardsPerView, setCardsPerView] = useState(4);
   const lastScrollPosRef = useRef(0);
   const scrollTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isProgrammaticScrollRef = useRef(false);
+  const animationFrameRef = useRef<number | null>(null);
 
-  // Calculate how many cards should be visible and maximum scroll position
   useEffect(() => {
     const updateCardsPerView = () => {
-      // Updated calculations for the larger 360px card width
       if (window.innerWidth > 1536) setCardsPerView(4);
       else if (window.innerWidth > 1280) setCardsPerView(3);
       else if (window.innerWidth > 1024) setCardsPerView(2);
@@ -31,12 +31,11 @@ const ProductCarousel = ({ title, products, loading = false }: ProductCarouselPr
     };
 
     updateCardsPerView();
-    window.addEventListener('resize', updateCardsPerView);
+    window.addEventListener("resize", updateCardsPerView);
 
-    return () => window.removeEventListener('resize', updateCardsPerView);
+    return () => window.removeEventListener("resize", updateCardsPerView);
   }, []);
 
-  // Calculate max scroll and update values when products or viewport changes
   useEffect(() => {
     if (carouselRef.current) {
       const viewportWidth = carouselRef.current.clientWidth;
@@ -46,7 +45,6 @@ const ProductCarousel = ({ title, products, loading = false }: ProductCarouselPr
     }
   }, [products, cardsPerView]);
 
-  // Update visible index when scroll position changes
   useEffect(() => {
     if (carouselRef.current && products.length > 0) {
       const groups = Math.ceil(products.length / cardsPerView);
@@ -56,41 +54,58 @@ const ProductCarousel = ({ title, products, loading = false }: ProductCarouselPr
     }
   }, [scrollPosition, maxScroll, products.length, cardsPerView]);
 
-  // Memoized scroll handler with throttling to prevent excessive updates
   const handleScroll = useCallback(() => {
-    if (scrollTimerRef.current) return;
+    if (isProgrammaticScrollRef.current) return;
 
-    scrollTimerRef.current = setTimeout(() => {
-      if (carouselRef.current) {
-        const newPosition = carouselRef.current.scrollLeft;
+    if (animationFrameRef.current !== null) {
+      cancelAnimationFrame(animationFrameRef.current);
+    }
 
-        if (Math.abs(newPosition - lastScrollPosRef.current) > 5) {
-          lastScrollPosRef.current = newPosition;
-          setScrollPosition(newPosition);
-        }
+    animationFrameRef.current = requestAnimationFrame(() => {
+      if (!carouselRef.current) return;
+
+      const newPosition = carouselRef.current.scrollLeft;
+
+      if (Math.abs(newPosition - lastScrollPosRef.current) > 2) {
+        lastScrollPosRef.current = newPosition;
+        setScrollPosition(newPosition);
       }
-      scrollTimerRef.current = null;
-    }, 50);
+
+      animationFrameRef.current = null;
+    });
   }, []);
 
-  const scroll = (direction: 'left' | 'right') => {
-    if (carouselRef.current) {
-      const cardWidth = carouselRef.current.scrollWidth / Math.max(1, products.length);
-      // Modified to scroll one card at a time instead of cardsPerView
-      const scrollAmount = cardWidth;
+  const scroll = (direction: "left" | "right") => {
+    if (!carouselRef.current || products.length === 0) return;
 
-      let newPosition = direction === 'left'
-        ? Math.max(0, scrollPosition - scrollAmount)
-        : Math.min(maxScroll, scrollPosition + scrollAmount);
+    const cardWidth = carouselRef.current.scrollWidth / products.length;
+    const currentIndex = Math.round(scrollPosition / cardWidth);
 
-      carouselRef.current.scrollTo({
-        left: newPosition,
-        behavior: 'smooth'
-      });
+    let targetIndex = direction === "left" ? currentIndex - 1 : currentIndex + 1;
 
-      lastScrollPosRef.current = newPosition;
-      setScrollPosition(newPosition);
-    }
+    targetIndex = Math.max(0, Math.min(targetIndex, products.length - 1));
+
+    const newPosition = targetIndex * cardWidth;
+
+    isProgrammaticScrollRef.current = true;
+
+    carouselRef.current.scrollTo({
+      left: newPosition,
+      behavior: "smooth",
+    });
+
+    lastScrollPosRef.current = newPosition;
+    setScrollPosition(newPosition);
+
+    setTimeout(() => {
+      isProgrammaticScrollRef.current = false;
+
+      if (carouselRef.current) {
+        const finalPosition = carouselRef.current.scrollLeft;
+        lastScrollPosRef.current = finalPosition;
+        setScrollPosition(finalPosition);
+      }
+    }, 500);
   };
 
   const scrollToDot = (index: number) => {
@@ -100,13 +115,25 @@ const ProductCarousel = ({ title, products, loading = false }: ProductCarouselPr
 
       newPosition = Math.min(newPosition, maxScroll);
 
+      isProgrammaticScrollRef.current = true;
+
       carouselRef.current.scrollTo({
         left: newPosition,
-        behavior: 'smooth'
+        behavior: "smooth",
       });
 
       lastScrollPosRef.current = newPosition;
       setScrollPosition(newPosition);
+
+      setTimeout(() => {
+        isProgrammaticScrollRef.current = false;
+
+        if (carouselRef.current) {
+          const finalPosition = carouselRef.current.scrollLeft;
+          lastScrollPosRef.current = finalPosition;
+          setScrollPosition(finalPosition);
+        }
+      }, 500);
     }
   };
 
@@ -120,31 +147,32 @@ const ProductCarousel = ({ title, products, loading = false }: ProductCarouselPr
       if (scrollTimerRef.current) {
         clearTimeout(scrollTimerRef.current);
       }
+      if (animationFrameRef.current !== null) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
     };
   }, []);
 
   return (
     <div className="px-4 md:px-8 lg:px-12 my-8">
       {title && <h2 className="text-2xl font-bold text-white mb-6">{title}</h2>}
-      
+
       {loading ? (
         <div className="flex justify-center items-center h-40">
           <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-orange-500"></div>
         </div>
       ) : products.length > 0 ? (
         <div className="relative">
-          {/* Left Navigation Arrow - adjusted positioning */}
           {scrollPosition > 0 && (
-            <button 
+            <button
               className="absolute left-0 z-10 top-1/2 -translate-y-1/2 -translate-x-6 bg-gray-800 hover:bg-gray-700 text-white p-2 rounded-full shadow-lg opacity-80 hover:opacity-100 transition-opacity"
-              onClick={() => scroll('left')}
+              onClick={() => scroll("left")}
             >
               <ChevronLeft size={24} />
             </button>
           )}
-          
-          {/* Product Carousel - increased gap between cards */}
-          <div 
+
+          <div
             ref={carouselRef}
             className="flex overflow-x-auto gap-6 pb-8 scroll-smooth hide-scrollbar"
             onScroll={handleScroll}
@@ -155,39 +183,81 @@ const ProductCarousel = ({ title, products, loading = false }: ProductCarouselPr
               </div>
             ))}
           </div>
-          
-          {/* Right Navigation Arrow - adjusted positioning */}
+
           {scrollPosition < maxScroll && maxScroll > 0 && (
-            <button 
+            <button
               className="absolute right-0 z-10 top-1/2 -translate-y-1/2 translate-x-6 bg-gray-800 hover:bg-gray-700 text-white p-2 rounded-full shadow-lg opacity-80 hover:opacity-100 transition-opacity"
-              onClick={() => scroll('right')}
+              onClick={() => scroll("right")}
             >
               <ChevronRight size={24} />
             </button>
           )}
-          
-          {/* Pagination Dots */}
+
           {products.length > cardsPerView && (
-            <div className="flex justify-center gap-2 mt-4">
-              {Array.from({ length: getDotCount() }).map((_, index) => (
-                <button 
-                  key={index}
-                  className={`h-2 rounded-full transition-all ${
-                    index === visibleIndex 
-                      ? 'w-6 bg-orange-500' 
-                      : 'w-2 bg-gray-500 hover:bg-gray-400'
-                  }`}
-                  onClick={() => scrollToDot(index)}
-                  aria-label={`Go to slide ${index + 1}`}
-                />
-              ))}
+            <div className="relative h-2 bg-gray-700 rounded-full mt-6 overflow-hidden">
+              <div className="absolute inset-0 flex">
+                {Array.from({ length: products.length }).map((_, idx) => (
+                  <div
+                    key={idx}
+                    className="flex-grow border-r border-gray-600 last:border-0"
+                  />
+                ))}
+              </div>
+
+              <div
+                className="absolute top-0 left-0 h-full bg-orange-500 will-change-transform"
+                style={{
+                  width: "100%",
+                  transform: `scaleX(${maxScroll > 0 ? scrollPosition / maxScroll : 0})`,
+                  transformOrigin: "left",
+                  transition: isProgrammaticScrollRef.current
+                    ? "transform 0.4s ease-out"
+                    : "none",
+                }}
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-orange-400 to-orange-500 opacity-70" />
+              </div>
+
+              <div
+                className="absolute inset-0 cursor-pointer"
+                onClick={(e) => {
+                  if (!carouselRef.current || maxScroll <= 0) return;
+
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const x = e.clientX - rect.left;
+                  const percentage = x / rect.width;
+
+                  const targetIndex = Math.floor(percentage * products.length);
+                  const cardWidth =
+                    carouselRef.current.scrollWidth / products.length;
+                  const exactPosition = targetIndex * cardWidth;
+
+                  isProgrammaticScrollRef.current = true;
+
+                  carouselRef.current.scrollTo({
+                    left: exactPosition,
+                    behavior: "smooth",
+                  });
+
+                  lastScrollPosRef.current = exactPosition;
+                  setScrollPosition(exactPosition);
+
+                  setTimeout(() => {
+                    isProgrammaticScrollRef.current = false;
+
+                    if (carouselRef.current) {
+                      const finalPosition = carouselRef.current.scrollLeft;
+                      lastScrollPosRef.current = finalPosition;
+                      setScrollPosition(finalPosition);
+                    }
+                  }, 500);
+                }}
+              />
             </div>
           )}
         </div>
       ) : (
-        <div className="text-center py-8 text-white">
-          No products found.
-        </div>
+        <div className="text-center py-8 text-white">No products found.</div>
       )}
     </div>
   );
