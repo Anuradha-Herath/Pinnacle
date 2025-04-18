@@ -253,7 +253,7 @@ const HomePage = () => {
   };
 
   return (
-    <div className="bg-gray-900 min-h-screen flex flex-col">
+    <div className="bg-white min-h-screen flex flex-col">
       <Header />
       <HeaderPlaceholder />
       
@@ -334,13 +334,13 @@ const HomePage = () => {
         <div className="px-4 md:px-8 lg:px-12 my-8">
           {/* Title with Toggle Buttons */}
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-white">Best Sellers</h2>
-            <div className="bg-gray-800 rounded-full p-1 inline-flex">
+            <h2 className="text-2xl font-bold text-black">Best Sellers</h2>
+            <div className="bg-gray-200 rounded-full p-1 inline-flex">
               <button 
                 className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${
                   selectedGender === 'men' 
                     ? 'bg-orange-500 text-white' 
-                    : 'text-white hover:bg-gray-700'
+                    : 'text-black hover:bg-gray-300'
                 }`}
                 onClick={() => handleGenderToggle('men')}
               >
@@ -350,7 +350,7 @@ const HomePage = () => {
                 className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${
                   selectedGender === 'women' 
                     ? 'bg-orange-500 text-white' 
-                    : 'text-white hover:bg-gray-700'
+                    : 'text-black hover:bg-gray-300'
                 }`}
                 onClick={() => handleGenderToggle('women')}
               >
@@ -374,7 +374,7 @@ const HomePage = () => {
           {!genderLoading && 
             ((selectedGender === 'men' && categoryProducts.mens.length === 0) || 
              (selectedGender === 'women' && categoryProducts.womens.length === 0)) && (
-            <div className="text-center py-8 text-white">
+            <div className="text-center py-8 text-black">
               No products found for {selectedGender === 'men' ? 'men' : 'women'}.
             </div>
           )}
@@ -395,7 +395,7 @@ const HomePage = () => {
           {!accessoriesLoading && 
             categoryProducts.accessories && 
             categoryProducts.accessories.length === 0 && (
-            <div className="text-center py-8 text-white">
+            <div className="text-center py-8 text-black">
               No accessories products found.
             </div>
           )}
