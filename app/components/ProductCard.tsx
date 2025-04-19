@@ -24,6 +24,7 @@ interface Product {
     percentage: number;
     discountedPrice: number;
   };
+  tag?: string | null;
 }
 
 interface ProductCardProps {
@@ -199,18 +200,21 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
   };
 
   return (
-    <div
-      className="w-[360px] min-w-[360px] bg-white shadow-md rounded-lg p-5 relative cursor-pointer hover:shadow-lg transition-shadow"
+    <div 
+      className="w-[300px] min-w-[300px] bg-white shadow-md rounded-lg p-4 relative cursor-pointer hover:shadow-lg transition-shadow"
       onClick={navigateToProductDetail}
     >
-      {/* Tag display element removed */}
-
+      {/* Tag display - NEW tag stays at top-left */}
+      {product.tag && (
+        <div className="absolute top-3 left-3 z-10 bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded">
+          {product.tag}
+        </div>
+      )}
+      
       {!hideWishlist && (
-        <button
+        <button 
           onClick={handleWishlistToggle}
-          className={`absolute top-3 right-3 ${
-            isWishlisted ? "text-red-500" : "text-gray-600"
-          } hover:scale-110 transition-all z-10`}
+          className={`absolute top-3 right-3 ${isWishlisted ? 'text-red-500' : 'text-gray-600'} hover:scale-110 transition-all z-10`}
         >
           <Heart size={20} fill={isWishlisted ? "currentColor" : "none"} />
         </button>
@@ -223,12 +227,12 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
         </div>
       )}
 
-      <div className="w-full h-80 flex items-center justify-center">
+      <div className="w-full h-60 flex items-center justify-center">
         <Image
           src={productImage}
           alt={product.name}
-          width={300}
-          height={300}
+          width={240}
+          height={240}
           className="w-full h-full object-contain rounded-md"
           onError={(e) => {
             (e.target as HTMLImageElement).src = placeholderImage;
@@ -236,23 +240,19 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
         />
       </div>
       <h3 className="mt-2 font-semibold">{product.name}</h3>
-
+      
       {/* Price display with discount if available */}
       <div className="flex items-baseline">
         {hasDiscount && discountedPrice !== null ? (
           <>
-            <p className="text-red-600 font-semibold">
-              ${discountedPrice.toFixed(2)}
-            </p>
-            <p className="text-gray-500 text-sm line-through ml-2">
-              ${product.price.toFixed(2)}
-            </p>
+            <p className="text-red-600 font-semibold">${discountedPrice.toFixed(2)}</p>
+            <p className="text-gray-500 text-sm line-through ml-2">${product.price.toFixed(2)}</p>
           </>
         ) : (
           <p className="text-gray-600">${product.price.toFixed(2)}</p>
         )}
       </div>
-
+      
       {/* Color images with selection indicator */}
       {validColorImages.length > 0 && (
         <div className="flex gap-2 mt-2">
@@ -261,9 +261,7 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
               key={index}
               onClick={(e) => handleColorImageClick(e, colorImg)}
               className={`w-10 h-10 border rounded-md overflow-hidden ${
-                currentImage === colorImg
-                  ? "border-2 border-black"
-                  : "border-gray-300"
+                currentImage === colorImg ? 'border-2 border-black' : 'border-gray-300'
               }`}
             >
               <Image
@@ -280,35 +278,32 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
           ))}
         </div>
       )}
-
+      
       {/* Sizes with selection indicator - only show for non-accessories */}
-      {product.category !== "Accessories" &&
-        productWithDefaults.sizes.length > 0 && (
-          <div className="flex gap-2 mt-2">
-            {productWithDefaults.sizes.slice(0, 5).map((size, index) => (
-              <button
-                key={index}
-                onClick={(e) => handleSizeSelect(e, size)}
-                className={`border px-3 py-1 rounded cursor-pointer transition-colors ${
-                  selectedSize === size
-                    ? "bg-black text-white border-black"
-                    : "border-gray-300 hover:bg-gray-100"
-                }`}
-              >
-                {size}
-              </button>
-            ))}
-          </div>
-        )}
-
-      <div className="flex justify-start mt-4">
-        <button
-          onClick={handleAddToCart}
-          className="px-10 bg-[#1D1D1D] text-white py-2.5 rounded-full hover:bg-gray-800 transition-colors text-base font-medium"
-        >
-          Add to Cart
-        </button>
-      </div>
+      {product.category !== "Accessories" && productWithDefaults.sizes.length > 0 && (
+        <div className="flex gap-2 mt-2">
+          {productWithDefaults.sizes.slice(0, 5).map((size, index) => (
+            <button
+              key={index}
+              onClick={(e) => handleSizeSelect(e, size)}
+              className={`border px-3 py-1 rounded cursor-pointer transition-colors ${
+                selectedSize === size 
+                  ? 'bg-black text-white border-black' 
+                  : 'border-gray-300 hover:bg-gray-100'
+              }`}
+            >
+              {size}
+            </button>
+          ))}
+        </div>
+      )}
+      
+      <button 
+        onClick={handleAddToCart}
+        className="mt-3 w-full bg-black text-white py-2 rounded hover:bg-gray-800 transition-colors"
+      >
+        Add to Cart
+      </button>
     </div>
   );
 };
