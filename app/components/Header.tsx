@@ -375,13 +375,9 @@ const Header = () => {
 
   return (
     <header
-      className={`bg-[#1D1D1D] text-white w-full transition-all duration-300 ${
+      className={`bg-[#262626] text-white w-full transition-all duration-300 ${
         !atTop ? "fixed top-0 left-0 right-0 z-50" : "relative z-50"
-      } ${
-        visible
-          ? "translate-y-0 opacity-100 shadow-lg"
-          : "-translate-y-full opacity-0"
-      }`}
+      } ${visible ? "translate-y-0 opacity-100 shadow-lg" : "-translate-y-full opacity-0"}`}
     >
       {/* Top Bar */}
       <div className="max-w-7xl mx-auto px-4 py-3">
@@ -417,7 +413,7 @@ const Header = () => {
                         setShowSearchHistory(true);
                       }
                     }}
-                    className="w-full px-4 py-2 pl-10 bg-[#1D1D1D] rounded text-white placeholder-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-600 border border-grey-100"
+                    className="w-full px-4 py-2 pl-10 bg-[#2D2C2C] rounded text-white placeholder-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-600 border border-grey-100"
                   />
                   <button type="submit" className="absolute left-3 top-2.5">
                     <Search className="h-5 w-5 text-gray-400" />
@@ -441,60 +437,52 @@ const Header = () => {
               </form>
 
               {/* Search history dropdown */}
-              {showSearchHistory &&
-                searchHistory.length > 0 &&
-                !searchQuery && (
-                  <div className="absolute left-0 right-0 mt-1 bg-white text-black shadow-lg rounded-md overflow-hidden z-50">
-                    <div className="p-2 border-b border-gray-200 flex justify-between items-center">
-                      <h3 className="text-sm font-semibold text-gray-700">
-                        Recent Searches
-                      </h3>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          clearHistory();
-                        }}
-                        className="text-xs text-gray-500 hover:text-red-500 flex items-center"
-                      >
-                        <Trash className="h-3 w-3 mr-1" />
-                        Clear All
-                      </button>
-                    </div>
-                    <div className="max-h-60 overflow-y-auto">
-                      {searchHistory.map((term, index) => (
-                        <div
-                          key={`history-${index}`}
-                          onClick={() => handleHistoryItemClick(term)}
-                          className="px-3 py-2 hover:bg-gray-100 cursor-pointer flex items-center justify-between"
-                        >
-                          <div className="flex items-center">
-                            <Clock className="h-4 w-4 text-gray-400 mr-2" />
-                            <span className="truncate">{term}</span>
-                          </div>
-                          <button
-                            onClick={(e) => handleRemoveHistoryItem(e, term)}
-                            className="text-gray-400 hover:text-red-500"
-                          >
-                            <X className="h-4 w-4" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
+              {showSearchHistory && searchHistory.length > 0 && !searchQuery && (
+                <div className="absolute left-0 right-0 mt-1 bg-white text-black shadow-lg rounded-md overflow-hidden z-50">
+                  <div className="p-2 border-b border-gray-200 flex justify-between items-center">
+                    <h3 className="text-sm font-semibold text-gray-700">Recent Searches</h3>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        clearHistory();
+                      }}
+                      className="text-xs text-gray-500 hover:text-red-500 flex items-center"
+                    >
+                      <Trash className="h-3 w-3 mr-1" />
+                      Clear All
+                    </button>
                   </div>
-                )}
+                  <div className="max-h-60 overflow-y-auto">
+                    {searchHistory.map((term, index) => (
+                      <div
+                        key={`history-${index}`}
+                        onClick={() => handleHistoryItemClick(term)}
+                        className="px-3 py-2 hover:bg-gray-100 cursor-pointer flex items-center justify-between"
+                      >
+                        <div className="flex items-center">
+                          <Clock className="h-4 w-4 text-gray-400 mr-2" />
+                          <span className="truncate">{term}</span>
+                        </div>
+                        <button
+                          onClick={(e) => handleRemoveHistoryItem(e, term)}
+                          className="text-gray-400 hover:text-red-500"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Search suggestions dropdown */}
               {showSuggestions && searchQuery.trim().length > 1 && (
                 <div className="absolute left-0 right-0 mt-1 bg-white text-black shadow-lg rounded-md overflow-hidden z-50">
                   {isLoadingKeywords ? (
-                    <div className="p-2 text-xs text-gray-500">
-                      Loading keywords...
-                    </div>
+                    <div className="p-2 text-xs text-gray-500">Loading keywords...</div>
                   ) : keywordSuggestions.length > 0 ? (
                     <div className="p-2 border-b border-gray-100">
-                      <h4 className="text-xs text-gray-500 mb-1">
-                        Suggested Keywords
-                      </h4>
+                      <h4 className="text-xs text-gray-500 mb-1">Suggested Keywords</h4>
                       <div className="flex flex-wrap gap-1">
                         {keywordSuggestions.map((keyword, index) => (
                           <button
@@ -511,14 +499,10 @@ const Header = () => {
                   ) : null}
 
                   {isLoading ? (
-                    <div className="p-3 text-center text-gray-500">
-                      Loading suggestions...
-                    </div>
+                    <div className="p-3 text-center text-gray-500">Loading suggestions...</div>
                   ) : suggestions.length > 0 ? (
                     <div>
-                      <h4 className="text-xs text-gray-500 p-2 pb-1">
-                        Products
-                      </h4>
+                      <h4 className="text-xs text-gray-500 p-2 pb-1">Products</h4>
                       <div className="max-h-60 overflow-y-auto">
                         {suggestions.map((suggestion) => (
                           <div
@@ -537,18 +521,14 @@ const Header = () => {
                                 />
                               </div>
                             )}
-                            <div className="flex-1 truncate">
-                              {suggestion.name}
-                            </div>
+                            <div className="flex-1 truncate">{suggestion.name}</div>
                           </div>
                         ))}
                       </div>
                     </div>
                   ) : (
                     <div className="p-3 text-gray-500">
-                      {keywordSuggestions.length === 0
-                        ? "No suggestions found"
-                        : "No matching products"}
+                      {keywordSuggestions.length === 0 ? "No suggestions found" : "No matching products"}
                     </div>
                   )}
 
@@ -582,23 +562,14 @@ const Header = () => {
 
                 {showUserDropdown && (
                   <div className="absolute right-0 mt-2 w-48 bg-white text-black shadow-lg rounded-md overflow-hidden z-50">
-                    <Link
-                      href="/profilepage"
-                      className="block px-4 py-2 hover:bg-gray-100"
-                    >
+                    <Link href="/profilepage" className="block px-4 py-2 hover:bg-gray-100">
                       Profile
                     </Link>
-                    <Link
-                      href="/orders"
-                      className="block px-4 py-2 hover:bg-gray-100"
-                    >
+                    <Link href="/orders" className="block px-4 py-2 hover:bg-gray-100">
                       Orders
                     </Link>
                     {user.role === "admin" && (
-                      <Link
-                        href="/dashboard"
-                        className="block px-4 py-2 hover:bg-gray-100"
-                      >
+                      <Link href="/dashboard" className="block px-4 py-2 hover:bg-gray-100">
                         Dashboard
                       </Link>
                     )}
@@ -618,10 +589,7 @@ const Header = () => {
                 )}
               </div>
             ) : (
-              <Link
-                href="/login"
-                className="flex items-center cursor-pointer hover:text-gray-300"
-              >
+              <Link href="/login" className="flex items-center cursor-pointer hover:text-gray-300">
                 <User className="h-6 w-6" />
                 <span className="ml-2">Sign in</span>
               </Link>
@@ -658,10 +626,7 @@ const Header = () => {
               onMouseLeave={handleMouseLeave}
               data-dropdown-trigger="true"
             >
-              <Link
-                href="/category/Men"
-                className="flex items-center hover:text-gray-300"
-              >
+              <Link href="/category/Men" className="flex items-center hover:text-gray-300">
                 Men
                 <ChevronDown className="ml-1 h-4 w-4" />
               </Link>
@@ -678,9 +643,7 @@ const Header = () => {
                     {categoriesLoading ? (
                       <div className="col-span-3 text-center py-8">
                         <div className="mx-auto h-6 w-6 border-2 border-t-orange-500 rounded-full animate-spin"></div>
-                        <p className="mt-2 text-gray-500">
-                          Loading categories...
-                        </p>
+                        <p className="mt-2 text-gray-500">Loading categories...</p>
                       </div>
                     ) : menCategories.length === 0 ? (
                       <div className="col-span-3 text-center py-8">
@@ -689,16 +652,12 @@ const Header = () => {
                     ) : (
                       <>
                         <div className="col-span-3">
-                          <h3 className="font-semibold text-lg mb-2 border-b pb-1">
-                            Men's Categories
-                          </h3>
+                          <h3 className="font-semibold text-lg mb-2 border-b pb-1">Men's Categories</h3>
                           <div className="grid grid-cols-3 gap-x-4 gap-y-2">
                             {menCategories.map((category) => (
                               <Link
                                 key={category._id}
-                                href={`/category/Men/${encodeURIComponent(
-                                  category.title
-                                )}`}
+                                href={`/category/Men/${encodeURIComponent(category.title)}`}
                                 className="hover:text-orange-500 py-1"
                               >
                                 {category.title}
@@ -713,9 +672,7 @@ const Header = () => {
                   <div
                     className="pl-4 border-l border-gray-200 flex items-center justify-center bg-cover bg-center w-full h-80 relative"
                     style={{
-                      backgroundImage: backgroundImage
-                        ? `url(${backgroundImage})`
-                        : "none",
+                      backgroundImage: backgroundImage ? `url(${backgroundImage})` : "none",
                       transition: "background-image 0.3s ease-in-out",
                       backgroundSize: "contain",
                       backgroundRepeat: "no-repeat",
@@ -745,10 +702,7 @@ const Header = () => {
               onMouseLeave={handleMouseLeave}
               data-dropdown-trigger="true"
             >
-              <Link
-                href="/category/Women"
-                className="flex items-center hover:text-gray-300"
-              >
+              <Link href="/category/Women" className="flex items-center hover:text-gray-300">
                 Womens
                 <ChevronDown className="ml-1 h-4 w-4" />
               </Link>
@@ -765,9 +719,7 @@ const Header = () => {
                     {categoriesLoading ? (
                       <div className="col-span-3 text-center py-8">
                         <div className="mx-auto h-6 w-6 border-2 border-t-orange-500 rounded-full animate-spin"></div>
-                        <p className="mt-2 text-gray-500">
-                          Loading categories...
-                        </p>
+                        <p className="mt-2 text-gray-500">Loading categories...</p>
                       </div>
                     ) : womenCategories.length === 0 ? (
                       <div className="col-span-3 text-center py-8">
@@ -776,16 +728,12 @@ const Header = () => {
                     ) : (
                       <>
                         <div className="col-span-3">
-                          <h3 className="font-semibold text-lg mb-2 border-b pb-1">
-                            Women's Categories
-                          </h3>
+                          <h3 className="font-semibold text-lg mb-2 border-b pb-1">Women's Categories</h3>
                           <div className="grid grid-cols-3 gap-x-4 gap-y-2">
                             {womenCategories.map((category) => (
                               <Link
                                 key={category._id}
-                                href={`/category/Women/${encodeURIComponent(
-                                  category.title
-                                )}`}
+                                href={`/category/Women/${encodeURIComponent(category.title)}`}
                                 className="hover:text-orange-500 py-1"
                               >
                                 {category.title}
@@ -800,9 +748,7 @@ const Header = () => {
                   <div
                     className="pl-4 border-l border-gray-200 flex items-center justify-center bg-cover bg-center w-full h-80 relative"
                     style={{
-                      backgroundImage: backgroundImage
-                        ? `url(${backgroundImage})`
-                        : "none",
+                      backgroundImage: backgroundImage ? `url(${backgroundImage})` : "none",
                       transition: "background-image 0.3s ease-in-out",
                       backgroundSize: "contain",
                       backgroundRepeat: "no-repeat",
@@ -832,10 +778,7 @@ const Header = () => {
               onMouseLeave={handleMouseLeave}
               data-dropdown-trigger="true"
             >
-              <Link
-                href="/category/Accessories"
-                className="flex items-center hover:text-gray-300"
-              >
+              <Link href="/category/Accessories" className="flex items-center hover:text-gray-300">
                 Accessories
                 <ChevronDown className="ml-1 h-4 w-4" />
               </Link>
@@ -852,9 +795,7 @@ const Header = () => {
                     {categoriesLoading ? (
                       <div className="col-span-3 text-center py-8">
                         <div className="mx-auto h-6 w-6 border-2 border-t-orange-500 rounded-full animate-spin"></div>
-                        <p className="mt-2 text-gray-500">
-                          Loading categories...
-                        </p>
+                        <p className="mt-2 text-gray-500">Loading categories...</p>
                       </div>
                     ) : accessoriesCategories.length === 0 ? (
                       <div className="col-span-3 text-center py-8">
@@ -863,16 +804,12 @@ const Header = () => {
                     ) : (
                       <>
                         <div className="col-span-3">
-                          <h3 className="font-semibold text-lg mb-2 border-b pb-1">
-                            Women's Categories
-                          </h3>
+                          <h3 className="font-semibold text-lg mb-2 border-b pb-1">Women's Categories</h3>
                           <div className="grid grid-cols-3 gap-x-4 gap-y-2">
                             {accessoriesCategories.map((category) => (
                               <Link
                                 key={category._id}
-                                href={`/category/Accessories/${encodeURIComponent(
-                                  category.title
-                                )}`}
+                                href={`/category/Accessories/${encodeURIComponent(category.title)}`}
                                 className="hover:text-orange-500 py-1"
                               >
                                 {category.title}
@@ -887,9 +824,7 @@ const Header = () => {
                   <div
                     className="pl-4 border-l border-gray-200 flex items-center justify-center bg-cover bg-center w-full h-80 relative"
                     style={{
-                      backgroundImage: backgroundImage
-                        ? `url(${backgroundImage})`
-                        : "none",
+                      backgroundImage: backgroundImage ? `url(${backgroundImage})` : "none",
                       transition: "background-image 0.3s ease-in-out",
                       backgroundSize: "contain",
                       backgroundRepeat: "no-repeat",
