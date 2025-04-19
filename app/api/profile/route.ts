@@ -2,6 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { authenticateUser } from '@/middleware/auth';
 import mongoose from 'mongoose';
 import User from '@/models/User';
+import * as uuidModule from 'uuid';
+const { v4: uuidv4 } = uuidModule;
+import { v2 as cloudinary } from 'cloudinary';
+
+// Configure Cloudinary with credentials from environment variables
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+  secure: true
+});
 
 // Connect to MongoDB
 const connectDB = async () => {
@@ -39,6 +50,13 @@ export async function GET(req: NextRequest) {
       }, { status: 404 });
     }
 
+    // Make sure profilePicture is never returned as /default-profile.png
+    if (!user.profilePicture || user.profilePicture === '/default-profile.png') {
+      user.profilePicture = '/p9.webp';
+      // Save the updated default image path to prevent future 404s
+      await user.save();
+    }
+
     return NextResponse.json({
       success: true,
       user: {
@@ -49,6 +67,7 @@ export async function GET(req: NextRequest) {
         phone: user.phone || '',
         address: user.address || '',
         points: user.points || 0,
+        profilePicture: user.profilePicture, // This will now be either the user's actual picture or /p9.webp
         role: user.role,
         wishlist: user.wishlist || [],
         createdAt: user.createdAt,
@@ -77,10 +96,15 @@ export async function PUT(req: NextRequest) {
       }, { status: 401 });
     }
 
-    // Parse request body
-    const { firstName, lastName, phone, address } = await req.json();
+    // Parse the form data from the request
+    const formData = await req.formData();
     
-    // Find user by ID and update
+    const firstName = formData.get('firstName') as string;
+    const lastName = formData.get('lastName') as string;
+    const phone = formData.get('phone') as string;
+    const address = formData.get('address') as string;
+    
+    // Find user by ID
     const user = await User.findById(authResult.user?.id);
     
     if (!user) {
@@ -93,8 +117,51 @@ export async function PUT(req: NextRequest) {
     // Update fields
     if (firstName) user.firstName = firstName;
     if (lastName) user.lastName = lastName;
-    if (phone) user.phone = phone;
-    if (address) user.address = address;
+    if (phone !== undefined) user.phone = phone;
+    if (address !== undefined) user.address = address;
+
+    // Handle profile picture upload using Cloudinary
+    const profilePicture = formData.get('profilePicture') as File;
+    if (profilePicture) {
+      try {
+        // Convert the file to base64 string for Cloudinary upload
+        const bytes = await profilePicture.arrayBuffer();
+        const buffer = Buffer.from(bytes);
+        const base64Image = `data:${profilePicture.type};base64,${buffer.toString('base64')}`;
+        
+        // Create a unique folder path using userId to organize uploads
+        const uploadPath = `pinnacle/profile_pictures/${user._id}`;
+        
+        // Upload to Cloudinary
+        const uploadResponse = await new Promise((resolve, reject) => {
+          cloudinary.uploader.upload(
+            base64Image,
+            { 
+              folder: uploadPath,
+              public_id: `profile_${Date.now()}`, // Create unique name with timestamp
+              overwrite: true,
+              transformation: [
+                { width: 500, height: 500, crop: 'limit' }, // Resize image
+                { quality: 'auto:good' }                   // Optimize quality
+              ]
+            },
+            (error, result) => {
+              if (error) reject(error);
+              else resolve(result);
+            }
+          );
+        });
+        
+        // Store the Cloudinary URL in the user profile
+        user.profilePicture = (uploadResponse as any).secure_url;
+      } catch (cloudinaryError) {
+        console.error('Cloudinary upload error:', cloudinaryError);
+        return NextResponse.json({
+          success: false,
+          error: 'Failed to upload profile picture',
+        }, { status: 500 });
+      }
+    }
 
     // Save updated user
     await user.save();
@@ -109,6 +176,7 @@ export async function PUT(req: NextRequest) {
         email: user.email,
         phone: user.phone || '',
         address: user.address || '',
+        profilePicture: user.profilePicture,
         points: user.points || 0,
         role: user.role,
       },
