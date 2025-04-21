@@ -3,10 +3,10 @@ import { useState, useEffect } from "react";
 import { FiEdit } from "react-icons/fi";
 import { FaCrown } from "react-icons/fa";
 import { Button, Link, CircularProgress } from "@mui/material";
-import Header from "../components/Header";
-import Footer from "../components/Footer";
-import ReviewButton from "../components/ViewDetailsButtonInReivew";
-import ProfilePageToNav from "../components/ProfilePageToNav";
+import Header from "../../components/Header";
+import Footer from "../../components/Footer";
+import ReviewButton from "../../components/ViewDetailsButtonInReivew";
+import ProfilePageToNav from "../../components/ProfilePageToNav";
 import { useAuth } from "@/app/context/AuthContext";
 import { useRouter } from "next/navigation";
 

@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { StarIcon } from "@heroicons/react/24/solid";
-import Header from "../components/Header";
-import Footer from "../components/Footer";
+import Header from "../../../components/Header";
+import Footer from "../../../components/Footer";
 
 export default function Page() {
   const [rating, setRating] = useState(0);
