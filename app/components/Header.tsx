@@ -72,6 +72,12 @@ const Header = () => {
 
       setAtTop(isAtPageTop);
 
+      // Close all dropdowns when scrolling
+      setOpenDropdown(null);
+      setShowDropdown(false);
+      setActiveCategory(null);
+      setShowUserDropdown(false);
+
       if (currentScrollPos < 10) {
         setVisible(true);
       } else if (Math.abs(prevScrollPos - currentScrollPos) > 10) {
@@ -208,9 +214,10 @@ const Header = () => {
   };
 
   const handleMouseLeave = () => {
+    // Make timeout shorter for more responsive closing
     timeout = setTimeout(() => {
       setOpenDropdown(null);
-    }, 200);
+    }, 100); // Reduced from 200ms
   };
 
   // Fetch categories
@@ -330,19 +337,38 @@ const Header = () => {
 
   // Handle click outside to close dropdown
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setShowDropdown(false);
-        setActiveCategory(null);
-      }
+    const closeAllDropdowns = () => {
+      setShowDropdown(false);
+      setActiveCategory(null);
+      setOpenDropdown(null);
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    // Use mousedown instead of click for better responsiveness
+    document.addEventListener('mousedown', (e) => {
+      // Check if click is outside all dropdown areas
+      if (e.target && 
+          !(e.target as Element).closest('[data-dropdown="true"]') && 
+          !(e.target as Element).closest('[data-dropdown-trigger="true"]')) {
+        closeAllDropdowns();
+      }
+    });
+
+    return () => {
+      document.removeEventListener('mousedown', closeAllDropdowns);
+    };
   }, []);
+
+  // Make the dropdown itself close faster on mouse leave
+  const handleDropdownMouseLeave = () => {
+    setTimeout(() => {
+      setShowDropdown(false);
+      setActiveCategory(null);
+    }, 100);
+  };
 
   // Handle hover on main category
   const handleMainCategoryHover = (category: string) => {
+    if (!visible) return; // Don't show dropdown if header is not visible
     setActiveCategory(category);
     setShowDropdown(true);
     setBackgroundImage(categoryBackgrounds[category as keyof typeof categoryBackgrounds] || null);
@@ -350,9 +376,13 @@ const Header = () => {
 
   return (
     <header
-      className={`bg-[#262626] text-white w-full transition-all duration-300 ${
+      className={`bg-[#1D1D1D] text-white w-full transition-all duration-300 ${
         !atTop ? "fixed top-0 left-0 right-0 z-50" : "relative z-50"
-      } ${visible ? "translate-y-0 opacity-100 shadow-lg" : "-translate-y-full opacity-0"}`}
+      } ${
+        visible
+          ? "translate-y-0 opacity-100 shadow-lg"
+          : "-translate-y-full opacity-0"
+      }`}
     >
       {/* Top Bar */}
       <div className="max-w-7xl mx-auto px-4 py-3">
@@ -539,24 +569,17 @@ const Header = () => {
 
                 {showUserDropdown && (
                   <div className="absolute right-0 mt-2 w-48 bg-white text-black shadow-lg rounded-md overflow-hidden z-50">
-                    {user.role === "admin" && (
-                      <>
-                        <Link href="/adminprofile" className="block px-4 py-2 hover:bg-gray-100">
-                          Profile
-                        </Link>
-                        <Link href="/admin/dashboard" className="block px-4 py-2 hover:bg-gray-100">
-                          Dashboard
-                        </Link>
-                      </>
-                    )}
-                    {user.role !== "admin" && (
-                      <Link href="/profilepage" className="block px-4 py-2 hover:bg-gray-100">
-                        Profile
-                      </Link>
-                    )}
+                    <Link href="/profilepage" className="block px-4 py-2 hover:bg-gray-100">
+                      Profile
+                    </Link>
                     <Link href="/orders" className="block px-4 py-2 hover:bg-gray-100">
                       Orders
                     </Link>
+                    {user.role === "admin" && (
+                      <Link href="/dashboard" className="block px-4 py-2 hover:bg-gray-100">
+                        Dashboard
+                      </Link>
+                    )}
                     <Link
                       href="/faq"
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -573,7 +596,10 @@ const Header = () => {
                 )}
               </div>
             ) : (
-              <Link href="/login" className="flex items-center cursor-pointer hover:text-gray-300">
+              <Link
+                href="/login"
+                className="flex items-center cursor-pointer hover:text-gray-300"
+              >
                 <User className="h-6 w-6" />
                 <span className="ml-2">Sign in</span>
               </Link>
@@ -598,7 +624,9 @@ const Header = () => {
           </div>
         </div>
       </div>
-      <hr className="border-t border-gray-200" />
+
+      <hr className="border-t border-gray-800" />
+
       {/* Navigation */}
       <nav className="border-t border-gray-800 w-full">
         <div className="mx-auto px-4 w-full">
@@ -608,24 +636,31 @@ const Header = () => {
               className="relative"
               onMouseEnter={() => handleMainCategoryHover("Men")}
               onMouseLeave={handleMouseLeave}
+              data-dropdown-trigger="true"
             >
-              <Link href="/category/Men" className="flex items-center hover:text-gray-300">
+              <Link
+                href="/category/Men"
+                className="flex items-center hover:text-gray-300"
+              >
                 Men
                 <ChevronDown className="ml-1 h-4 w-4" />
               </Link>
 
-              {showDropdown && activeCategory === "Men" && (
+              {showDropdown && activeCategory === "Men" && visible && (
                 <div
                   ref={dropdownRef}
+                  data-dropdown="true"
                   className="fixed left-1/2 -translate-x-1/2 mt-2 bg-white text-black shadow-lg rounded-lg p-4 max-w-5xl min-w-[1500px] max-h-[70vh] overflow-y-auto grid grid-cols-2 z-50"
                   onMouseEnter={() => clearTimeout(timeout)}
-                  onMouseLeave={handleMouseLeave}
+                  onMouseLeave={handleDropdownMouseLeave}
                 >
                   <div className="grid grid-cols-3 gap-x-4">
                     {categoriesLoading ? (
                       <div className="col-span-3 text-center py-8">
                         <div className="mx-auto h-6 w-6 border-2 border-t-orange-500 rounded-full animate-spin"></div>
-                        <p className="mt-2 text-gray-500">Loading categories...</p>
+                        <p className="mt-2 text-gray-500">
+                          Loading categories...
+                        </p>
                       </div>
                     ) : menCategories.length === 0 ? (
                       <div className="col-span-3 text-center py-8">
@@ -634,12 +669,16 @@ const Header = () => {
                     ) : (
                       <>
                         <div className="col-span-3">
-                          <h3 className="font-semibold text-lg mb-2 border-b pb-1">Men's Categories</h3>
+                          <h3 className="font-semibold text-lg mb-2 border-b pb-1">
+                            Men's Categories
+                          </h3>
                           <div className="grid grid-cols-3 gap-x-4 gap-y-2">
                             {menCategories.map((category) => (
                               <Link
                                 key={category._id}
-                                href={`/category/Men/${encodeURIComponent(category.title)}`}
+                                href={`/category/Men/${encodeURIComponent(
+                                  category.title
+                                )}`}
                                 className="hover:text-orange-500 py-1"
                               >
                                 {category.title}
@@ -649,38 +688,32 @@ const Header = () => {
                         </div>
                       </>
                     )}
-                    <div className="col-span-3 border-t border-gray-200 mt-4 pt-2">
-                      <Link
-                        href="/category/Men"
-                        className="block px-4 py-2 hover:bg-gray-200 rounded-md text-center font-semibold"
-                      >
-                        Shop All Men's
-                      </Link>
-                    </div>
                   </div>
 
-                    <div
-                      className="pl-4 border-l border-gray-200 flex items-center justify-center bg-cover bg-center w-full h-80 relative"
-                      style={{
-                      backgroundImage: backgroundImage ? `url(${backgroundImage})` : "none",
+                  <div
+                    className="pl-4 border-l border-gray-200 flex items-center justify-center bg-cover bg-center w-full h-80 relative"
+                    style={{
+                      backgroundImage: backgroundImage
+                        ? `url(${backgroundImage})`
+                        : "none",
                       transition: "background-image 0.3s ease-in-out",
                       backgroundSize: "contain",
                       backgroundRepeat: "no-repeat",
-                      }}
-                    >
-                      {!backgroundImage && (
+                    }}
+                  >
+                    {!backgroundImage && (
                       <div className="h-full w-full flex items-center justify-center bg-gray-100">
                         <p className="text-gray-400">Hover over a category</p>
                       </div>
-                      )}
-                        <Link
-                        href="/category/Men"
-                        className="absolute bottom-0 px-14 bg-black text-white text-center py-3"
-                        style={{ backgroundColor: "rgba(0, 0, 0, 0.7)" }}
-                        >
-                        Shop Men
-                        </Link>
-                    </div>
+                    )}
+                    <Link
+                      href="/category/Men"
+                      className="absolute bottom-0 px-14 bg-black text-white text-center py-3"
+                      style={{ backgroundColor: "rgba(0, 0, 0, 0.7)" }}
+                    >
+                      Shop Men
+                    </Link>
+                  </div>
                 </div>
               )}
             </li>
@@ -690,24 +723,31 @@ const Header = () => {
               className="relative"
               onMouseEnter={() => handleMainCategoryHover("Women")}
               onMouseLeave={handleMouseLeave}
+              data-dropdown-trigger="true"
             >
-              <Link href="/category/Women" className="flex items-center hover:text-gray-300">
+              <Link
+                href="/category/Women"
+                className="flex items-center hover:text-gray-300"
+              >
                 Womens
                 <ChevronDown className="ml-1 h-4 w-4" />
               </Link>
 
-              {showDropdown && activeCategory === "Women" && (
+              {showDropdown && activeCategory === "Women" && visible && (
                 <div
                   ref={dropdownRef}
+                  data-dropdown="true"
                   className="fixed left-1/2 -translate-x-1/2 mt-2 bg-white text-black shadow-lg rounded-lg p-4 max-w-5xl min-w-[1500px] max-h-[70vh] overflow-y-auto grid grid-cols-2 z-50"
                   onMouseEnter={() => clearTimeout(timeout)}
-                  onMouseLeave={handleMouseLeave}
+                  onMouseLeave={handleDropdownMouseLeave}
                 >
                   <div className="grid grid-cols-3 gap-x-4">
                     {categoriesLoading ? (
                       <div className="col-span-3 text-center py-8">
                         <div className="mx-auto h-6 w-6 border-2 border-t-orange-500 rounded-full animate-spin"></div>
-                        <p className="mt-2 text-gray-500">Loading categories...</p>
+                        <p className="mt-2 text-gray-500">
+                          Loading categories...
+                        </p>
                       </div>
                     ) : womenCategories.length === 0 ? (
                       <div className="col-span-3 text-center py-8">
@@ -716,12 +756,16 @@ const Header = () => {
                     ) : (
                       <>
                         <div className="col-span-3">
-                          <h3 className="font-semibold text-lg mb-2 border-b pb-1">Women's Categories</h3>
+                          <h3 className="font-semibold text-lg mb-2 border-b pb-1">
+                            Women's Categories
+                          </h3>
                           <div className="grid grid-cols-3 gap-x-4 gap-y-2">
                             {womenCategories.map((category) => (
                               <Link
                                 key={category._id}
-                                href={`/category/Women/${encodeURIComponent(category.title)}`}
+                                href={`/category/Women/${encodeURIComponent(
+                                  category.title
+                                )}`}
                                 className="hover:text-orange-500 py-1"
                               >
                                 {category.title}
@@ -731,38 +775,32 @@ const Header = () => {
                         </div>
                       </>
                     )}
-                    <div className="col-span-3 border-t border-gray-200 mt-4 pt-2">
-                      <Link
-                        href="/category/Women"
-                        className="block px-4 py-2 hover:bg-gray-200 rounded-md text-center font-semibold"
-                      >
-                        Shop All Women's
-                      </Link>
-                    </div>
                   </div>
 
-                    <div
-                      className="pl-4 border-l border-gray-200 flex items-center justify-center bg-cover bg-center w-full h-80 relative"
-                      style={{
-                      backgroundImage: backgroundImage ? `url(${backgroundImage})` : "none",
+                  <div
+                    className="pl-4 border-l border-gray-200 flex items-center justify-center bg-cover bg-center w-full h-80 relative"
+                    style={{
+                      backgroundImage: backgroundImage
+                        ? `url(${backgroundImage})`
+                        : "none",
                       transition: "background-image 0.3s ease-in-out",
                       backgroundSize: "contain",
                       backgroundRepeat: "no-repeat",
-                      }}
-                    >
-                      {!backgroundImage && (
+                    }}
+                  >
+                    {!backgroundImage && (
                       <div className="h-full w-full flex items-center justify-center bg-gray-100">
                         <p className="text-gray-400">Hover over a category</p>
                       </div>
-                      )}
-                        <Link
-                        href="/category/Women"
-                        className="absolute bottom-0 px-14 bg-black text-white text-center py-3"
-                        style={{ backgroundColor: "rgba(0, 0, 0, 0.7)" }}
-                        >
-                        Shop Women
-                        </Link>
-                    </div>
+                    )}
+                    <Link
+                      href="/category/Women"
+                      className="absolute bottom-0 px-14 bg-black text-white text-center py-3"
+                      style={{ backgroundColor: "rgba(0, 0, 0, 0.7)" }}
+                    >
+                      Shop Women
+                    </Link>
+                  </div>
                 </div>
               )}
             </li>
@@ -772,24 +810,31 @@ const Header = () => {
               className="relative"
               onMouseEnter={() => handleMainCategoryHover("Accessories")}
               onMouseLeave={handleMouseLeave}
+              data-dropdown-trigger="true"
             >
-              <Link href="/category/Accessories" className="flex items-center hover:text-gray-300">
+              <Link
+                href="/category/Accessories"
+                className="flex items-center hover:text-gray-300"
+              >
                 Accessories
                 <ChevronDown className="ml-1 h-4 w-4" />
               </Link>
 
-              {showDropdown && activeCategory === "Accessories" && (
+              {showDropdown && activeCategory === "Accessories" && visible && (
                 <div
                   ref={dropdownRef}
+                  data-dropdown="true"
                   className="fixed left-1/2 -translate-x-1/2 mt-2 bg-white text-black shadow-lg rounded-lg p-4 max-w-5xl min-w-[1500px] max-h-[70vh] overflow-y-auto grid grid-cols-2 z-50"
                   onMouseEnter={() => clearTimeout(timeout)}
-                  onMouseLeave={handleMouseLeave}
+                  onMouseLeave={handleDropdownMouseLeave}
                 >
                   <div className="grid grid-cols-3 gap-x-4">
                     {categoriesLoading ? (
                       <div className="col-span-3 text-center py-8">
                         <div className="mx-auto h-6 w-6 border-2 border-t-orange-500 rounded-full animate-spin"></div>
-                        <p className="mt-2 text-gray-500">Loading categories...</p>
+                        <p className="mt-2 text-gray-500">
+                          Loading categories...
+                        </p>
                       </div>
                     ) : accessoriesCategories.length === 0 ? (
                       <div className="col-span-3 text-center py-8">
@@ -798,12 +843,16 @@ const Header = () => {
                     ) : (
                       <>
                         <div className="col-span-3">
-                          <h3 className="font-semibold text-lg mb-2 border-b pb-1">Women's Categories</h3>
+                          <h3 className="font-semibold text-lg mb-2 border-b pb-1">
+                            Women's Categories
+                          </h3>
                           <div className="grid grid-cols-3 gap-x-4 gap-y-2">
                             {accessoriesCategories.map((category) => (
                               <Link
                                 key={category._id}
-                                href={`/category/Accessories/${encodeURIComponent(category.title)}`}
+                                href={`/category/Accessories/${encodeURIComponent(
+                                  category.title
+                                )}`}
                                 className="hover:text-orange-500 py-1"
                               >
                                 {category.title}
@@ -813,38 +862,32 @@ const Header = () => {
                         </div>
                       </>
                     )}
-                    <div className="col-span-3 border-t border-gray-200 mt-4 pt-2">
-                      <Link
-                        href="/category/Accessories"
-                        className="block px-4 py-2 hover:bg-gray-200 rounded-md text-center font-semibold"
-                      >
-                        Shop All Accessories
-                      </Link>
-                    </div>
                   </div>
 
-                    <div
-                      className="pl-4 border-l border-gray-200 flex items-center justify-center bg-cover bg-center w-full h-80 relative"
-                      style={{
-                      backgroundImage: backgroundImage ? `url(${backgroundImage})` : "none",
+                  <div
+                    className="pl-4 border-l border-gray-200 flex items-center justify-center bg-cover bg-center w-full h-80 relative"
+                    style={{
+                      backgroundImage: backgroundImage
+                        ? `url(${backgroundImage})`
+                        : "none",
                       transition: "background-image 0.3s ease-in-out",
                       backgroundSize: "contain",
                       backgroundRepeat: "no-repeat",
-                      }}
-                    >
-                      {!backgroundImage && (
+                    }}
+                  >
+                    {!backgroundImage && (
                       <div className="h-full w-full flex items-center justify-center bg-gray-100">
                         <p className="text-gray-400">Hover over a category</p>
                       </div>
-                      )}
-                        <Link
-                        href="/category/Accessories"
-                        className="absolute bottom-0 px-14 bg-black text-white text-center py-3"
-                        style={{ backgroundColor: "rgba(0, 0, 0, 0.7)" }}
-                        >
-                        Shop Accessories
-                        </Link>
-                    </div>
+                    )}
+                    <Link
+                      href="/category/Accessories"
+                      className="absolute bottom-0 px-14 bg-black text-white text-center py-3"
+                      style={{ backgroundColor: "rgba(0, 0, 0, 0.7)" }}
+                    >
+                      Shop Accessories
+                    </Link>
+                  </div>
                 </div>
               )}
             </li>

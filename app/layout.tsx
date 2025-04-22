@@ -42,7 +42,7 @@ export default function RootLayout({
                 <Providers>
                   {children}
                 </Providers>
-                <Toaster position="bottom-right" />
+                <Toaster position="bottom-center" />
                 <ChatbotWrapper /> {/* Using the wrapper instead of direct Chatbot */}
               </CloudinaryProvider>
             </CartProvider>
