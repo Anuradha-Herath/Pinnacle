@@ -47,7 +47,7 @@ body {
 }
 
 /* Custom pulse animation for chatbot icon */
-@keyframes pulse {
+/* @keyframes pulse {
   0% {
     box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.7);
   }
@@ -57,4 +57,4 @@ body {
   100% {
     box-shadow: 0 0 0 0 rgba(249, 115, 22, 0);
   }
-}
+} */

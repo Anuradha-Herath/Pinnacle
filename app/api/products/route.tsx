@@ -118,14 +118,16 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    // Add category filter if provided
+    // Add category filter if provided - use case-insensitive regex matching
     if (category) {
-      query.category = category;
+      query.category = { $regex: new RegExp(`^${category}$`, 'i') };
+      console.log(`Filtering products by category: ${category}`);
     }
 
-    // Add subCategory filter if provided
+    // Add subCategory filter if provided - use case-insensitive regex matching
     if (subCategory) {
-      query.subCategory = subCategory;
+      query.subCategory = { $regex: new RegExp(`^${subCategory}$`, 'i') };
+      console.log(`Filtering products by subCategory: ${subCategory}`);
     }
 
     // Count total products matching the query for pagination

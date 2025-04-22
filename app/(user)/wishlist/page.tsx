@@ -1,13 +1,13 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { useWishlist } from "../context/WishlistContext";
+import { useWishlist } from "../../context/WishlistContext";
 import Image from "next/image";
 import Link from "next/link";
 import { Search, User, Heart, ShoppingBag, ChevronDown } from "react-feather";
-import Footer from "../components/Footer";
-import ProductCard from "../components/ProductCard";
-import Header from "../components/Header";
+import Footer from "../../components/Footer";
+import ProductCard from "../../components/ProductCard";
+import Header from "../../components/Header";
 
 interface Product {
   id: string;

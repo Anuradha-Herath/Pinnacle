@@ -270,6 +270,31 @@ const Chatbot: React.FC = () => {
 
   return (
     <>
+      <style jsx global>{`
+        @keyframes blueGlowPulse {
+          0% {
+            box-shadow: 0 0 0 0 rgba(147, 197, 253, 0.7);
+          }
+          70% {
+            box-shadow: 0 0 0 10px rgba(147, 197, 253, 0);
+          }
+          100% {
+            box-shadow: 0 0 0 0 rgba(147, 197, 253, 0);
+          }
+        }
+        
+        @keyframes blueDotPulse {
+          0%, 100% {
+            opacity: 1;
+            transform: scale(1);
+          }
+          50% {
+            opacity: 0.5;
+            transform: scale(0.8);
+          }
+        }
+      `}</style>
+      
       <button
         onClick={toggleChat}
         className={`fixed bottom-8 right-8 z-[9999] bg-blue-100 hover:bg-blue-200 text-blue-800 rounded-lg p-4 shadow-lg flex items-center justify-center transition-all duration-300 ${
@@ -277,7 +302,7 @@ const Chatbot: React.FC = () => {
         } transform hover:scale-110`}
         style={{
           boxShadow: '0 0 15px rgba(147, 197, 253, 0.4)',
-          animation: isChatOpen ? 'none' : 'pulse 2s infinite'
+          animation: isChatOpen ? 'none' : 'blueGlowPulse 2s infinite'
         }}
         aria-label="Chat with Pinnacle Assistant"
       >
@@ -395,9 +420,9 @@ const Chatbot: React.FC = () => {
                 </div>
                 <div className="p-3 rounded-2xl bg-white text-gray-800 rounded-tl-none shadow-sm border border-gray-200">
                   <div className="flex space-x-2">
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '0ms' }}></div>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '300ms' }}></div>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{ animationDelay: '600ms' }}></div>
+                    <div className="w-2 h-2 bg-blue-400 rounded-full" style={{ animation: 'blueDotPulse 1.4s infinite ease-in-out', animationDelay: '0ms' }}></div>
+                    <div className="w-2 h-2 bg-blue-400 rounded-full" style={{ animation: 'blueDotPulse 1.4s infinite ease-in-out', animationDelay: '300ms' }}></div>
+                    <div className="w-2 h-2 bg-blue-400 rounded-full" style={{ animation: 'blueDotPulse 1.4s infinite ease-in-out', animationDelay: '600ms' }}></div>
                   </div>
                 </div>
               </div>

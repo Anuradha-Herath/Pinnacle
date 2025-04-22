@@ -1,9 +1,10 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import Header from "../../components/Header";
-import Footer from "../../components/Footer";
-import Sidebar from "../../components/Sidebar"; // Import the Sidebar component
+import { Button, TextField, CircularProgress, Alert } from "@mui/material";
+import Header from "@/app/components/Header";
+import Footer from "@/app/components/Footer";
+import Sidebar from "@/app/components/Sidebar"; // Import the Sidebar component
 import { useAuth } from "@/app/context/AuthContext";
 import Image from "next/image";
 

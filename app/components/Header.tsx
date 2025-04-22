@@ -72,6 +72,12 @@ const Header = () => {
 
       setAtTop(isAtPageTop);
 
+      // Close all dropdowns when scrolling
+      setOpenDropdown(null);
+      setShowDropdown(false);
+      setActiveCategory(null);
+      setShowUserDropdown(false);
+
       if (currentScrollPos < 10) {
         setVisible(true);
       } else if (Math.abs(prevScrollPos - currentScrollPos) > 10) {
@@ -208,9 +214,10 @@ const Header = () => {
   };
 
   const handleMouseLeave = () => {
+    // Make timeout shorter for more responsive closing
     timeout = setTimeout(() => {
       setOpenDropdown(null);
-    }, 200);
+    }, 100); // Reduced from 200ms
   };
 
   // Fetch categories
@@ -330,19 +337,38 @@ const Header = () => {
 
   // Handle click outside to close dropdown
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setShowDropdown(false);
-        setActiveCategory(null);
-      }
+    const closeAllDropdowns = () => {
+      setShowDropdown(false);
+      setActiveCategory(null);
+      setOpenDropdown(null);
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    // Use mousedown instead of click for better responsiveness
+    document.addEventListener('mousedown', (e) => {
+      // Check if click is outside all dropdown areas
+      if (e.target && 
+          !(e.target as Element).closest('[data-dropdown="true"]') && 
+          !(e.target as Element).closest('[data-dropdown-trigger="true"]')) {
+        closeAllDropdowns();
+      }
+    });
+
+    return () => {
+      document.removeEventListener('mousedown', closeAllDropdowns);
+    };
   }, []);
+
+  // Make the dropdown itself close faster on mouse leave
+  const handleDropdownMouseLeave = () => {
+    setTimeout(() => {
+      setShowDropdown(false);
+      setActiveCategory(null);
+    }, 100);
+  };
 
   // Handle hover on main category
   const handleMainCategoryHover = (category: string) => {
+    if (!visible) return; // Don't show dropdown if header is not visible
     setActiveCategory(category);
     setShowDropdown(true);
     setBackgroundImage(categoryBackgrounds[category as keyof typeof categoryBackgrounds] || null);
@@ -350,9 +376,13 @@ const Header = () => {
 
   return (
     <header
-      className={`bg-[#262626] text-white w-full transition-all duration-300 ${
+      className={`bg-[#1D1D1D] text-white w-full transition-all duration-300 ${
         !atTop ? "fixed top-0 left-0 right-0 z-50" : "relative z-50"
-      } ${visible ? "translate-y-0 opacity-100 shadow-lg" : "-translate-y-full opacity-0"}`}
+      } ${
+        visible
+          ? "translate-y-0 opacity-100 shadow-lg"
+          : "-translate-y-full opacity-0"
+      }`}
     >
       {/* Top Bar */}
       <div className="max-w-7xl mx-auto px-4 py-3">
@@ -364,149 +394,148 @@ const Header = () => {
 
           {/* Search Bar */}
           <div className="flex-1 max-w-2xl mx-8">
-            <ClientOnly>
-              <div className="relative" ref={searchRef}>
-                <form onSubmit={handleSearchSubmit}>
-                  <div className="relative">
-                    <input
-                      type="text"
-                      placeholder="Search for products or brands"
-                      value={searchQuery}
-                      onChange={(e) => {
-                        setSearchQuery(e.target.value);
-                        if (e.target.value.trim().length > 0) {
-                          setShowSuggestions(true);
-                          setShowSearchHistory(false);
-                        } else {
-                          setShowSuggestions(false);
-                          setShowSearchHistory(true);
-                        }
+            <div className="relative" ref={searchRef}>
+              <form onSubmit={handleSearchSubmit}>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Search for products or brands"
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      if (e.target.value.trim().length > 0) {
+                        setShowSuggestions(true);
+                        setShowSearchHistory(false);
+                      } else {
+                        setShowSuggestions(false);
+                        setShowSearchHistory(true);
+                      }
+                    }}
+                    onFocus={() => {
+                      if (searchQuery.trim().length > 0) {
+                        setShowSuggestions(true);
+                      } else {
+                        setShowSearchHistory(true);
+                      }
+                    }}
+                    className="w-full px-4 py-2 pl-10 bg-[#2D2C2C] rounded text-white placeholder-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-600 border border-grey-100"
+                  />
+                  <button type="submit" className="absolute left-3 top-2.5">
+                    <Search className="h-5 w-5 text-gray-400" />
+                  </button>
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSearchQuery("");
+                        setSuggestions([]);
+                        setKeywordSuggestions([]);
+                        setShowSuggestions(false);
+                        setShowSearchHistory(true);
                       }}
-                      onFocus={() => {
-                        if (searchQuery.trim().length > 0) {
-                          setShowSuggestions(true);
-                        } else {
-                          setShowSearchHistory(true);
-                        }
-                      }}
-                      className="w-full px-4 py-2 pl-10 bg-[#2D2C2C] rounded text-white placeholder-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-600 border border-grey-100"
-                    />
-                    <button type="submit" className="absolute left-3 top-2.5">
-                      <Search className="h-5 w-5 text-gray-400" />
+                      className="absolute right-3 top-2.5"
+                    >
+                      <X className="h-4 w-4 text-gray-400" />
                     </button>
-                    {searchQuery && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSearchQuery("");
-                          setSuggestions([]);
-                          setKeywordSuggestions([]);
-                          setShowSuggestions(false);
-                          setShowSearchHistory(true);
-                        }}
-                        className="absolute right-3 top-2.5"
-                      >
-                        <X className="h-4 w-4 text-gray-400" />
-                      </button>
-                    )}
-                  </div>
-                </form>
+                  )}
+                </div>
+              </form>
 
-                {/* Search history dropdown */}
-                {showSearchHistory && searchHistory.length > 0 && !searchQuery && (
-                  <div className="absolute left-0 right-0 mt-1 bg-white text-black shadow-lg rounded-md overflow-hidden z-50">
-                    <div className="p-2 border-b border-gray-200 flex justify-between items-center">
-                      <h3 className="text-sm font-semibold text-gray-700">Recent Searches</h3>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          clearHistory();
-                        }}
-                        className="text-xs text-gray-500 hover:text-red-500 flex items-center"
+              {/* Search history dropdown */}
+              {showSearchHistory && searchHistory.length > 0 && !searchQuery && (
+                <div className="absolute left-0 right-0 mt-1 bg-white text-black shadow-lg rounded-md overflow-hidden z-50">
+                  <div className="p-2 border-b border-gray-200 flex justify-between items-center">
+                    <h3 className="text-sm font-semibold text-gray-700">Recent Searches</h3>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        clearHistory();
+                      }}
+                      className="text-xs text-gray-500 hover:text-red-500 flex items-center"
+                    >
+                      <Trash className="h-3 w-3 mr-1" />
+                      Clear All
+                    </button>
+                  </div>
+                  <div className="max-h-60 overflow-y-auto">
+                    {searchHistory.map((term, index) => (
+                      <div
+                        key={`history-${index}`}
+                        onClick={() => handleHistoryItemClick(term)}
+                        className="px-3 py-2 hover:bg-gray-100 cursor-pointer flex items-center justify-between"
                       >
-                        <Trash className="h-3 w-3 mr-1" />
-                        Clear All
-                      </button>
-                    </div>
-                    <div className="max-h-60 overflow-y-auto">
-                      {searchHistory.map((term, index) => (
-                        <div
-                          key={`history-${index}`}
-                          onClick={() => handleHistoryItemClick(term)}
-                          className="px-3 py-2 hover:bg-gray-100 cursor-pointer flex items-center justify-between"
+                        <div className="flex items-center">
+                          <Clock className="h-4 w-4 text-gray-400 mr-2" />
+                          <span className="truncate">{term}</span>
+                        </div>
+                        <button
+                          onClick={(e) => handleRemoveHistoryItem(e, term)}
+                          className="text-gray-400 hover:text-red-500"
                         >
-                          <div className="flex items-center">
-                            <Clock className="h-4 w-4 text-gray-400 mr-2" />
-                            <span className="truncate">{term}</span>
-                          </div>
-                          <button
-                            onClick={(e) => handleRemoveHistoryItem(e, term)}
-                            className="text-gray-400 hover:text-red-500"
-                          >
-                            <X className="h-4 w-4" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
                   </div>
-                )}
+                </div>
+              )}
 
-                {/* Search suggestions dropdown */}
-                {showSuggestions && searchQuery.trim().length > 1 && (
-                  <div className="absolute left-0 right-0 mt-1 bg-white text-black shadow-lg rounded-md overflow-hidden z-50">
-                    {isLoadingKeywords ? (
-                      <div className="p-2 text-xs text-gray-500">Loading keywords...</div>
-                    ) : keywordSuggestions.length > 0 ? (
-                      <div className="p-2 border-b border-gray-100">
-                        <h4 className="text-xs text-gray-500 mb-1">Suggested Keywords</h4>
-                        <div className="flex flex-wrap gap-1">
-                          {keywordSuggestions.map((keyword, index) => (
-                            <button
-                              key={`keyword-${index}`}
-                              onClick={() => handleKeywordClick(keyword)}
-                              className="px-2 py-1 bg-gray-100 text-gray-800 text-sm rounded-full hover:bg-gray-200 flex items-center"
-                            >
-                              {keyword}
-                              <ArrowUpRight className="h-3 w-3 ml-1" />
-                            </button>
-                          ))}
-                        </div>
+              {/* Search suggestions dropdown */}
+              {showSuggestions && searchQuery.trim().length > 1 && (
+                <div className="absolute left-0 right-0 mt-1 bg-white text-black shadow-lg rounded-md overflow-hidden z-50">
+                  {isLoadingKeywords ? (
+                    <div className="p-2 text-xs text-gray-500">Loading keywords...</div>
+                  ) : keywordSuggestions.length > 0 ? (
+                    <div className="p-2 border-b border-gray-100">
+                      <h4 className="text-xs text-gray-500 mb-1">Suggested Keywords</h4>
+                      <div className="flex flex-wrap gap-1">
+                        {keywordSuggestions.map((keyword, index) => (
+                          <button
+                            key={`keyword-${index}`}
+                            onClick={() => handleKeywordClick(keyword)}
+                            className="px-2 py-1 bg-gray-100 text-gray-800 text-sm rounded-full hover:bg-gray-200 flex items-center"
+                          >
+                            {keyword}
+                            <ArrowUpRight className="h-3 w-3 ml-1" />
+                          </button>
+                        ))}
                       </div>
-                    ) : null}
+                    </div>
+                  ) : null}
 
-                    {isLoading ? (
-                      <div className="p-3 text-center text-gray-500">Loading suggestions...</div>
-                    ) : suggestions.length > 0 ? (
-                      <div>
-                        <h4 className="text-xs text-gray-500 p-2 pb-1">Products</h4>
-                        <div className="max-h-60 overflow-y-auto">
-                          {suggestions.map((suggestion) => (
-                            <div
-                              key={suggestion.id}
-                              onClick={() => handleSuggestionClick(suggestion)}
-                              className="px-3 py-2 hover:bg-gray-100 cursor-pointer flex items-center"
-                            >
-                              {suggestion.image && !suggestion.type && (
-                                <div className="w-10 h-10 relative mr-2">
-                                  <Image
-                                    src={suggestion.image || "/placeholder.png"}
-                                    alt={suggestion.name}
-                                    fill
-                                    className="object-cover rounded"
-                                    sizes="40px"
-                                  />
-                                </div>
-                              )}
-                              <div className="flex-1 truncate">{suggestion.name}</div>
-                            </div>
-                          ))}
-                        </div>
+                  {isLoading ? (
+                    <div className="p-3 text-center text-gray-500">Loading suggestions...</div>
+                  ) : suggestions.length > 0 ? (
+                    <div>
+                      <h4 className="text-xs text-gray-500 p-2 pb-1">Products</h4>
+                      <div className="max-h-60 overflow-y-auto">
+                        {suggestions.map((suggestion) => (
+                          <div
+                            key={suggestion.id}
+                            onClick={() => handleSuggestionClick(suggestion)}
+                            className="px-3 py-2 hover:bg-gray-100 cursor-pointer flex items-center"
+                          >
+                            {suggestion.image && !suggestion.type && (
+                              <div className="w-10 h-10 relative mr-2">
+                                <Image
+                                  src={suggestion.image || "/placeholder.png"}
+                                  alt={suggestion.name}
+                                  fill
+                                  className="object-cover rounded"
+                                  sizes="40px"
+                                />
+                              </div>
+                            )}
+                            <div className="flex-1 truncate">{suggestion.name}</div>
+                          </div>
+                        ))}
                       </div>
-                    ) : (
-                      <div className="p-3 text-gray-500">
-                        {keywordSuggestions.length === 0 ? "No suggestions found" : "No matching products"}
-                      </div>
-                    )}
+                    </div>
+                  ) : (
+                    <div className="p-3 text-gray-500">
+                      {keywordSuggestions.length === 0 ? "No suggestions found" : "No matching products"}
+                    </div>
+                  )}
 
                     <div className="p-2 border-t border-gray-100">
                       <button
@@ -539,24 +568,17 @@ const Header = () => {
 
                 {showUserDropdown && (
                   <div className="absolute right-0 mt-2 w-48 bg-white text-black shadow-lg rounded-md overflow-hidden z-50">
-                    {user.role === "admin" && (
-                      <>
-                        <Link href="/adminprofile" className="block px-4 py-2 hover:bg-gray-100">
-                          Profile
-                        </Link>
-                        <Link href="/admin/dashboard" className="block px-4 py-2 hover:bg-gray-100">
-                          Dashboard
-                        </Link>
-                      </>
-                    )}
-                    {user.role !== "admin" && (
-                      <Link href="/profilepage" className="block px-4 py-2 hover:bg-gray-100">
-                        Profile
-                      </Link>
-                    )}
+                    <Link href="/profilepage" className="block px-4 py-2 hover:bg-gray-100">
+                      Profile
+                    </Link>
                     <Link href="/orders" className="block px-4 py-2 hover:bg-gray-100">
                       Orders
                     </Link>
+                    {user.role === "admin" && (
+                      <Link href="/dashboard" className="block px-4 py-2 hover:bg-gray-100">
+                        Dashboard
+                      </Link>
+                    )}
                     <Link
                       href="/faq"
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -573,7 +595,10 @@ const Header = () => {
                 )}
               </div>
             ) : (
-              <Link href="/login" className="flex items-center cursor-pointer hover:text-gray-300">
+              <Link
+                href="/login"
+                className="flex items-center cursor-pointer hover:text-gray-300"
+              >
                 <User className="h-6 w-6" />
                 <span className="ml-2">Sign in</span>
               </Link>
@@ -608,24 +633,31 @@ const Header = () => {
               className="relative"
               onMouseEnter={() => handleMainCategoryHover("Men")}
               onMouseLeave={handleMouseLeave}
+              data-dropdown-trigger="true"
             >
-              <Link href="/category/Men" className="flex items-center hover:text-gray-300">
+              <Link
+                href="/category/Men"
+                className="flex items-center hover:text-gray-300"
+              >
                 Men
                 <ChevronDown className="ml-1 h-4 w-4" />
               </Link>
 
-              {showDropdown && activeCategory === "Men" && (
+              {showDropdown && activeCategory === "Men" && visible && (
                 <div
                   ref={dropdownRef}
+                  data-dropdown="true"
                   className="fixed left-1/2 -translate-x-1/2 mt-2 bg-white text-black shadow-lg rounded-lg p-4 max-w-5xl min-w-[1500px] max-h-[70vh] overflow-y-auto grid grid-cols-2 z-50"
                   onMouseEnter={() => clearTimeout(timeout)}
-                  onMouseLeave={handleMouseLeave}
+                  onMouseLeave={handleDropdownMouseLeave}
                 >
                   <div className="grid grid-cols-3 gap-x-4">
                     {categoriesLoading ? (
                       <div className="col-span-3 text-center py-8">
                         <div className="mx-auto h-6 w-6 border-2 border-t-orange-500 rounded-full animate-spin"></div>
-                        <p className="mt-2 text-gray-500">Loading categories...</p>
+                        <p className="mt-2 text-gray-500">
+                          Loading categories...
+                        </p>
                       </div>
                     ) : menCategories.length === 0 ? (
                       <div className="col-span-3 text-center py-8">
@@ -634,12 +666,16 @@ const Header = () => {
                     ) : (
                       <>
                         <div className="col-span-3">
-                          <h3 className="font-semibold text-lg mb-2 border-b pb-1">Men's Categories</h3>
+                          <h3 className="font-semibold text-lg mb-2 border-b pb-1">
+                            Men's Categories
+                          </h3>
                           <div className="grid grid-cols-3 gap-x-4 gap-y-2">
                             {menCategories.map((category) => (
                               <Link
                                 key={category._id}
-                                href={`/category/Men/${encodeURIComponent(category.title)}`}
+                                href={`/category/Men/${encodeURIComponent(
+                                  category.title
+                                )}`}
                                 className="hover:text-orange-500 py-1"
                               >
                                 {category.title}
@@ -649,38 +685,32 @@ const Header = () => {
                         </div>
                       </>
                     )}
-                    <div className="col-span-3 border-t border-gray-200 mt-4 pt-2">
-                      <Link
-                        href="/category/Men"
-                        className="block px-4 py-2 hover:bg-gray-200 rounded-md text-center font-semibold"
-                      >
-                        Shop All Men's
-                      </Link>
-                    </div>
                   </div>
 
-                    <div
-                      className="pl-4 border-l border-gray-200 flex items-center justify-center bg-cover bg-center w-full h-80 relative"
-                      style={{
-                      backgroundImage: backgroundImage ? `url(${backgroundImage})` : "none",
+                  <div
+                    className="pl-4 border-l border-gray-200 flex items-center justify-center bg-cover bg-center w-full h-80 relative"
+                    style={{
+                      backgroundImage: backgroundImage
+                        ? `url(${backgroundImage})`
+                        : "none",
                       transition: "background-image 0.3s ease-in-out",
                       backgroundSize: "contain",
                       backgroundRepeat: "no-repeat",
-                      }}
-                    >
-                      {!backgroundImage && (
+                    }}
+                  >
+                    {!backgroundImage && (
                       <div className="h-full w-full flex items-center justify-center bg-gray-100">
                         <p className="text-gray-400">Hover over a category</p>
                       </div>
-                      )}
-                        <Link
-                        href="/category/Men"
-                        className="absolute bottom-0 px-14 bg-black text-white text-center py-3"
-                        style={{ backgroundColor: "rgba(0, 0, 0, 0.7)" }}
-                        >
-                        Shop Men
-                        </Link>
-                    </div>
+                    )}
+                    <Link
+                      href="/category/Men"
+                      className="absolute bottom-0 px-14 bg-black text-white text-center py-3"
+                      style={{ backgroundColor: "rgba(0, 0, 0, 0.7)" }}
+                    >
+                      Shop Men
+                    </Link>
+                  </div>
                 </div>
               )}
             </li>
@@ -690,24 +720,31 @@ const Header = () => {
               className="relative"
               onMouseEnter={() => handleMainCategoryHover("Women")}
               onMouseLeave={handleMouseLeave}
+              data-dropdown-trigger="true"
             >
-              <Link href="/category/Women" className="flex items-center hover:text-gray-300">
+              <Link
+                href="/category/Women"
+                className="flex items-center hover:text-gray-300"
+              >
                 Womens
                 <ChevronDown className="ml-1 h-4 w-4" />
               </Link>
 
-              {showDropdown && activeCategory === "Women" && (
+              {showDropdown && activeCategory === "Women" && visible && (
                 <div
                   ref={dropdownRef}
+                  data-dropdown="true"
                   className="fixed left-1/2 -translate-x-1/2 mt-2 bg-white text-black shadow-lg rounded-lg p-4 max-w-5xl min-w-[1500px] max-h-[70vh] overflow-y-auto grid grid-cols-2 z-50"
                   onMouseEnter={() => clearTimeout(timeout)}
-                  onMouseLeave={handleMouseLeave}
+                  onMouseLeave={handleDropdownMouseLeave}
                 >
                   <div className="grid grid-cols-3 gap-x-4">
                     {categoriesLoading ? (
                       <div className="col-span-3 text-center py-8">
                         <div className="mx-auto h-6 w-6 border-2 border-t-orange-500 rounded-full animate-spin"></div>
-                        <p className="mt-2 text-gray-500">Loading categories...</p>
+                        <p className="mt-2 text-gray-500">
+                          Loading categories...
+                        </p>
                       </div>
                     ) : womenCategories.length === 0 ? (
                       <div className="col-span-3 text-center py-8">
@@ -716,12 +753,16 @@ const Header = () => {
                     ) : (
                       <>
                         <div className="col-span-3">
-                          <h3 className="font-semibold text-lg mb-2 border-b pb-1">Women's Categories</h3>
+                          <h3 className="font-semibold text-lg mb-2 border-b pb-1">
+                            Women's Categories
+                          </h3>
                           <div className="grid grid-cols-3 gap-x-4 gap-y-2">
                             {womenCategories.map((category) => (
                               <Link
                                 key={category._id}
-                                href={`/category/Women/${encodeURIComponent(category.title)}`}
+                                href={`/category/Women/${encodeURIComponent(
+                                  category.title
+                                )}`}
                                 className="hover:text-orange-500 py-1"
                               >
                                 {category.title}
@@ -731,38 +772,32 @@ const Header = () => {
                         </div>
                       </>
                     )}
-                    <div className="col-span-3 border-t border-gray-200 mt-4 pt-2">
-                      <Link
-                        href="/category/Women"
-                        className="block px-4 py-2 hover:bg-gray-200 rounded-md text-center font-semibold"
-                      >
-                        Shop All Women's
-                      </Link>
-                    </div>
                   </div>
 
-                    <div
-                      className="pl-4 border-l border-gray-200 flex items-center justify-center bg-cover bg-center w-full h-80 relative"
-                      style={{
-                      backgroundImage: backgroundImage ? `url(${backgroundImage})` : "none",
+                  <div
+                    className="pl-4 border-l border-gray-200 flex items-center justify-center bg-cover bg-center w-full h-80 relative"
+                    style={{
+                      backgroundImage: backgroundImage
+                        ? `url(${backgroundImage})`
+                        : "none",
                       transition: "background-image 0.3s ease-in-out",
                       backgroundSize: "contain",
                       backgroundRepeat: "no-repeat",
-                      }}
-                    >
-                      {!backgroundImage && (
+                    }}
+                  >
+                    {!backgroundImage && (
                       <div className="h-full w-full flex items-center justify-center bg-gray-100">
                         <p className="text-gray-400">Hover over a category</p>
                       </div>
-                      )}
-                        <Link
-                        href="/category/Women"
-                        className="absolute bottom-0 px-14 bg-black text-white text-center py-3"
-                        style={{ backgroundColor: "rgba(0, 0, 0, 0.7)" }}
-                        >
-                        Shop Women
-                        </Link>
-                    </div>
+                    )}
+                    <Link
+                      href="/category/Women"
+                      className="absolute bottom-0 px-14 bg-black text-white text-center py-3"
+                      style={{ backgroundColor: "rgba(0, 0, 0, 0.7)" }}
+                    >
+                      Shop Women
+                    </Link>
+                  </div>
                 </div>
               )}
             </li>
@@ -772,24 +807,31 @@ const Header = () => {
               className="relative"
               onMouseEnter={() => handleMainCategoryHover("Accessories")}
               onMouseLeave={handleMouseLeave}
+              data-dropdown-trigger="true"
             >
-              <Link href="/category/Accessories" className="flex items-center hover:text-gray-300">
+              <Link
+                href="/category/Accessories"
+                className="flex items-center hover:text-gray-300"
+              >
                 Accessories
                 <ChevronDown className="ml-1 h-4 w-4" />
               </Link>
 
-              {showDropdown && activeCategory === "Accessories" && (
+              {showDropdown && activeCategory === "Accessories" && visible && (
                 <div
                   ref={dropdownRef}
+                  data-dropdown="true"
                   className="fixed left-1/2 -translate-x-1/2 mt-2 bg-white text-black shadow-lg rounded-lg p-4 max-w-5xl min-w-[1500px] max-h-[70vh] overflow-y-auto grid grid-cols-2 z-50"
                   onMouseEnter={() => clearTimeout(timeout)}
-                  onMouseLeave={handleMouseLeave}
+                  onMouseLeave={handleDropdownMouseLeave}
                 >
                   <div className="grid grid-cols-3 gap-x-4">
                     {categoriesLoading ? (
                       <div className="col-span-3 text-center py-8">
                         <div className="mx-auto h-6 w-6 border-2 border-t-orange-500 rounded-full animate-spin"></div>
-                        <p className="mt-2 text-gray-500">Loading categories...</p>
+                        <p className="mt-2 text-gray-500">
+                          Loading categories...
+                        </p>
                       </div>
                     ) : accessoriesCategories.length === 0 ? (
                       <div className="col-span-3 text-center py-8">
@@ -798,12 +840,16 @@ const Header = () => {
                     ) : (
                       <>
                         <div className="col-span-3">
-                          <h3 className="font-semibold text-lg mb-2 border-b pb-1">Women's Categories</h3>
+                          <h3 className="font-semibold text-lg mb-2 border-b pb-1">
+                            Women's Categories
+                          </h3>
                           <div className="grid grid-cols-3 gap-x-4 gap-y-2">
                             {accessoriesCategories.map((category) => (
                               <Link
                                 key={category._id}
-                                href={`/category/Accessories/${encodeURIComponent(category.title)}`}
+                                href={`/category/Accessories/${encodeURIComponent(
+                                  category.title
+                                )}`}
                                 className="hover:text-orange-500 py-1"
                               >
                                 {category.title}
@@ -813,38 +859,32 @@ const Header = () => {
                         </div>
                       </>
                     )}
-                    <div className="col-span-3 border-t border-gray-200 mt-4 pt-2">
-                      <Link
-                        href="/category/Accessories"
-                        className="block px-4 py-2 hover:bg-gray-200 rounded-md text-center font-semibold"
-                      >
-                        Shop All Accessories
-                      </Link>
-                    </div>
                   </div>
 
-                    <div
-                      className="pl-4 border-l border-gray-200 flex items-center justify-center bg-cover bg-center w-full h-80 relative"
-                      style={{
-                      backgroundImage: backgroundImage ? `url(${backgroundImage})` : "none",
+                  <div
+                    className="pl-4 border-l border-gray-200 flex items-center justify-center bg-cover bg-center w-full h-80 relative"
+                    style={{
+                      backgroundImage: backgroundImage
+                        ? `url(${backgroundImage})`
+                        : "none",
                       transition: "background-image 0.3s ease-in-out",
                       backgroundSize: "contain",
                       backgroundRepeat: "no-repeat",
-                      }}
-                    >
-                      {!backgroundImage && (
+                    }}
+                  >
+                    {!backgroundImage && (
                       <div className="h-full w-full flex items-center justify-center bg-gray-100">
                         <p className="text-gray-400">Hover over a category</p>
                       </div>
-                      )}
-                        <Link
-                        href="/category/Accessories"
-                        className="absolute bottom-0 px-14 bg-black text-white text-center py-3"
-                        style={{ backgroundColor: "rgba(0, 0, 0, 0.7)" }}
-                        >
-                        Shop Accessories
-                        </Link>
-                    </div>
+                    )}
+                    <Link
+                      href="/category/Accessories"
+                      className="absolute bottom-0 px-14 bg-black text-white text-center py-3"
+                      style={{ backgroundColor: "rgba(0, 0, 0, 0.7)" }}
+                    >
+                      Shop Accessories
+                    </Link>
+                  </div>
                 </div>
               )}
             </li>

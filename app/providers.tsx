@@ -9,7 +9,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <WishlistProvider>
       <CartProvider>
         {children}
-        <Toaster position="bottom-right" />
+        <Toaster position="bottom-center" />
       </CartProvider>
     </WishlistProvider>
   );
