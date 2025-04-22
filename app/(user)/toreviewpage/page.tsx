@@ -1,9 +1,9 @@
 "use client";
 import { useState } from "react";
 import { Button, Link } from "@mui/material";
-import Header from "../components/Header";
-import Footer from "../components/Footer";
-import ProfilePageToNav from "../components/ProfilePageToNav";
+import Header from "../../components/Header";
+import Footer from "../../components/Footer";
+import ProfilePageToNav from "../../components/ProfilePageToNav";
 
 export default function ToPayPage() {
   const [orders, setOrders] = useState([

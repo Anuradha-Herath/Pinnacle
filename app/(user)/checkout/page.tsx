@@ -2,9 +2,9 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { Search, User, Heart, ShoppingBag, ChevronDown } from "react-feather";
-import Footer from "../components/Footer";
-import Header from "../components/Header";
-import { useCart } from "../context/CartContext";
+import Footer from "../../components/Footer";
+import Header from "../../components/Header";
+import { useCart, CartItem } from "../../context/CartContext";
 import { getValidImageUrl, handleImageError } from "@/lib/imageUtils";
 import { useRouter } from "next/navigation";
 
@@ -235,7 +235,7 @@ function Checkout() {
                 </div>
               ) : cart && cart.length > 0 ? (
                 <div className="mb-6 pr-2">
-                  {cart.map((item, index) => (
+                  {cart.map((item: CartItem, index: number) => (
                     <div
                       key={`${item.id}-${item.size}-${item.color}-${index}`}
                       className="flex items-start gap-4 border-b border-gray-100 py-4"

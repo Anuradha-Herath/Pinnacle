@@ -2,12 +2,12 @@
 
 import React, { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import Header from "../../components/Header";
-import Footer from "../../components/Footer";
-import ProductCarousel from "../../components/ProductCarousel";
-import ProductImageGallery from "../../components/ProductImageGallery";
-import ProductInformation from "../../components/ProductInformation";
-import UserReviewsSection from "../../components/UserReviewsSection";
+import Header from "../../../components/Header";
+import Footer from "../../../components/Footer";
+import ProductCarousel from "../../../components/ProductCarousel";
+import ProductImageGallery from "../../../components/ProductImageGallery";
+import ProductInformation from "../../../components/ProductInformation";
+import UserReviewsSection from "../../../components/UserReviewsSection";
 import { useCart } from "@/app/context/CartContext";
 import { useWishlist } from "@/app/context/WishlistContext";
 import { toast } from "react-hot-toast";
@@ -449,7 +449,7 @@ export default function EnhancedProductDetailPage() {
         {/* User Reviews Section */}
         <UserReviewsSection 
           productId={product.id} 
-          onRatingChange={(newRating) => {
+          onRatingChange={(newRating: number) => {
             setProductRating(newRating);
           }}
         />

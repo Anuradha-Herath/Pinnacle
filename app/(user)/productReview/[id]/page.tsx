@@ -3,8 +3,8 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { StarIcon } from "@heroicons/react/24/solid";
-import Header from "../../components/Header";
-import Footer from "../../components/Footer";
+import Header from "../../../../components/Header";
+import Footer from "../../../../components/Footer";
 import { toast } from "react-hot-toast";
 
 export default function ProductReviewPage() {

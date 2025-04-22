@@ -3,10 +3,10 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import Header from "../components/Header";
-import Footer from "../components/Footer";
-import ProductCard from "../components/ProductCard";
-import { useSearchHistory } from "../hooks/useSearchHistory";
+import Header from "../../components/Header";
+import Footer from "../../components/Footer";
+import ProductCard from "../../components/ProductCard";
+import { useSearchHistory } from "../../hooks/useSearchHistory";
 
 interface Product {
   id: string;

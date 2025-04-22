@@ -339,7 +339,7 @@ const HomePage = () => {
               <button 
                 className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${
                   selectedGender === 'men' 
-                    ? 'bg-orange-500 text-white' 
+                    ? 'bg-[black] text-white' 
                     : 'text-black hover:bg-gray-300'
                 }`}
                 onClick={() => handleGenderToggle('men')}
@@ -349,7 +349,7 @@ const HomePage = () => {
               <button 
                 className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${
                   selectedGender === 'women' 
-                    ? 'bg-orange-500 text-white' 
+                    ? 'bg-[black] text-white' 
                     : 'text-black hover:bg-gray-300'
                 }`}
                 onClick={() => handleGenderToggle('women')}
