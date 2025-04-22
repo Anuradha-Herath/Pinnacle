@@ -176,11 +176,9 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
   const productImage = isValidImageUrl(currentImage || product.image) ? 
     (currentImage || product.image) : placeholderImage;
 
-  // Filter valid color images with improved validation
+  // Filter valid color images with improved validation - removed slice(0,3) to show all colors
   const validColorImages = Array.isArray(productWithDefaults.colors) ? 
-    productWithDefaults.colors
-      .filter(isValidImageUrl)
-      .slice(0, 3) : 
+    productWithDefaults.colors.filter(isValidImageUrl) : 
     [];
 
   // New handler for color image click - stores both image and color info
@@ -255,12 +253,12 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
 
       {/* Color images with selection indicator */}
       {validColorImages.length > 0 && (
-        <div className="flex gap-2 mt-2">
+        <div className="flex items-center gap-2 mt-2 overflow-x-auto pb-1 max-w-full">
           {validColorImages.map((colorImg, index) => (
             <button
               key={index}
               onClick={(e) => handleColorImageClick(e, colorImg)}
-              className={`w-10 h-10 border rounded-md overflow-hidden ${
+              className={`min-w-[40px] w-10 h-10 border rounded-md overflow-hidden flex-shrink-0 ${
                 currentImage === colorImg
                   ? "border-2 border-black"
                   : "border-gray-300"
@@ -278,6 +276,7 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
               />
             </button>
           ))}
+          {/* Removed the additionalColorsCount indicator */}
         </div>
       )}
 

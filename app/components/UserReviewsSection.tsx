@@ -106,9 +106,63 @@ const UserReviewsSection: React.FC<Props> = ({
 
       {loading ? (
         <div className="flex justify-center py-8">
-          <div className="animate-pulse flex flex-col items-center">
-            <div className="h-4 w-32 bg-gray-200 rounded mb-3"></div>
-            <div className="h-4 w-40 bg-gray-200 rounded"></div>
+          {/* Custom pulse animation with grayscale colors only */}
+          <style jsx>{`
+            .custom-review-pulse {
+              animation: customReviewPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+            }
+            @keyframes customReviewPulse {
+              0%, 100% {
+                opacity: 1;
+              }
+              50% {
+                opacity: 0.5;
+              }
+            }
+          `}</style>
+          <div className="custom-review-pulse flex flex-col w-full max-w-2xl">
+            {/* Rating summary skeleton */}
+            <div className="flex flex-col md:flex-row gap-8 mb-8">
+              <div className="flex-1">
+                <div className="flex items-end gap-2 mb-2">
+                  <div className="h-8 w-16 bg-gray-200 rounded"></div>
+                  <div className="flex gap-1">
+                    {[...Array(5)].map((_, i) => (
+                      <div key={i} className="h-4 w-4 bg-gray-300 rounded-full"></div>
+                    ))}
+                  </div>
+                </div>
+                <div className="h-4 w-40 bg-gray-200 rounded"></div>
+              </div>
+              <div className="flex-1 space-y-2">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="flex items-center">
+                    <div className="w-6 h-4 bg-gray-200 rounded mr-2"></div>
+                    <div className="flex-1 h-2 bg-gray-200 rounded-full"></div>
+                    <div className="w-6 h-4 bg-gray-200 rounded ml-2"></div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            {/* Review placeholders */}
+            {[...Array(2)].map((_, i) => (
+              <div key={i} className="mb-6 pb-6 border-b border-gray-200">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="flex gap-1">
+                    {[...Array(5)].map((_, j) => (
+                      <div key={j} className="h-4 w-4 bg-gray-200 rounded-full"></div>
+                    ))}
+                  </div>
+                  <div className="h-4 w-32 bg-gray-200 rounded"></div>
+                </div>
+                <div className="space-y-2">
+                  <div className="h-3 w-full bg-gray-200 rounded"></div>
+                  <div className="h-3 w-full bg-gray-200 rounded"></div>
+                  <div className="h-3 w-3/4 bg-gray-200 rounded"></div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       ) : error ? (
