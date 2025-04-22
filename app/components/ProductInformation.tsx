@@ -61,6 +61,16 @@ const ProductInformation: React.FC<ProductInformationProps> = ({
     ? Math.round(((product.price - product.discountedPrice!) / product.price) * 100) 
     : 0;
   
+    // State for selected image index
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+
+    const handleImageSelect = (index: number) => {
+      setSelectedImageIndex(index);
+      if (onImageSelect) {
+        onImageSelect(index);
+      }
+    };
+    
   // Generate stars for rating
   const renderRatingStars = () => {
     const stars = [];
@@ -148,11 +158,13 @@ const ProductInformation: React.FC<ProductInformationProps> = ({
           <h2 className="text-sm font-medium mb-2">Available Colors</h2>
           <div className="flex space-x-3 overflow-x-auto py-2">
             {product.images.map((image, index) => (
-              <button 
-                key={index} 
-                onClick={() => onImageSelect && onImageSelect(index)}
-                className="relative w-16 h-16 border-2 rounded-md overflow-hidden transition-all hover:scale-105"
-              >
+              <button
+              key={index}
+              onClick={() => handleImageSelect(index)} // Use the updated handler
+              className={`relative w-16 h-16 border-2 rounded-md overflow-hidden transition-all hover:scale-105 ${
+                selectedImageIndex === index ? 'border-black' : 'border-gray-200'
+              }`}
+            >
                 <Image
                   src={image || placeholderImage}
                   alt={`Product variant ${index + 1}`}
