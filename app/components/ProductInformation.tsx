@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Star, Minus, Plus, ChevronDown } from "lucide-react";
+import { Star, Minus, Plus, ChevronDown, Twitter, Facebook, MessageCircle } from "lucide-react";
 import Image from "next/image";
 import SizeGuideModal from "./SizeGuideModal";
 
@@ -45,6 +45,27 @@ const ProductInformation: React.FC<ProductInformationProps> = ({
   } | null>(null);
   // State for loading indicator
   const [isLoadingSizeGuide, setIsLoadingSizeGuide] = useState(false);
+
+  // Social media sharing functions
+  const shareOnTwitter = () => {
+    const shareText = `Check out this ${product.name}!`;
+    const shareUrl = window.location.href;
+    const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`;
+    window.open(twitterUrl, '_blank', 'width=600,height=400');
+  };
+
+  const shareOnFacebook = () => {
+    const shareUrl = window.location.href;
+    const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`;
+    window.open(facebookUrl, '_blank', 'width=600,height=400');
+  };
+
+  const shareOnWhatsApp = () => {
+    const shareText = `Check out this ${product.name}! ${window.location.href}`;
+    const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(shareText)}`;
+    window.open(whatsappUrl, '_blank', 'width=600,height=400');
+  };
+    
   
   // Determine product ID
   const productId = product.id || product._id;
@@ -61,6 +82,16 @@ const ProductInformation: React.FC<ProductInformationProps> = ({
     ? Math.round(((product.price - product.discountedPrice!) / product.price) * 100) 
     : 0;
   
+    // State for selected image index
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+
+    const handleImageSelect = (index: number) => {
+      setSelectedImageIndex(index);
+      if (onImageSelect) {
+        onImageSelect(index);
+      }
+    };
+    
   // Generate stars for rating
   const renderRatingStars = () => {
     const stars = [];
@@ -148,11 +179,13 @@ const ProductInformation: React.FC<ProductInformationProps> = ({
           <h2 className="text-sm font-medium mb-2">Available Colors</h2>
           <div className="flex space-x-3 overflow-x-auto py-2">
             {product.images.map((image, index) => (
-              <button 
-                key={index} 
-                onClick={() => onImageSelect && onImageSelect(index)}
-                className="relative w-16 h-16 border-2 rounded-md overflow-hidden transition-all hover:scale-105"
-              >
+              <button
+              key={index}
+              onClick={() => handleImageSelect(index)} // Use the updated handler
+              className={`relative w-16 h-16 border-2 rounded-md overflow-hidden transition-all hover:scale-105 ${
+                selectedImageIndex === index ? 'border-black' : 'border-gray-200'
+              }`}
+            >
                 <Image
                   src={image || placeholderImage}
                   alt={`Product variant ${index + 1}`}
@@ -240,6 +273,35 @@ const ProductInformation: React.FC<ProductInformationProps> = ({
         </div>
       </div>
       
+       {/* Social Media Sharing */}
+       <div className="mb-8">
+        <h2 className="text-sm font-medium mb-2">Share</h2>
+        <div className="flex space-x-3">
+          <button
+            onClick={shareOnTwitter}
+            className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 transition-colors"
+            aria-label="Share on Twitter"
+          >
+            <Twitter size={20} className="text-black-800" />
+          </button>
+          <button
+            onClick={shareOnFacebook}
+            className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 transition-colors"
+            aria-label="Share on Facebook"
+          >
+            <Facebook size={20} className="text-black-800" />
+          </button>
+           <button
+            onClick={shareOnWhatsApp}
+            className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 transition-colors"
+            aria-label="Share on WhatsApp"
+          >
+            <MessageCircle size={20} className="text-black-800" />
+          </button>
+          {/* Pinterest sharing button removed as 'Pinterest' icon is not available */}
+        </div>
+      </div>
+
       {/* Description */}
       <div className="my-8 rounded-lg border border-gray-200 overflow-hidden bg-gray-50">
         <button 
