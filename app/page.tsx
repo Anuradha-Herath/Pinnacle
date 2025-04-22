@@ -214,22 +214,40 @@ const HomePage = () => {
   };
 
   useEffect(() => {
+    // Skip if we've already processed the success params
     if (hasProcessedParams.current) return;
+    
     const success = searchParams.get('success');
     const order = searchParams.get('order');
+    
     if (success === 'true' && !orderProcessingComplete.current) {
+      console.log("Processing successful order:", order);
       orderProcessingComplete.current = true;
       hasProcessedParams.current = true;
-      clearCart();
+      
+      // Clear cart - make sure this runs successfully
+      try {
+        clearCart();
+        console.log("Cart cleared successfully");
+      } catch (error) {
+        console.error("Error clearing cart:", error);
+      }
+      
+      // Set order number to display in success modal
       if (order) {
         setOrderNumber(order);
       }
+      
+      // Show success modal and toast
       setShowOrderSuccess(true);
       toast.success('Order placed successfully!');
+      
+      // Update URL to remove query params (after a short delay to ensure React state updates first)
       setTimeout(() => {
         window.history.replaceState({}, document.title, window.location.pathname);
       }, 100);
     }
+    
     const canceled = searchParams.get('canceled');
     if (canceled === 'true' && !hasProcessedParams.current) {
       hasProcessedParams.current = true;

@@ -16,6 +16,8 @@ export const authNotifications = {
 export const cartNotifications = {
   addedToCart: (productName: string) => toast.success(`${productName} added to cart`),
   removedFromCart: (productName: string) => toast.success(`${productName} removed from cart`),
+  itemRemoved: (productName?: string) => toast.success(productName ? `${productName} removed from cart` : 'Item removed from cart'),
+  itemAdded: (productName?: string) => toast.success(productName ? `${productName} added to cart` : 'Item added to cart'),
   cartUpdated: () => toast.success('Cart updated'),
   cartError: (error: string) => toast.error(`Cart error: ${error}`),
 };

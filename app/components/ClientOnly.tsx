@@ -12,10 +12,11 @@ export default function ClientOnly({ children, fallback = null }: ClientOnlyProp
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
+    // Set mounted state on client-side only
     setIsMounted(true);
-    return () => setIsMounted(false);
   }, []);
 
+  // Critical: Return null during server-side rendering to avoid hydration issues
   if (!isMounted) {
     return <>{fallback}</>;
   }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
 import { useAuth } from "./AuthContext";
 import { toast } from "react-hot-toast";
 import { getValidImageUrl } from "@/lib/imageUtils"; // Import this utility
@@ -18,6 +18,14 @@ export interface CartItem {
   // Add missing properties that are used in trackProductAction
   category?: string;
   subCategory?: string;
+}
+
+interface User {
+  id: string;
+  email: string;
+  role: string;
+  firstName: string;
+  lastName: string;
 }
 
 export interface CartContextType {
@@ -181,7 +189,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // Cart operations
-  const addToCart = (item: Omit<CartItem, 'quantity'> & { quantity?: number }, showNotification: boolean = true) => {
+  const addToCart = async (
+    item: Omit<CartItem, 'quantity'> & { quantity?: number }, 
+    showNotification: boolean = true
+  ): Promise<void> => {
     const itemQuantity = item.quantity || 1;
     
     // Extract a display-friendly color if it's a URL
@@ -199,10 +210,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     trackProductAction({
       id: item.id,
       name: item.name,
-      category: item.category,
-      subCategory: item.subCategory,
-      price: item.price
-    }, 'cart');
+      category: item.category || '',
+      subCategory: item.subCategory || '',
+      price: item.price,
+      action: 'add_to_cart' // Specify the action
+    });
 
     setCart(prevCart => {
       // Check if item already exists in cart with same ID, size, and color
@@ -266,48 +278,41 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
   };
 
-  const clearCart = async (): Promise<void> => {
+  const clearCart = useCallback(async () => {
     try {
-      console.log("Starting cart clearing process...");
-      setIsClearing(true); // Set flag to prevent reload during clearing
+      // Fix: Only use id property since _id is causing TypeScript errors
+      const userId = user?.id;
+      console.log(`CLEARING CART for user ${userId}`);
+      
+      // Update local state first
+      setCart([]);
       setIsLoading(true);
       
-      // Clear local state first
-      setCart([]);
-      
-      // Always clear localStorage
-      localStorage.removeItem('cart');
-      console.log("Cleared cart from localStorage");
-      
-      // For logged-in users, explicitly clear the cart on the server
-      if (user) {
-        console.log("Clearing cart on server for user:", user.id);
-        try {
-          const response = await fetch('/api/user/cart', {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ cart: [] }),
-          });
-          
-          if (!response.ok) {
-            console.error('Failed to clear cart on server:', await response.text());
-            throw new Error('Failed to clear cart on server');
-          } else {
-            console.log('Cart successfully cleared on server');
-          }
-        } catch (error) {
-          console.error('Error clearing cart on server:', error);
-          throw error; // Re-throw to be caught by the outer try-catch
+      // Then update the backend if user is logged in
+      if (userId) {
+        const response = await fetch('/api/user/cart', {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ items: [] }),
+        });
+        
+        if (!response.ok) {
+          console.error('Failed to clear cart on the server:', response.status);
+          throw new Error('Failed to clear cart');
         }
+        
+        console.log(`Cart cleared successfully for user ${userId}`);
+      } else {
+        // For guest users, just update localStorage
+        localStorage.removeItem('cart');
+        console.log('Guest cart cleared from localStorage');
       }
-      
-      console.log("Cart clearing completed successfully");
-      return Promise.resolve();
     } catch (error) {
-      console.error("Cart clearing failed:", error);
-      return Promise.reject(error);
+      console.error('Error clearing cart:', error);
+      toast.error('Failed to clear your cart. Please try again.');
+      // Don't re-throw the error to prevent breaking the payment flow
     } finally {
       setIsLoading(false);
       // Keep isClearing true for a short duration to prevent immediate reload
@@ -315,7 +320,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setIsClearing(false);
       }, 2000); // 2-second delay before allowing reload
     }
-  };
+  }, [user]);
 
   const updateQuantity = (id: string, quantity: number, size?: string, color?: string) => {
     logCartOperation('updateQuantity', {id, quantity, size, color});
