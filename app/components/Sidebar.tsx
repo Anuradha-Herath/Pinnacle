@@ -41,7 +41,7 @@ const Sidebar: React.FC = () => {
         await logout();
         // Use notification service instead of direct toast call
         authNotifications.logoutSuccess();
-        router.push('/adminlogin');
+        router.push('/admin/adminlogin');
     };
 
     // Helper function for Link or collapsed icon-only button
@@ -134,13 +134,10 @@ const Sidebar: React.FC = () => {
                     <li>
                         <button
                             onClick={handleLogout}
-                            className="hover:bg-gray-700 rounded w-full text-left py-2"
-                      
-                       >
-                            <div className="inline-flex items-center">
-                                <AiOutlineLogout className="text-xl w-8 flex-shrink-0 pl-2" />
-                                {!collapsed && <span className="ml-2">Logout</span>}
-                            </div>
+                            className="flex items-center w-full p-2 rounded hover:bg-gray-700"
+                        >
+                            <AiOutlineLogout className="text-xl w-6 flex-shrink-0" />
+                            {!collapsed && <span className="ml-2">Logout</span>}
                         </button>
                     </li>
                 </ul>

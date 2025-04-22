@@ -11,6 +11,7 @@ import { useOnClickOutside } from "../hooks/useOnClickOutside";
 import { useAuth } from "../context/AuthContext";
 import { authNotifications } from "@/lib/notificationService";
 import { useSearchHistory } from "../hooks/useSearchHistory";
+import ClientOnly from './ClientOnly';
 
 // Define types for suggestions
 interface Suggestion {
@@ -59,7 +60,7 @@ const Header = () => {
   let timeout: NodeJS.Timeout;
 
   // Refs for click outside detection
-  const searchRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLDivElement>(null!); // Add non-null assertion operator
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Handle scroll events
@@ -393,62 +394,59 @@ const Header = () => {
 
           {/* Search Bar */}
           <div className="flex-1 max-w-2xl mx-8">
-            <div className="relative" ref={searchRef}>
-              <form onSubmit={handleSearchSubmit}>
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="Search for products or brands"
-                    value={searchQuery}
-                    onChange={(e) => {
-                      setSearchQuery(e.target.value);
-                      if (e.target.value.trim().length > 0) {
-                        setShowSuggestions(true);
-                        setShowSearchHistory(false);
-                      } else {
-                        setShowSuggestions(false);
-                        setShowSearchHistory(true);
-                      }
-                    }}
-                    onFocus={() => {
-                      if (searchQuery.trim().length > 0) {
-                        setShowSuggestions(true);
-                      } else {
-                        setShowSearchHistory(true);
-                      }
-                    }}
-                    className="w-full px-4 py-2 pl-10 bg-[#1D1D1D] rounded text-white placeholder-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-600 border border-grey-100"
-                  />
-                  <button type="submit" className="absolute left-3 top-2.5">
-                    <Search className="h-5 w-5 text-gray-400" />
-                  </button>
-                  {searchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSearchQuery("");
-                        setSuggestions([]);
-                        setKeywordSuggestions([]);
-                        setShowSuggestions(false);
-                        setShowSearchHistory(true);
+            <ClientOnly>
+              <div className="relative" ref={searchRef}>
+                <form onSubmit={handleSearchSubmit}>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Search for products or brands"
+                      value={searchQuery}
+                      onChange={(e) => {
+                        setSearchQuery(e.target.value);
+                        if (e.target.value.trim().length > 0) {
+                          setShowSuggestions(true);
+                          setShowSearchHistory(false);
+                        } else {
+                          setShowSuggestions(false);
+                          setShowSearchHistory(true);
+                        }
                       }}
-                      className="absolute right-3 top-2.5"
-                    >
-                      <X className="h-4 w-4 text-gray-400" />
+                      onFocus={() => {
+                        if (searchQuery.trim().length > 0) {
+                          setShowSuggestions(true);
+                        } else {
+                          setShowSearchHistory(true);
+                        }
+                      }}
+                      className="w-full px-4 py-2 pl-10 bg-[#2D2C2C] rounded text-white placeholder-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-600 border border-grey-100"
+                    />
+                    <button type="submit" className="absolute left-3 top-2.5">
+                      <Search className="h-5 w-5 text-gray-400" />
                     </button>
-                  )}
-                </div>
-              </form>
+                    {searchQuery && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSearchQuery("");
+                          setSuggestions([]);
+                          setKeywordSuggestions([]);
+                          setShowSuggestions(false);
+                          setShowSearchHistory(true);
+                        }}
+                        className="absolute right-3 top-2.5"
+                      >
+                        <X className="h-4 w-4 text-gray-400" />
+                      </button>
+                    )}
+                  </div>
+                </form>
 
-              {/* Search history dropdown */}
-              {showSearchHistory &&
-                searchHistory.length > 0 &&
-                !searchQuery && (
+                {/* Search history dropdown */}
+                {showSearchHistory && searchHistory.length > 0 && !searchQuery && (
                   <div className="absolute left-0 right-0 mt-1 bg-white text-black shadow-lg rounded-md overflow-hidden z-50">
                     <div className="p-2 border-b border-gray-200 flex justify-between items-center">
-                      <h3 className="text-sm font-semibold text-gray-700">
-                        Recent Searches
-                      </h3>
+                      <h3 className="text-sm font-semibold text-gray-700">Recent Searches</h3>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -483,87 +481,76 @@ const Header = () => {
                   </div>
                 )}
 
-              {/* Search suggestions dropdown */}
-              {showSuggestions && searchQuery.trim().length > 1 && (
-                <div className="absolute left-0 right-0 mt-1 bg-white text-black shadow-lg rounded-md overflow-hidden z-50">
-                  {isLoadingKeywords ? (
-                    <div className="p-2 text-xs text-gray-500">
-                      Loading keywords...
-                    </div>
-                  ) : keywordSuggestions.length > 0 ? (
-                    <div className="p-2 border-b border-gray-100">
-                      <h4 className="text-xs text-gray-500 mb-1">
-                        Suggested Keywords
-                      </h4>
-                      <div className="flex flex-wrap gap-1">
-                        {keywordSuggestions.map((keyword, index) => (
-                          <button
-                            key={`keyword-${index}`}
-                            onClick={() => handleKeywordClick(keyword)}
-                            className="px-2 py-1 bg-gray-100 text-gray-800 text-sm rounded-full hover:bg-gray-200 flex items-center"
-                          >
-                            {keyword}
-                            <ArrowUpRight className="h-3 w-3 ml-1" />
-                          </button>
-                        ))}
+                {/* Search suggestions dropdown */}
+                {showSuggestions && searchQuery.trim().length > 1 && (
+                  <div className="absolute left-0 right-0 mt-1 bg-white text-black shadow-lg rounded-md overflow-hidden z-50">
+                    {isLoadingKeywords ? (
+                      <div className="p-2 text-xs text-gray-500">Loading keywords...</div>
+                    ) : keywordSuggestions.length > 0 ? (
+                      <div className="p-2 border-b border-gray-100">
+                        <h4 className="text-xs text-gray-500 mb-1">Suggested Keywords</h4>
+                        <div className="flex flex-wrap gap-1">
+                          {keywordSuggestions.map((keyword, index) => (
+                            <button
+                              key={`keyword-${index}`}
+                              onClick={() => handleKeywordClick(keyword)}
+                              className="px-2 py-1 bg-gray-100 text-gray-800 text-sm rounded-full hover:bg-gray-200 flex items-center"
+                            >
+                              {keyword}
+                              <ArrowUpRight className="h-3 w-3 ml-1" />
+                            </button>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  ) : null}
+                    ) : null}
 
-                  {isLoading ? (
-                    <div className="p-3 text-center text-gray-500">
-                      Loading suggestions...
-                    </div>
-                  ) : suggestions.length > 0 ? (
-                    <div>
-                      <h4 className="text-xs text-gray-500 p-2 pb-1">
-                        Products
-                      </h4>
-                      <div className="max-h-60 overflow-y-auto">
-                        {suggestions.map((suggestion) => (
-                          <div
-                            key={suggestion.id}
-                            onClick={() => handleSuggestionClick(suggestion)}
-                            className="px-3 py-2 hover:bg-gray-100 cursor-pointer flex items-center"
-                          >
-                            {suggestion.image && !suggestion.type && (
-                              <div className="w-10 h-10 relative mr-2">
-                                <Image
-                                  src={suggestion.image || "/placeholder.png"}
-                                  alt={suggestion.name}
-                                  fill
-                                  className="object-cover rounded"
-                                  sizes="40px"
-                                />
-                              </div>
-                            )}
-                            <div className="flex-1 truncate">
-                              {suggestion.name}
+                    {isLoading ? (
+                      <div className="p-3 text-center text-gray-500">Loading suggestions...</div>
+                    ) : suggestions.length > 0 ? (
+                      <div>
+                        <h4 className="text-xs text-gray-500 p-2 pb-1">Products</h4>
+                        <div className="max-h-60 overflow-y-auto">
+                          {suggestions.map((suggestion) => (
+                            <div
+                              key={suggestion.id}
+                              onClick={() => handleSuggestionClick(suggestion)}
+                              className="px-3 py-2 hover:bg-gray-100 cursor-pointer flex items-center"
+                            >
+                              {suggestion.image && !suggestion.type && (
+                                <div className="w-10 h-10 relative mr-2">
+                                  <Image
+                                    src={suggestion.image || "/placeholder.png"}
+                                    alt={suggestion.name}
+                                    fill
+                                    className="object-cover rounded"
+                                    sizes="40px"
+                                  />
+                                </div>
+                              )}
+                              <div className="flex-1 truncate">{suggestion.name}</div>
                             </div>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="p-3 text-gray-500">
-                      {keywordSuggestions.length === 0
-                        ? "No suggestions found"
-                        : "No matching products"}
-                    </div>
-                  )}
+                    ) : (
+                      <div className="p-3 text-gray-500">
+                        {keywordSuggestions.length === 0 ? "No suggestions found" : "No matching products"}
+                      </div>
+                    )}
 
-                  <div className="p-2 border-t border-gray-100">
-                    <button
-                      onClick={handleSearchSubmit}
-                      className="w-full flex items-center justify-center py-2 bg-gray-100 hover:bg-gray-200 rounded-md"
-                    >
-                      <Search className="h-4 w-4 mr-2" />
-                      Search for "{searchQuery}"
-                    </button>
+                    <div className="p-2 border-t border-gray-100">
+                      <button
+                        onClick={handleSearchSubmit}
+                        className="w-full flex items-center justify-center py-2 bg-gray-100 hover:bg-gray-200 rounded-md"
+                      >
+                        <Search className="h-4 w-4 mr-2" />
+                        Search for "{searchQuery}"
+                      </button>
+                    </div>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            </ClientOnly>
           </div>
 
           {/* Right Icons */}
@@ -582,23 +569,14 @@ const Header = () => {
 
                 {showUserDropdown && (
                   <div className="absolute right-0 mt-2 w-48 bg-white text-black shadow-lg rounded-md overflow-hidden z-50">
-                    <Link
-                      href="/profilepage"
-                      className="block px-4 py-2 hover:bg-gray-100"
-                    >
+                    <Link href="/profilepage" className="block px-4 py-2 hover:bg-gray-100">
                       Profile
                     </Link>
-                    <Link
-                      href="/orders"
-                      className="block px-4 py-2 hover:bg-gray-100"
-                    >
+                    <Link href="/orders" className="block px-4 py-2 hover:bg-gray-100">
                       Orders
                     </Link>
                     {user.role === "admin" && (
-                      <Link
-                        href="/dashboard"
-                        className="block px-4 py-2 hover:bg-gray-100"
-                      >
+                      <Link href="/dashboard" className="block px-4 py-2 hover:bg-gray-100">
                         Dashboard
                       </Link>
                     )}
@@ -646,7 +624,9 @@ const Header = () => {
           </div>
         </div>
       </div>
-      <hr className="border-t border-gray-200" />
+
+      <hr className="border-t border-gray-800" />
+
       {/* Navigation */}
       <nav className="border-t border-gray-800 w-full">
         <div className="mx-auto px-4 w-full">

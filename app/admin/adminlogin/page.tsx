@@ -1,129 +1,103 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
-import { useAuth } from "@/app/context/AuthContext";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { toast } from "react-hot-toast";
+import { useAuth } from "@/app/context/AuthContext";
 
-const AdminLoginPage: React.FC = () => {
+export default function AdminLoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [rememberMe, setRememberMe] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
-  
-  const { login, user } = useAuth();
+  const [loading, setLoading] = useState(false);
   const router = useRouter();
-  
-  // If user is already logged in as admin, redirect to dashboard
-  useEffect(() => {
-    if (user && user.role === 'admin') {
-      router.push('/dashboard');
-    }
-  }, [user, router]);
+  const { login } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
-    setIsLoading(true);
-    
+    setLoading(true);
+
     try {
-      const success = await login(email, password);
+      // Store login source to determine which layout to use later
+      localStorage.setItem('adminLoginSource', 'admin');
       
+      const success = await login(email, password);
       if (success) {
-        // Verify admin role after login
-        if (user && user.role === 'admin') {
-          toast.success("Admin login successful!");
-          router.push('/dashboard');
-        } else {
-          // User is authenticated but not an admin
-          setError("Access denied. Admin privileges required.");
-          // Logout the non-admin user
-          // logoutFunction would need to be implemented
-          toast.error("Access denied. Admin privileges required.");
-        }
+        router.push("/admin/dashboard");
       } else {
-        setError("Invalid credentials");
-        toast.error("Invalid credentials");
+        setError("Invalid email or password");
       }
-    } catch (error) {
-      setError("Authentication failed");
-      toast.error("Authentication failed");
-      console.error("Login error:", error);
+    } catch (err) {
+      setError("An error occurred during login");
+      console.error(err);
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
   return (
-    <div className="flex h-screen">
-      {/* Left Section (Logo) */}
-      <div className="bg-[#282C34] text-white flex items-center justify-center w-1/2">
-        <h1 className="text-4xl font-semibold italic">Pinnacle</h1>
-      </div>
-
-      {/* Right Section (Login Form) */}
-      <div className="flex flex-col justify-center items-center w-1/2 bg-gray-100">
-        <div className="w-96 p-8 bg-white rounded-lg shadow-md">
-          <h2 className="text-2xl font-semibold mb-4 text-center">Admin Sign in</h2>
-          <p className="text-sm text-gray-600 mb-6 text-center">
-            Enter your email address and password to access admin panel.
-          </p>
-
-          {error && (
-            <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md text-sm">
-              {error}
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <input
-                type="email"
-                placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full p-2 border rounded-md focus:outline-none focus:ring focus:border-blue-300"
-                disabled={isLoading}
-                required
-              />
-            </div>
-            <div>
-              <input
-                type="password"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full p-2 border rounded-md focus:outline-none focus:ring focus:border-blue-300"
-                disabled={isLoading}
-                required
-              />
-            </div>
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="remember"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                className="mr-2"
-                disabled={isLoading}
-              />
-              <label htmlFor="remember" className="text-sm text-gray-600">
-                Keep me logged in
-              </label>
-            </div>
+    <div className="min-h-screen bg-gray-900 flex items-center justify-center p-4">
+      <div className="max-w-md w-full bg-gray-800 rounded-lg shadow-lg p-8">
+        <div className="text-center mb-8">
+          <h1 className="text-3xl font-bold text-white">Admin Login</h1>
+          <p className="text-gray-400 mt-2">Enter your credentials to access the admin dashboard</p>
+        </div>
+        
+        {error && (
+          <div className="bg-red-900 text-white p-3 rounded-md mb-4">
+            {error}
+          </div>
+        )}
+        
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-2">
+              Email Address
+            </label>
+            <input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-4 py-3 bg-gray-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+              required
+            />
+          </div>
+          
+          <div>
+            <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-2">
+              Password
+            </label>
+            <input
+              id="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full px-4 py-3 bg-gray-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+              required
+            />
+          </div>
+          
+          <div>
             <button
               type="submit"
-              className={`w-full ${isLoading ? 'bg-orange-300' : 'bg-orange-500'} text-white p-2 rounded-md hover:bg-orange-600 focus:outline-none focus:ring focus:border-orange-300`}
-              disabled={isLoading}
+              disabled={loading}
+              className="w-full bg-orange-500 text-white py-3 rounded-md hover:bg-orange-600 transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 disabled:opacity-50"
             >
-              {isLoading ? "Signing in..." : "Sign In"}
+              {loading ? "Logging in..." : "Login"}
             </button>
-          </form>
+          </div>
+        </form>
+        
+        <div className="mt-6 text-center">
+          <a
+            href="/"
+            className="text-orange-500 hover:text-orange-400 text-sm"
+          >
+            Return to main site
+          </a>
         </div>
       </div>
     </div>
   );
-};
-
-export default AdminLoginPage;
+}

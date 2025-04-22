@@ -1,60 +1,49 @@
-import toast from 'react-hot-toast';
+import { toast } from 'react-hot-toast';
 
-// Common toast configuration
-const toastConfig = {
-  position: 'bottom-center' as const,
-  duration: 5000
-};
-
+// User authentication notifications
 export const authNotifications = {
-  loginSuccess: (message = 'Login successful!') => 
-    toast.success(message, toastConfig),
-  
-  loginError: (message = 'Login failed. Please check your credentials.') => 
-    toast.error(message, toastConfig),
-  
-  signupSuccess: (message = 'Account created successfully!') => 
-    toast.success(message, toastConfig),
-  
-  signupError: (message = 'Failed to create account.') => 
-    toast.error(message, toastConfig),
-  
-  logoutSuccess: (message = 'Logged out successfully!') => 
-    toast.success(message, toastConfig),
+  loginSuccess: () => toast.success('Welcome back!'),
+  loginError: (error: string) => toast.error(`Login failed: ${error}`),
+  signupSuccess: () => toast.success('Account created successfully!'),
+  signupError: (error: string) => toast.error(`Registration failed: ${error}`),
+  logoutSuccess: () => toast.success('Logged out successfully'),
+  passwordResetSent: () => toast.success('Password reset instructions sent to your email'),
+  passwordResetSuccess: () => toast.success('Password updated successfully'),
+  accessDenied: () => toast.error('Access denied. Please log in.'),
 };
 
+// Shopping cart notifications
 export const cartNotifications = {
-  itemAdded: (message = 'Item added to cart!') => 
-    toast.success(message, toastConfig),
-  
-  itemRemoved: (message = 'Item removed from cart.') => 
-    toast(message, { ...toastConfig, icon: '🛒' }),
-  
-  cartUpdated: (message = 'Cart updated successfully.') => 
-    toast.success(message, toastConfig),
-    
-  cartError: (message = 'Failed to update cart.') => 
-    toast.error(message, toastConfig),
+  addedToCart: (productName: string) => toast.success(`${productName} added to cart`),
+  removedFromCart: (productName: string) => toast.success(`${productName} removed from cart`),
+  itemRemoved: (productName?: string) => toast.success(productName ? `${productName} removed from cart` : 'Item removed from cart'),
+  itemAdded: (productName?: string) => toast.success(productName ? `${productName} added to cart` : 'Item added to cart'),
+  cartUpdated: () => toast.success('Cart updated'),
+  cartError: (error: string) => toast.error(`Cart error: ${error}`),
 };
 
+// Wishlist notifications
 export const wishlistNotifications = {
-  itemAdded: (message = 'Item added to wishlist!') => 
-    toast.success(message, toastConfig),
-  
-  itemRemoved: (message = 'Item removed from wishlist.') => 
-    toast(message, { ...toastConfig, icon: '❤️' }),
-  
-  wishlistError: (message = 'Failed to update wishlist.') => 
-    toast.error(message, toastConfig),
+  addedToWishlist: (productName: string) => toast.success(`${productName} added to wishlist`),
+  removedFromWishlist: (productName: string) => toast.success(`${productName} removed from wishlist`),
+  wishlistError: (error: string) => toast.error(`Wishlist error: ${error}`),
 };
 
-export const generalNotifications = {
-  success: (message: string) => 
-    toast.success(message, toastConfig),
-  
-  error: (message: string) => 
-    toast.error(message, toastConfig),
-  
-  info: (message: string) => 
-    toast(message, toastConfig),
+// Order notifications
+export const orderNotifications = {
+  orderPlaced: (orderNumber: string) => toast.success(`Order #${orderNumber} placed successfully`),
+  orderError: (error: string) => toast.error(`Order error: ${error}`),
+  paymentSuccess: () => toast.success('Payment processed successfully'),
+  paymentError: (error: string) => toast.error(`Payment failed: ${error}`),
+};
+
+// Admin notifications
+export const adminNotifications = {
+  productAdded: () => toast.success('Product added successfully'),
+  productUpdated: () => toast.success('Product updated successfully'),
+  productDeleted: () => toast.success('Product deleted'),
+  categoryAdded: () => toast.success('Category added successfully'),
+  categoryUpdated: () => toast.success('Category updated successfully'),
+  categoryDeleted: () => toast.success('Category deleted'),
+  userUpdated: () => toast.success('User information updated'),
 };

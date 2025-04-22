@@ -15,8 +15,8 @@ const connectDB = async () => {
   }
 };
 
-// GET - Get a specific order by ID
-export async function GET(
+// PUT - Update order status
+export async function PUT(
   req: NextRequest,
   context: { params: { id: string } | Promise<{ id: string }> }
 ) {
@@ -35,46 +35,51 @@ export async function GET(
       }, { status: 400 });
     }
 
-    // Authenticate user
+    // Authenticate user - only admins can update order status
     const authResult = await authenticateUser(req);
-    if (!authResult.authenticated) {
+    if (!authResult.authenticated || authResult.user?.role !== 'admin') {
       return NextResponse.json({
         success: false,
-        error: 'Authentication required',
-      }, { status: 401 });
+        error: 'Admin access required',
+      }, { status: 403 });
     }
 
-    // Find the order
-    const order = await Order.findById(orderId);
+    // Parse request body
+    const body = await req.json();
+    const { status } = body;
     
-    if (!order) {
+    // Validate status
+    const validStatuses = ['Processing', 'Shipping', 'Out For Delivery', 'Delivered', 'Cancelled'];
+    if (!status || !validStatuses.includes(status)) {
+      return NextResponse.json({
+        success: false,
+        error: 'Invalid status value',
+      }, { status: 400 });
+    }
+
+    // Find and update the order
+    const updatedOrder = await Order.findByIdAndUpdate(
+      orderId,
+      { status },
+      { new: true }
+    );
+    
+    if (!updatedOrder) {
       return NextResponse.json({
         success: false,
         error: 'Order not found',
       }, { status: 404 });
     }
 
-    // Check if the user has permission to view this order
-    // Admin can view any order, users can only view their own orders
-    const isAdmin = authResult.user?.role === 'admin';
-    const isOwner = order.user && order.user.toString() === authResult.user?.id;
-    
-    if (!isAdmin && !isOwner) {
-      return NextResponse.json({
-        success: false,
-        error: 'You are not authorized to view this order',
-      }, { status: 403 });
-    }
-
     return NextResponse.json({
       success: true,
-      order,
+      order: updatedOrder,
     });
   } catch (error) {
-    console.error('Error fetching order:', error);
+    console.error('Error updating order status:', error);
     return NextResponse.json({
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to fetch order',
+      error: error instanceof Error ? error.message : 'Failed to update order status',
     }, { status: 500 });
   }
 }

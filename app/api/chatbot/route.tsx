@@ -663,7 +663,7 @@ const makeResponseConcise = (text: string): string => {
   
   let conciseText = text;
   
-  conciseText = conciseText.replace(/\d+\.\s+\*\*([^:]+):\*\*\s+(.*?)(?=\d+\.|$)/gs, '• $1: $2\n');
+  conciseText = conciseText.replace(/\d+\.\s+\*\*([^:]+):\*\*\s+(.*?)(?=\d+\.|$)/g, '• $1: $2\n');
   conciseText = conciseText.replace(/\n{3,}/g, '\n\n');
   
   const formalities = [
