@@ -41,7 +41,7 @@ const Sidebar: React.FC = () => {
         await logout();
         // Use notification service instead of direct toast call
         authNotifications.logoutSuccess();
-        router.push('/adminlogin');
+        router.push('/admin/adminlogin');
     };
 
     // Helper function for Link or collapsed icon-only button
@@ -126,7 +126,7 @@ const Sidebar: React.FC = () => {
                         </NavLink>
                     </li>
                     <li>
-                        <NavLink href="/adminprofile">
+                        <NavLink href="/admin/adminprofile">
                             <CgProfile className="text-xl w-6 flex-shrink-0" />
                             {!collapsed && <span className="ml-2">Profile</span>}
                         </NavLink>
