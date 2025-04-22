@@ -270,6 +270,19 @@ const Chatbot: React.FC = () => {
 
   return (
     <>
+      <style jsx global>{`
+        @keyframes blueGlowPulse {
+          0% {
+            box-shadow: 0 0 0 0 rgba(147, 197, 253, 0.7);
+          }
+          70% {
+            box-shadow: 0 0 0 10px rgba(147, 197, 253, 0);
+          }
+          100% {
+            box-shadow: 0 0 0 0 rgba(147, 197, 253, 0);
+          }
+        }
+      `}</style>
       <button
         onClick={toggleChat}
         className={`fixed bottom-8 right-8 z-[9999] bg-blue-100 hover:bg-blue-200 text-blue-800 rounded-lg p-4 shadow-lg flex items-center justify-center transition-all duration-300 ${
@@ -277,7 +290,7 @@ const Chatbot: React.FC = () => {
         } transform hover:scale-110`}
         style={{
           boxShadow: '0 0 15px rgba(147, 197, 253, 0.4)',
-          animation: isChatOpen ? 'none' : 'pulse 2s infinite'
+          animation: isChatOpen ? 'none' : 'blueGlowPulse 2s infinite'
         }}
         aria-label="Chat with Pinnacle Assistant"
       >
