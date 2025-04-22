@@ -7,12 +7,13 @@ interface ClientOnlyProps {
   fallback?: ReactNode;
 }
 
-// Component that ensures its children only render on the client side
+// This component ensures its children only render on the client side
 export default function ClientOnly({ children, fallback = null }: ClientOnlyProps) {
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
     setIsMounted(true);
+    return () => setIsMounted(false);
   }, []);
 
   if (!isMounted) {

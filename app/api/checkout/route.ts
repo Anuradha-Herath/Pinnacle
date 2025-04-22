@@ -313,7 +313,7 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        let redirectUrl = "/payment";
+        let redirectUrl = `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/?success=true&order=${newOrder._id}`;
 
         if (stripe) {
           try {
@@ -338,17 +338,17 @@ export async function POST(request: NextRequest) {
             );
 
             try {
-              // Update the URLs to use a dedicated success page
+              // Change redirect to home page with query params
               const session = await stripe.checkout.sessions.create({
                 payment_method_types: ["card"],
                 line_items: stripeLineItems,
                 mode: "payment",
                 success_url: `${
                   process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
-                }/order-confirmed/${newOrder._id}`,  // Use a dedicated success page instead of query params
+                }/?success=true&order=${newOrder._id}`,
                 cancel_url: `${
                   process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
-                }/checkout?canceled=true`,
+                }/?canceled=true`,
                 metadata: { orderId: newOrder._id.toString() },
               });
               
@@ -358,18 +358,18 @@ export async function POST(request: NextRequest) {
               redirectUrl = session.url;
             } catch (stripeError) {
               console.error("Stripe session creation failed:", stripeError);
-              // Fall back to success page
-              redirectUrl = `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/order-confirmed/${newOrder._id}`;
+              // Also redirect to home page on error
+              redirectUrl = `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/?success=true&order=${newOrder._id}`;
             }
           } catch (stripeError) {
             console.error("Stripe session creation failed:", stripeError);
-            // Fall back to success page
-            redirectUrl = `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/order-confirmed/${newOrder._id}`;
+            // Also redirect to home page on error
+            redirectUrl = `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/?success=true&order=${newOrder._id}`;
           }
         } else {
           console.log("Skipping Stripe - not initialized");
-          // Set redirect to success page
-          redirectUrl = `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/order-confirmed/${newOrder._id}`;
+          // Set redirect to home page
+          redirectUrl = `${process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"}/?success=true&order=${newOrder._id}`;
         }
 
         // When sending to the client, include images in the response

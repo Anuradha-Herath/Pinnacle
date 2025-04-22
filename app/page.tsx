@@ -95,6 +95,7 @@ const HomePage = () => {
   const [showOrderSuccess, setShowOrderSuccess] = useState(false);
   const [orderNumber, setOrderNumber] = useState<string | null>(null);
   const hasProcessedParams = useRef(false);
+  const orderProcessingComplete = useRef(false);
 
   const [products, setProducts] = useState(mockProducts);
   const [trendingProducts, setTrendingProducts] = useState([]);
@@ -264,46 +265,46 @@ const HomePage = () => {
     setSelectedGender(gender);
   };
 
-  // Process URL params only once to prevent infinite loops
+  // Improved URL parameter processing for order success
   useEffect(() => {
-    // Skip if we've already processed the params
+    // Skip if we've already processed the success params
     if (hasProcessedParams.current) return;
     
     const success = searchParams.get('success');
     const order = searchParams.get('order');
-    const canceled = searchParams.get('canceled');
     
-    // Only process if we have actual params to process
-    if (success === 'true' || canceled === 'true') {
+    if (success === 'true' && !orderProcessingComplete.current) {
+      console.log("Processing successful order:", order);
+      orderProcessingComplete.current = true;
       hasProcessedParams.current = true;
       
-      if (success === 'true') {
-        clearCart();
-        if (order) {
-          setOrderNumber(order);
-        }
-        setShowOrderSuccess(true);
-        
-        // Show success toast
-        toast.success('Order placed successfully!');
-        
-        // Clear URL params to prevent re-processing on refresh or navigation
-        const url = new URL(window.location.href);
-        url.searchParams.delete('success');
-        url.searchParams.delete('order');
-        window.history.replaceState({}, '', url.toString());
+      // Clear cart
+      clearCart();
+      
+      // Set order number to display in success modal
+      if (order) {
+        setOrderNumber(order);
       }
       
-      if (canceled === 'true') {
-        toast('Payment was canceled', {
-          icon: '❌',
-        });
-        
-        // Clear URL params
-        const url = new URL(window.location.href);
-        url.searchParams.delete('canceled');
-        window.history.replaceState({}, '', url.toString());
-      }
+      // Show success modal and toast
+      setShowOrderSuccess(true);
+      toast.success('Order placed successfully!');
+      
+      // Update URL to remove query params (after a short delay to ensure React state updates first)
+      setTimeout(() => {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }, 100);
+    }
+    
+    const canceled = searchParams.get('canceled');
+    if (canceled === 'true' && !hasProcessedParams.current) {
+      hasProcessedParams.current = true;
+      toast('Payment was canceled', { icon: '❌' });
+      
+      // Clean URL
+      setTimeout(() => {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }, 100);
     }
   }, [searchParams, clearCart]);
 
@@ -312,19 +313,17 @@ const HomePage = () => {
       <Header />
       <HeaderPlaceholder />
       
-      {/* Order success modal/component that appears conditionally */}
-      {showOrderSuccess && (
-        <OrderSuccess 
-          orderNumber={orderNumber} 
-          onClose={() => {
-            setShowOrderSuccess(false);
-            // Ensure we have a clean URL after closing the modal
-            if (window.location.search) {
-              router.replace('/');
-            }
-          }} 
-        />
-      )}
+      {/* Use ClientOnly to prevent hydration issues with the success modal */}
+      <ClientOnly>
+        {showOrderSuccess && (
+          <OrderSuccess 
+            orderNumber={orderNumber} 
+            onClose={() => {
+              setShowOrderSuccess(false);
+            }} 
+          />
+        )}
+      </ClientOnly>
 
       {/* Banner */}
       <div className="banner">
