@@ -5,7 +5,31 @@ import { FaUser, FaTimes } from 'react-icons/fa';
 import { RiAiGenerate, RiCustomerService2Fill, RiMessageFill } from 'react-icons/ri';
 import { FiSend, FiRefreshCw } from 'react-icons/fi';
 import Link from 'next/link';
-import { getChatbotUserContext } from '@/lib/userPreferenceService';
+import { useAuth } from '../context/AuthContext'; // Import the authentication context
+
+// Fix by adding proper TypeScript types to avoid indexing errors
+const getChatbotUserContext = (user: any) => {
+  // Ensure user object exists before proceeding
+  if (!user) {
+    return { isLoggedIn: false };
+  }
+
+  // Extract relevant user information safely
+  const userContext = {
+    isLoggedIn: !!user,
+    userId: user.id || user._id,
+    firstName: user.firstName || '',
+    lastName: user.lastName || '',
+    email: user.email || '',
+    // Only include preferences if they exist with proper type annotation
+    preferences: user.preferences ? Object.entries(user.preferences).reduce<Record<string, any>>((acc, [key, value]) => {
+      acc[key] = value;
+      return acc;
+    }, {}) : {}
+  };
+
+  return userContext;
+}
 
 interface ChatMessage {
   isUser: boolean;
@@ -35,6 +59,9 @@ const Chatbot: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Add user from authentication context
+  const { user } = useAuth();
 
   useEffect(() => {
     setIsClient(true);
@@ -137,7 +164,8 @@ const Chatbot: React.FC = () => {
         isUser: msg.isUser,
         text: msg.text
       }));
-      const userContext = getChatbotUserContext();
+      // Fixed user context generation by safely handling user
+      const userContext = user ? getChatbotUserContext(user) : { isLoggedIn: false };
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 20000);
       const response = await fetch('/api/chatbot', {
