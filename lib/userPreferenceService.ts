@@ -9,6 +9,11 @@ export interface ProductViewData {
   price: number;
 }
 
+interface ProductActionData extends ProductViewData {
+  action: 'add_to_cart' | 'remove_from_cart' | 'add_to_wishlist' | 'remove_from_wishlist';
+  quantity?: number;
+}
+
 interface UserPreferences {
   viewedProducts: ProductViewData[];
   preferredCategories: Record<string, number>; // category name -> weight
@@ -19,12 +24,6 @@ interface UserPreferences {
     max: number;
     count: number;
   }[];
-}
-
-// Define interface for tracking product actions
-export interface ProductActionData extends ProductViewData {
-  action: 'add_to_cart' | 'remove_from_cart' | 'add_to_wishlist' | 'remove_from_wishlist';
-  quantity?: number;
 }
 
 // Local storage key for saving user preferences
@@ -130,7 +129,7 @@ export const trackProductView = (product: ProductViewData): void => {
   saveUserPreferences(prefs);
 };
 
-// New function to track product actions (cart and wishlist operations)
+// Track product actions (cart and wishlist operations)
 export const trackProductAction = (productData: ProductActionData): void => {
   const prefs = getUserPreferences();
   
@@ -181,25 +180,17 @@ export const trackProductAction = (productData: ProductActionData): void => {
     }
   }
   
-  // Track wishlist actions
+  // Similarly track wishlist actions
   if (productData.action === 'add_to_wishlist') {
     if (productData.category) {
       prefs.preferredCategories[productData.category] = 
         (prefs.preferredCategories[productData.category] || 0) + 1;
     }
     
-    // Similar patterns for colors and sizes
     if (productData.colors && productData.colors.length > 0) {
       productData.colors.forEach(color => {
         prefs.preferredColors[color] = 
           (prefs.preferredColors[color] || 0) + 1;
-      });
-    }
-    
-    if (productData.sizes && productData.sizes.length > 0) {
-      productData.sizes.forEach(size => {
-        prefs.preferredSizes[size] = 
-          (prefs.preferredSizes[size] || 0) + 1;
       });
     }
   }
