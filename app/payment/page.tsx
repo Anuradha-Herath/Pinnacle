@@ -50,17 +50,14 @@ const PaymentPage = () => {
                 <div className="bg-gray-100 p-4 rounded-lg mb-6">
                   <p className="text-gray-700">Order Number: <span className="font-semibold">{orderNumber}</span></p>
                   <p className="text-sm text-gray-500 mt-1">
-                    Please keep this number for your records. You can track your order status in your profile.
+                    Order number
                   </p>
                 </div>
               )}
-              <div className="flex flex-col sm:flex-row justify-center gap-4 mt-6">
-                <Link href={orderNumber ? `/orders/${orderNumber}` : "/profilepage"} className="px-6 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 flex items-center justify-center">
-                  View Order Details
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </Link>
-                <Link href="/" className="px-6 py-2 border border-gray-300 rounded-md hover:bg-gray-100">
+              <div className="flex justify-center mt-6">
+                <Link href="/" className="px-8 py-3 bg-orange-500 text-white rounded-md hover:bg-orange-600 flex items-center justify-center">
                   Continue Shopping
+                  <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </div>
             </div>
