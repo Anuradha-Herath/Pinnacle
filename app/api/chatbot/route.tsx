@@ -498,6 +498,7 @@ const userPreferenceStrategy: RecommendationStrategy = {
 const findRecommendedProducts = (responseText: string, productContext: ProductContextItem[], userQuery: string, userPreferences?: any): { products: ProductContextItem[], relevanceScore: number } => {
   console.log(`Finding product recommendations for: "${userQuery.substring(0, 50)}..."`);
   
+  // Restore this check to filter out FAQ queries
   if (isGeneralInfoOrFAQ(userQuery, responseText)) {
     console.log("Detected general information or FAQ query - skipping product recommendations");
     return { products: [], relevanceScore: 0 };
@@ -555,6 +556,9 @@ const findRecommendedProducts = (responseText: string, productContext: ProductCo
       }
     });
   
+  // Remove the fallback random product recommendation code
+  // Don't provide fallback recommendations
+  
   // Calculate overall relevance score (average of matches, or 0 if none)
   const overallRelevanceScore = matchesFound > 0 ? totalRelevanceScore / matchesFound : 0;
   
@@ -572,8 +576,8 @@ const findRecommendedProducts = (responseText: string, productContext: ProductCo
   };
 };
 
-// Threshold for determining if recommendations are relevant enough
-const RELEVANCE_THRESHOLD = 0.4;
+// Restore original threshold for determining if recommendations are relevant enough
+const RELEVANCE_THRESHOLD = 0.4; // Change back from 0.2 to 0.4
 
 // New function to detect when the response is saying we don't have a product
 const isNegativeProductResponse = (responseText: string): boolean => {
@@ -614,10 +618,6 @@ const processResponseWithProductCards = async (
     // Add a message about not having matching products
     return `${responseText}\n\nI'm sorry, but we don't currently have products that match your specific request in our inventory. We regularly update our collections, so please check back later or browse our available items on the website.`;
   } 
-  // Handle case where we have recommendations but they aren't very relevant
-  else if (recommendedProducts.length > 0 && relevanceScore < RELEVANCE_THRESHOLD && isProductQuery) {
-    return `${responseText}\n\nI couldn't find exact matches for what you're looking for, but you might be interested in exploring our other collections on the website.`;
-  }
   // Include recommendations only when they're relevant and not for FAQ queries
   else if (recommendedProducts.length > 0 && relevanceScore >= RELEVANCE_THRESHOLD && !isGeneralInfoOrFAQ(userQuery, responseText)) {
     return `${responseText}\n\n[[PRODUCT_RECOMMENDATIONS]]\n${JSON.stringify(recommendedProducts)}`;
