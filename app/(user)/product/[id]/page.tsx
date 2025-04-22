@@ -347,11 +347,64 @@ export default function EnhancedProductDetailPage() {
     return (
       <div className="min-h-screen bg-white">
         <Header />
-        <div className="max-w-7xl mx-auto px-4 py-16 flex justify-center items-center">
-          <div className="animate-pulse flex flex-col items-center">
-            <div className="h-10 w-40 bg-gray-200 rounded mb-8"></div>
-            <div className="h-64 w-64 bg-gray-200 rounded-md"></div>
-            <div className="mt-8 h-4 w-48 bg-gray-200 rounded"></div>
+        <div className="max-w-7xl mx-auto px-4 py-16">
+          {/* Custom pulse animation with grayscale colors only */}
+          <style jsx global>{`
+            .custom-pulse {
+              animation: customPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+            }
+            @keyframes customPulse {
+              0%, 100% {
+                opacity: 1;
+              }
+              50% {
+                opacity: 0.5;
+              }
+            }
+          `}</style>
+          <div className="custom-pulse grid grid-cols-1 md:grid-cols-2 gap-12">
+            {/* Left Column - Product Gallery Skeleton */}
+            <div className="space-y-4">
+              <div className="h-96 w-full bg-gray-200 rounded-lg"></div>
+              <div className="flex space-x-2 overflow-x-auto py-2">
+                {[1, 2, 3, 4].map((i) => (
+                  <div key={i} className="h-20 w-20 flex-shrink-0 bg-gray-200 rounded-md"></div>
+                ))}
+              </div>
+            </div>
+            
+            {/* Right Column - Product Info Skeleton */}
+            <div className="space-y-6">
+              <div className="h-8 w-3/4 bg-gray-200 rounded"></div>
+              <div className="flex items-center space-x-2">
+                <div className="h-6 w-24 bg-gray-200 rounded"></div>
+                <div className="h-6 w-24 bg-gray-200 rounded"></div>
+              </div>
+              <div className="space-y-2">
+                <div className="h-4 w-full bg-gray-200 rounded"></div>
+                <div className="h-4 w-full bg-gray-200 rounded"></div>
+                <div className="h-4 w-3/4 bg-gray-200 rounded"></div>
+              </div>
+              <div className="h-px w-full bg-gray-200"></div>
+              <div className="space-y-3">
+                <div className="h-6 w-1/3 bg-gray-200 rounded"></div>
+                <div className="flex space-x-2">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="h-10 w-10 rounded-full bg-gray-200"></div>
+                  ))}
+                </div>
+                <div className="h-6 w-1/3 bg-gray-200 rounded"></div>
+                <div className="flex space-x-2">
+                  {[1, 2, 3, 4].map((i) => (
+                    <div key={i} className="h-8 w-12 rounded bg-gray-200"></div>
+                  ))}
+                </div>
+              </div>
+              <div className="flex space-x-4">
+                <div className="h-12 w-full bg-gray-800 rounded-md opacity-70"></div>
+                <div className="h-12 w-12 border border-gray-300 rounded-md"></div>
+              </div>
+            </div>
           </div>
         </div>
         <Footer />
@@ -365,11 +418,16 @@ export default function EnhancedProductDetailPage() {
       <div className="min-h-screen bg-white">
         <Header />
         <div className="max-w-7xl mx-auto px-4 py-16 flex flex-col items-center">
-          <h1 className="text-2xl font-bold text-red-500">Error Loading Product</h1>
-          <p className="mt-4">{error || "Product not found"}</p>
+          <div className="w-20 h-20 flex items-center justify-center rounded-full bg-slate-100 mb-6">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-slate-700" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </div>
+          <h1 className="text-2xl font-bold text-slate-700">Product Not Available</h1>
+          <p className="mt-4 text-center text-slate-600 max-w-md">{error || "We couldn't find the product you're looking for. It may have been removed or is temporarily unavailable."}</p>
           <button 
             onClick={() => router.back()}
-            className="mt-8 px-6 py-2 bg-black text-white rounded-md hover:bg-gray-800"
+            className="mt-8 px-6 py-3 bg-black text-white rounded-md hover:bg-slate-800 transition-colors shadow-sm"
           >
             Go Back
           </button>
