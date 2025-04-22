@@ -309,3 +309,4 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
 };
 
 export default ProductCard;
+

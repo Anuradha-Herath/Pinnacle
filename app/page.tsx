@@ -1,11 +1,16 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { useSearchParams, useRouter } from 'next/navigation';
+import { toast } from 'react-hot-toast';
+import { useCart } from './context/CartContext';
 import Header from "./components/Header";
 import ProductCarousel from "./components/ProductCarousel";
 import Footer from "./components/Footer";
 import Link from "next/link";
 import HeaderPlaceholder from "./components/HeaderPlaceholder";
+import OrderSuccess from './components/OrderSuccess';
+import ClientOnly from './components/ClientOnly'; // Fixed the quote syntax error
 
 // Updated mock products with simplified images - all using existing images
 const mockProducts = [
@@ -84,6 +89,14 @@ const mockProducts = [
 ];
 
 const HomePage = () => {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const { clearCart } = useCart();
+  const [showOrderSuccess, setShowOrderSuccess] = useState(false);
+  const [orderNumber, setOrderNumber] = useState<string | null>(null);
+  const hasProcessedParams = useRef(false);
+  const orderProcessingComplete = useRef(false);
+
   const [products, setProducts] = useState(mockProducts);
   const [trendingProducts, setTrendingProducts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -252,11 +265,66 @@ const HomePage = () => {
     setSelectedGender(gender);
   };
 
+  // Improved URL parameter processing for order success
+  useEffect(() => {
+    // Skip if we've already processed the success params
+    if (hasProcessedParams.current) return;
+    
+    const success = searchParams.get('success');
+    const order = searchParams.get('order');
+    
+    if (success === 'true' && !orderProcessingComplete.current) {
+      console.log("Processing successful order:", order);
+      orderProcessingComplete.current = true;
+      hasProcessedParams.current = true;
+      
+      // Clear cart
+      clearCart();
+      
+      // Set order number to display in success modal
+      if (order) {
+        setOrderNumber(order);
+      }
+      
+      // Show success modal and toast
+      setShowOrderSuccess(true);
+      toast.success('Order placed successfully!');
+      
+      // Update URL to remove query params (after a short delay to ensure React state updates first)
+      setTimeout(() => {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }, 100);
+    }
+    
+    const canceled = searchParams.get('canceled');
+    if (canceled === 'true' && !hasProcessedParams.current) {
+      hasProcessedParams.current = true;
+      toast('Payment was canceled', { icon: '❌' });
+      
+      // Clean URL
+      setTimeout(() => {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }, 100);
+    }
+  }, [searchParams, clearCart]);
+
   return (
     <div className="bg-gray-900 min-h-screen flex flex-col">
       <Header />
       <HeaderPlaceholder />
       
+      {/* Use ClientOnly to prevent hydration issues with the success modal */}
+      <ClientOnly>
+        {showOrderSuccess && (
+          <OrderSuccess 
+            orderNumber={orderNumber} 
+            onClose={() => {
+              setShowOrderSuccess(false);
+            }} 
+          />
+        )}
+      </ClientOnly>
+
       {/* Banner */}
       <div className="banner">
         <img src="/banner2.jpg" alt="Banner" className="w-full h-auto" />
@@ -282,13 +350,15 @@ const HomePage = () => {
                 className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-105"
               />
             </div>
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent flex items-end justify-center pb-10 md:pb-12">
-              <Link href="/category/Men" className="block">
-                <button className="bg-white text-black font-semibold py-3 px-8 rounded-lg transform transition-all duration-300 hover:bg-black hover:text-white hover:scale-105 hover:shadow-lg border-2 border-transparent hover:border-white">
-                  SHOP MEN
-                </button>
-              </Link>
-            </div>
+            <ClientOnly>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent flex items-end justify-center pb-10 md:pb-12">
+                <Link href="/category/Men" className="block">
+                  <button className="bg-white text-black font-semibold py-3 px-8 rounded-lg transform transition-all duration-300 hover:bg-black hover:text-white hover:scale-105 hover:shadow-lg border-2 border-transparent hover:border-white">
+                    SHOP MEN
+                  </button>
+                </Link>
+              </div>
+            </ClientOnly>
           </div>
 
           {/* Shop Women */}
@@ -300,13 +370,15 @@ const HomePage = () => {
                 className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-105"
               />
             </div>
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent flex items-end justify-center pb-10 md:pb-12">
-              <Link href="/category/Women" className="block">
-                <button className="bg-white text-black font-semibold py-3 px-8 rounded-lg transform transition-all duration-300 hover:bg-black hover:text-white hover:scale-105 hover:shadow-lg border-2 border-transparent hover:border-white">
-                  SHOP WOMEN
-                </button>
-              </Link>
-            </div>
+            <ClientOnly>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent flex items-end justify-center pb-10 md:pb-12">
+                <Link href="/category/Women" className="block">
+                  <button className="bg-white text-black font-semibold py-3 px-8 rounded-lg transform transition-all duration-300 hover:bg-black hover:text-white hover:scale-105 hover:shadow-lg border-2 border-transparent hover:border-white">
+                    SHOP WOMEN
+                  </button>
+                </Link>
+              </div>
+            </ClientOnly>
           </div>
         </div>
 
@@ -320,13 +392,15 @@ const HomePage = () => {
                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
               />
             </div>
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent flex items-end md:items-center justify-center md:justify-end pb-10 md:pb-0 md:pr-20">
-              <Link href="/category/Accessories" className="block">
-                <button className="bg-white text-black font-semibold py-3 px-8 rounded-lg transform transition-all duration-300 hover:bg-black hover:text-white hover:scale-105 hover:shadow-lg border-2 border-transparent hover:border-white">
-                  SHOP ACCESSORIES
-                </button>
-              </Link>
-            </div>
+            <ClientOnly>
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent flex items-end md:items-center justify-center md:justify-end pb-10 md:pb-0 md:pr-20">
+                <Link href="/category/Accessories" className="block">
+                  <button className="bg-white text-black font-semibold py-3 px-8 rounded-lg transform transition-all duration-300 hover:bg-black hover:text-white hover:scale-105 hover:shadow-lg border-2 border-transparent hover:border-white">
+                    SHOP ACCESSORIES
+                  </button>
+                </Link>
+              </div>
+            </ClientOnly>
           </div>
         </div>
 
@@ -335,28 +409,30 @@ const HomePage = () => {
           {/* Title with Toggle Buttons */}
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold text-white">Best Sellers</h2>
-            <div className="bg-gray-800 rounded-full p-1 inline-flex">
-              <button 
-                className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${
-                  selectedGender === 'men' 
-                    ? 'bg-orange-500 text-white' 
-                    : 'text-white hover:bg-gray-700'
-                }`}
-                onClick={() => handleGenderToggle('men')}
-              >
-                MEN
-              </button>
-              <button 
-                className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${
-                  selectedGender === 'women' 
-                    ? 'bg-orange-500 text-white' 
-                    : 'text-white hover:bg-gray-700'
-                }`}
-                onClick={() => handleGenderToggle('women')}
-              >
-                WOMEN
-              </button>
-            </div>
+            <ClientOnly>
+              <div className="bg-gray-800 rounded-full p-1 inline-flex">
+                <button 
+                  className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${
+                    selectedGender === 'men' 
+                      ? 'bg-orange-500 text-white' 
+                      : 'text-white hover:bg-gray-700'
+                  }`}
+                  onClick={() => handleGenderToggle('men')}
+                >
+                  MEN
+                </button>
+                <button 
+                  className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${
+                    selectedGender === 'women' 
+                      ? 'bg-orange-500 text-white' 
+                      : 'text-white hover:bg-gray-700'
+                  }`}
+                  onClick={() => handleGenderToggle('women')}
+                >
+                  WOMEN
+                </button>
+              </div>
+            </ClientOnly>
           </div>
           
           {/* Products Carousel without title (using empty string) */}

@@ -116,3 +116,4 @@ const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
 };
 
 export default ProductImageGallery;
+
