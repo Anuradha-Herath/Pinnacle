@@ -61,7 +61,7 @@ const TopBar: React.FC<TopBarProps> = ({ title }) => {
 
         {/* Profile */}
         <button
-          onClick={() => router.push(user?.role === 'admin' ? "/adminprofile" : "/profilepage")}
+          onClick={() => router.push( "/admin/adminprofile" )}
           className="p-1 rounded-full border-2 border-gray-300"
         >
           <img
