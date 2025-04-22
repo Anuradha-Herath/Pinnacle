@@ -72,20 +72,7 @@ export const Footer = () => {
           </div>
         </div>
 
-        {/* Bottom bar */}
-        <div className="border-t border-gray-800 mt-12 pt-8">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <p className="text-gray-400 text-sm mb-4 md:mb-0">
-              &copy; {currentYear} Pinnacle. All rights reserved.
-            </p>
-            <div className="flex items-center space-x-4">
-              <img src="/payment-visa.svg" alt="Visa" className="h-6" />
-              <img src="/payment-mastercard.svg" alt="Mastercard" className="h-6" />
-              <img src="/payment-amex.svg" alt="American Express" className="h-6" />
-              <img src="/payment-paypal.svg" alt="PayPal" className="h-6" />
-            </div>
-          </div>
-        </div>
+        
       </div>
     </footer>
   );

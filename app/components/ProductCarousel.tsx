@@ -180,8 +180,8 @@ const ProductCarousel = ({ title, products, loading = false }: ProductCarouselPr
             onScroll={handleScroll}
           >
             {products.map((product) => (
-              <div key={product.id} className="flex-none">
-                <ProductCard product={product} />
+              <div key={product.id} className="flex-none w-[320px] min-w-[320px] max-w-[320px]">
+                <ProductCard product={product} imageContainerStyles="w-full h-64" />
               </div>
             ))}
           </div>

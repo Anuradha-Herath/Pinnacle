@@ -537,19 +537,18 @@ const Header = () => {
                     </div>
                   )}
 
-                    <div className="p-2 border-t border-gray-100">
-                      <button
-                        onClick={handleSearchSubmit}
-                        className="w-full flex items-center justify-center py-2 bg-gray-100 hover:bg-gray-200 rounded-md"
-                      >
-                        <Search className="h-4 w-4 mr-2" />
-                        Search for "{searchQuery}"
-                      </button>
-                    </div>
+                  <div className="p-2 border-t border-gray-100">
+                    <button
+                      onClick={handleSearchSubmit}
+                      className="w-full flex items-center justify-center py-2 bg-gray-100 hover:bg-gray-200 rounded-md"
+                    >
+                      <Search className="h-4 w-4 mr-2" />
+                      Search for "{searchQuery}"
+                    </button>
                   </div>
-                )}
-              </div>
-            </ClientOnly>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Right Icons */}
@@ -623,7 +622,9 @@ const Header = () => {
           </div>
         </div>
       </div>
-      <hr className="border-t border-gray-200" />
+
+      <hr className="border-t border-gray-800" />
+
       {/* Navigation */}
       <nav className="border-t border-gray-800 w-full">
         <div className="mx-auto px-4 w-full">
