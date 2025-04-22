@@ -196,40 +196,44 @@ const HomePage = () => {
     }
   };
 
-  // New function to specifically fetch accessories products
+  // Improved fetchAccessoriesProducts with better error handling
   const fetchAccessoriesProducts = async () => {
     try {
       setAccessoriesLoading(true);
       
-      // Log the request we're making for debugging
+      // Ensure consistent casing by using "Accessories" exactly
       console.log('Fetching accessories products...');
       
-      // Fetch products filtered by Accessories category
       const response = await fetch(`/api/customer/products?category=Accessories`);
       
       if (!response.ok) {
-        throw new Error(`Failed to fetch accessories products`);
+        throw new Error(`Failed to fetch accessories products: ${response.status}`);
       }
       
       const data = await response.json();
       console.log(`Fetched ${data.products?.length || 0} accessories products`);
       
-      // Debug: Log the categories of fetched products
+      // Debug the categories to make sure matching is working
       if (data.products?.length > 0) {
         console.log('Accessories product categories:', 
           data.products.map((p: any) => p.category));
+      } else {
+        console.log('No accessories products found in the API response');
       }
       
-      // Update just the accessories category in our state
-      if (data.products) {
-        setCategoryProducts(prev => ({
-          ...prev,
-          accessories: data.products
-        }));
-      }
+      // Update state only if we have products or an empty array
+      setCategoryProducts(prev => ({
+        ...prev,
+        accessories: data.products || []
+      }));
       
     } catch (err) {
       console.error(`Error fetching accessories products:`, err);
+      // On error, ensure we don't leave the carousel in a loading state
+      setCategoryProducts(prev => ({
+        ...prev,
+        accessories: [] // Reset to empty array on error
+      }));
     } finally {
       setAccessoriesLoading(false);
     }
@@ -237,8 +241,14 @@ const HomePage = () => {
 
   // Initial product fetch
   useEffect(() => {
-    fetchProducts();
-    fetchAccessoriesProducts(); // Fetch accessories products specifically
+    const loadAllData = async () => {
+      // First fetch all products
+      await fetchProducts();
+      // Then fetch accessories specifically to ensure consistency
+      await fetchAccessoriesProducts();
+    };
+    
+    loadAllData();
   }, []);
 
   // Fetch products when gender toggle changes
