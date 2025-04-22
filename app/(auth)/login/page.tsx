@@ -11,7 +11,7 @@ const LoginPage = () => {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -22,6 +22,11 @@ const LoginPage = () => {
       const success = await login(email, password);
       
       if (success) {
+        // If this is the regular login page, set flag for admins
+        if (user?.role === 'admin') {
+          localStorage.setItem('adminLoginSource', 'regular');
+        }
+        
         authNotifications.loginSuccess();
         router.push("/"); // Redirect to home page
       } else {

@@ -21,6 +21,9 @@ export interface IUser extends Document {
   wishlist: string[]; // Array of product IDs
   cart: CartItem[]; // Array of cart items
   points: number; // Ensure this is required in the interface
+  profilePicture: string; // Add this field for profile picture URL
+  phone?: string; // Add phone field
+  address?: string; // Add address field
   resetPasswordToken?: string;
   resetPasswordExpires?: number;
   createdAt: Date;
@@ -97,6 +100,21 @@ const UserSchema = new Schema<IUser>(
       type: Number,
       default: 0,
       min: 0, // Ensure points can't go below zero
+    },
+    
+    profilePicture: {
+      type: String,
+      default: '/p9.webp' // Change from '/default-profile.png' to an existing image
+    },
+    
+    phone: {
+      type: String,
+      required: false,
+    },
+    
+    address: {
+      type: String,
+      required: false,
     },
     
     resetPasswordToken: String,
