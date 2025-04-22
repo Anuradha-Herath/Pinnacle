@@ -280,45 +280,55 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const clearCart = useCallback(async () => {
     try {
-      // Fix: Only use id property since _id is causing TypeScript errors
+      // Set isClearing flag to prevent immediate reload of cart
+      setIsClearing(true);
+      
       const userId = user?.id;
       console.log(`CLEARING CART for user ${userId}`);
       
-      // Update local state first
+      // Clear local storage first (do this for all users)
+      localStorage.removeItem('cart');
+      
+      // Update local state
       setCart([]);
       setIsLoading(true);
       
       // Then update the backend if user is logged in
       if (userId) {
-        const response = await fetch('/api/user/cart', {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ items: [] }),
-        });
-        
-        if (!response.ok) {
-          console.error('Failed to clear cart on the server:', response.status);
-          throw new Error('Failed to clear cart');
+        try {
+          const response = await fetch('/api/user/cart', {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ cart: [] }), // Changed from 'items: []' to match API expectation
+          });
+          
+          if (!response.ok) {
+            console.error('Failed to clear cart on the server:', response.status);
+            // Continue execution even if API fails - local cart should still be cleared
+          } else {
+            console.log(`Cart cleared successfully for user ${userId}`);
+          }
+        } catch (apiError) {
+          console.error('API error clearing cart:', apiError);
+          // Continue execution - we still want local cart to be cleared
         }
-        
-        console.log(`Cart cleared successfully for user ${userId}`);
       } else {
-        // For guest users, just update localStorage
-        localStorage.removeItem('cart');
         console.log('Guest cart cleared from localStorage');
       }
     } catch (error) {
       console.error('Error clearing cart:', error);
       toast.error('Failed to clear your cart. Please try again.');
-      // Don't re-throw the error to prevent breaking the payment flow
     } finally {
       setIsLoading(false);
+      
       // Keep isClearing true for a short duration to prevent immediate reload
+      // This ensures the cleared state persists and isn't immediately refetched
       setTimeout(() => {
+        console.log("Reset isClearing flag - now allowing cart reloads");
         setIsClearing(false);
-      }, 2000); // 2-second delay before allowing reload
+      }, 2000);
     }
   }, [user]);
 
