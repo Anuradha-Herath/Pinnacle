@@ -196,40 +196,44 @@ const HomePage = () => {
     }
   };
 
-  // New function to specifically fetch accessories products
+  // Improved fetchAccessoriesProducts with better error handling
   const fetchAccessoriesProducts = async () => {
     try {
       setAccessoriesLoading(true);
       
-      // Log the request we're making for debugging
+      // Ensure consistent casing by using "Accessories" exactly
       console.log('Fetching accessories products...');
       
-      // Fetch products filtered by Accessories category
       const response = await fetch(`/api/customer/products?category=Accessories`);
       
       if (!response.ok) {
-        throw new Error(`Failed to fetch accessories products`);
+        throw new Error(`Failed to fetch accessories products: ${response.status}`);
       }
       
       const data = await response.json();
       console.log(`Fetched ${data.products?.length || 0} accessories products`);
       
-      // Debug: Log the categories of fetched products
+      // Debug the categories to make sure matching is working
       if (data.products?.length > 0) {
         console.log('Accessories product categories:', 
           data.products.map((p: any) => p.category));
+      } else {
+        console.log('No accessories products found in the API response');
       }
       
-      // Update just the accessories category in our state
-      if (data.products) {
-        setCategoryProducts(prev => ({
-          ...prev,
-          accessories: data.products
-        }));
-      }
+      // Update state only if we have products or an empty array
+      setCategoryProducts(prev => ({
+        ...prev,
+        accessories: data.products || []
+      }));
       
     } catch (err) {
       console.error(`Error fetching accessories products:`, err);
+      // On error, ensure we don't leave the carousel in a loading state
+      setCategoryProducts(prev => ({
+        ...prev,
+        accessories: [] // Reset to empty array on error
+      }));
     } finally {
       setAccessoriesLoading(false);
     }
@@ -237,8 +241,14 @@ const HomePage = () => {
 
   // Initial product fetch
   useEffect(() => {
-    fetchProducts();
-    fetchAccessoriesProducts(); // Fetch accessories products specifically
+    const loadAllData = async () => {
+      // First fetch all products
+      await fetchProducts();
+      // Then fetch accessories specifically to ensure consistency
+      await fetchAccessoriesProducts();
+    };
+    
+    loadAllData();
   }, []);
 
   // Fetch products when gender toggle changes
@@ -253,7 +263,7 @@ const HomePage = () => {
   };
 
   return (
-    <div className="bg-gray-900 min-h-screen flex flex-col">
+    <div className="bg-white min-h-screen flex flex-col">
       <Header />
       <HeaderPlaceholder />
       
@@ -334,13 +344,13 @@ const HomePage = () => {
         <div className="px-4 md:px-8 lg:px-12 my-8">
           {/* Title with Toggle Buttons */}
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-white">Best Sellers</h2>
-            <div className="bg-gray-800 rounded-full p-1 inline-flex">
+            <h2 className="text-2xl font-bold text-black">Best Sellers</h2>
+            <div className="bg-gray-200 rounded-full p-1 inline-flex">
               <button 
                 className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${
                   selectedGender === 'men' 
-                    ? 'bg-orange-500 text-white' 
-                    : 'text-white hover:bg-gray-700'
+                    ? 'bg-[black] text-white' 
+                    : 'text-black hover:bg-gray-300'
                 }`}
                 onClick={() => handleGenderToggle('men')}
               >
@@ -349,8 +359,8 @@ const HomePage = () => {
               <button 
                 className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${
                   selectedGender === 'women' 
-                    ? 'bg-orange-500 text-white' 
-                    : 'text-white hover:bg-gray-700'
+                    ? 'bg-[black] text-white' 
+                    : 'text-black hover:bg-gray-300'
                 }`}
                 onClick={() => handleGenderToggle('women')}
               >
@@ -374,7 +384,7 @@ const HomePage = () => {
           {!genderLoading && 
             ((selectedGender === 'men' && categoryProducts.mens.length === 0) || 
              (selectedGender === 'women' && categoryProducts.womens.length === 0)) && (
-            <div className="text-center py-8 text-white">
+            <div className="text-center py-8 text-black">
               No products found for {selectedGender === 'men' ? 'men' : 'women'}.
             </div>
           )}
@@ -395,7 +405,7 @@ const HomePage = () => {
           {!accessoriesLoading && 
             categoryProducts.accessories && 
             categoryProducts.accessories.length === 0 && (
-            <div className="text-center py-8 text-white">
+            <div className="text-center py-8 text-black">
               No accessories products found.
             </div>
           )}

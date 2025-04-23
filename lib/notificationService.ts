@@ -2,7 +2,7 @@ import toast from 'react-hot-toast';
 
 // Common toast configuration
 const toastConfig = {
-  position: 'bottom-right' as const,
+  position: 'bottom-center' as const,
   duration: 5000
 };
 

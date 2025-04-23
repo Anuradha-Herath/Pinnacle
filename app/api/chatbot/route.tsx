@@ -495,12 +495,13 @@ const userPreferenceStrategy: RecommendationStrategy = {
 };
 
 // Refactored findRecommendedProducts function using strategy pattern
-const findRecommendedProducts = (responseText: string, productContext: ProductContextItem[], userQuery: string, userPreferences?: any): ProductContextItem[] => {
+const findRecommendedProducts = (responseText: string, productContext: ProductContextItem[], userQuery: string, userPreferences?: any): { products: ProductContextItem[], relevanceScore: number } => {
   console.log(`Finding product recommendations for: "${userQuery.substring(0, 50)}..."`);
   
+  // Restore this check to filter out FAQ queries
   if (isGeneralInfoOrFAQ(userQuery, responseText)) {
     console.log("Detected general information or FAQ query - skipping product recommendations");
-    return [];
+    return { products: [], relevanceScore: 0 };
   }
   
   // Define all recommendation strategies with their priorities
@@ -526,6 +527,8 @@ const findRecommendedProducts = (responseText: string, productContext: ProductCo
   // Process results in priority order to build recommendations
   const recommendedProducts: ProductContextItem[] = [];
   const seenProductIds = new Set<string>();
+  let totalRelevanceScore = 0;
+  let matchesFound = 0;
   
   // Process strategies in priority order (lower number = higher priority)
   strategies
@@ -542,6 +545,8 @@ const findRecommendedProducts = (responseText: string, productContext: ProductCo
           if (!seenProductIds.has(match.product.id)) {
             recommendedProducts.push(match.product);
             seenProductIds.add(match.product.id);
+            totalRelevanceScore += match.similarity;
+            matchesFound++;
             
             if (recommendedProducts.length >= 3) {
               break;
@@ -551,22 +556,38 @@ const findRecommendedProducts = (responseText: string, productContext: ProductCo
       }
     });
   
-  // Fallback: If no products found, use newest products
-  if (recommendedProducts.length === 0) {
-    const newest = productContext.slice(0, 3);
-    for (const product of newest) {
-      recommendedProducts.push(product);
-    }
-    debug.fallback = { used: true };
-  }
+  // Remove the fallback random product recommendation code
+  // Don't provide fallback recommendations
+  
+  // Calculate overall relevance score (average of matches, or 0 if none)
+  const overallRelevanceScore = matchesFound > 0 ? totalRelevanceScore / matchesFound : 0;
   
   console.log("Recommendation debug info:", JSON.stringify(debug, null, 2));
-  console.log(`Found ${recommendedProducts.length} recommended products`);
+  console.log(`Found ${recommendedProducts.length} recommended products with relevance score: ${overallRelevanceScore.toFixed(2)}`);
+  
   if (recommendedProducts.length > 0) {
     console.log("Recommended products:", recommendedProducts.map(p => p.name).join(", "));
   }
   
-  return recommendedProducts.slice(0, 3);
+  // Do not provide fallback recommendations
+  return { 
+    products: recommendedProducts.slice(0, 3),
+    relevanceScore: overallRelevanceScore
+  };
+};
+
+// Restore original threshold for determining if recommendations are relevant enough
+const RELEVANCE_THRESHOLD = 0.4; // Change back from 0.2 to 0.4
+
+// New function to detect when the response is saying we don't have a product
+const isNegativeProductResponse = (responseText: string): boolean => {
+  const negativePatterns = [
+    /don't (currently )?have|don't (currently )?offer|don't (currently )?sell|not available|not in stock|out of stock|not in our inventory|not carry|don't carry|we don't stock|isn't available|aren't available/i,
+    /we (currently )?don't have|we (currently )?don't offer|we (currently )?don't sell|we don't stock/i,
+    /sorry.{1,30}(don't|doesn't|not).{1,30}(have|offer|carry|stock|available)/i
+  ];
+  
+  return negativePatterns.some(pattern => pattern.test(responseText));
 };
 
 const processResponseWithProductCards = async (
@@ -575,14 +596,30 @@ const processResponseWithProductCards = async (
   userQuery: string,
   userPreferences?: any
 ) => {
-  const recommendedProducts = findRecommendedProducts(
+  // First check if this is a negative product response
+  if (isNegativeProductResponse(responseText)) {
+    console.log("Detected negative product response - skipping recommendations");
+    // Return the response without any product recommendations
+    return responseText;
+  }
+  
+  const { products: recommendedProducts, relevanceScore } = findRecommendedProducts(
     responseText, 
     productContext, 
     userQuery, 
     userPreferences
   );
   
-  if (recommendedProducts.length > 0 && !isGeneralInfoOrFAQ(userQuery, responseText)) {
+  // Determine if the query appears to be asking for specific products
+  const isProductQuery = isSpecificProductQuery(userQuery) || userQuery.toLowerCase().includes('recommend');
+  
+  // Handle case where we have no relevant product recommendations but the user was asking for products
+  if (recommendedProducts.length === 0 && isProductQuery) {
+    // Add a message about not having matching products
+    return `${responseText}\n\nI'm sorry, but we don't currently have products that match your specific request in our inventory. We regularly update our collections, so please check back later or browse our available items on the website.`;
+  } 
+  // Include recommendations only when they're relevant and not for FAQ queries
+  else if (recommendedProducts.length > 0 && relevanceScore >= RELEVANCE_THRESHOLD && !isGeneralInfoOrFAQ(userQuery, responseText)) {
     return `${responseText}\n\n[[PRODUCT_RECOMMENDATIONS]]\n${JSON.stringify(recommendedProducts)}`;
   }
   
@@ -603,12 +640,21 @@ const isAskingAboutNewProducts = (message: string): boolean => {
 const isSpecificProductQuery = (query: string): boolean => {
   const specificProductTerms = [
     'hoodie', 'hoodies', 'hoody', 't-shirt', 'tshirt', 'jacket', 'sweater',
-    'pants', 'jeans', 'shoe', 'shoes', 'dress', 'hat', 'cap', 'socks'
+    'pants', 'jeans', 'shoe', 'shoes', 'dress', 'hat', 'cap', 'socks',
+    'outfit', 'wear', 'clothing', 'clothes', 'apparel', 'wardrobe', 'attire',
+    'recommend', 'recommendation', 'suggestion', 'suggest',
+    'do you have', 'do you sell', 'do you offer', 'looking for'
+  ];
+  
+  const outfitPhrases = [
+    'what should i wear', 'what to wear', 'outfit for', 'dress for',
+    'clothes for', 'look for', 'attire for', 'recommend something for'
   ];
   
   const queryLower = query.toLowerCase();
   
-  return specificProductTerms.some(term => queryLower.includes(term));
+  return specificProductTerms.some(term => queryLower.includes(term)) ||
+         outfitPhrases.some(phrase => queryLower.includes(phrase));
 }
 
 // New function to make responses more concise

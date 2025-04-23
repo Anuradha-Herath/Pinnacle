@@ -19,6 +19,14 @@ export default function OrdersPage() {
   const router = useRouter();
 
   const [orders, setOrders] = useState<Order[]>([]);
+  // State for filtering orders by status
+  const [filterStatus, setFilterStatus] = useState("");
+
+  // Add pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10); // Show 10 orders per page
+  const [totalPages, setTotalPages] = useState(1);
+  const [displayedOrders, setDisplayedOrders] = useState<Order[]>([]);
 
   useEffect(() => {
     // Fetch orders from the API
@@ -38,13 +46,38 @@ export default function OrdersPage() {
     fetchOrders();
   }, []);
 
-  // State for filtering orders by status
-  const [filterStatus, setFilterStatus] = useState("");
-
   // Filter orders based on selected status
   const filteredOrders = filterStatus
     ? orders.filter((order) => order.status === filterStatus)
     : orders;
+
+  // Apply pagination when filtered orders or page changes
+  useEffect(() => {
+    applyPagination(filteredOrders);
+    // Calculate total pages
+    const total = Math.ceil(filteredOrders.length / itemsPerPage);
+    setTotalPages(total > 0 ? total : 1);
+  }, [currentPage, filteredOrders, itemsPerPage]);
+
+  // Handle pagination
+  const applyPagination = (items: Order[]) => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    setDisplayedOrders(items.slice(startIndex, endIndex));
+  };
+
+  // Handle pagination navigation
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
 
   return (
     <div className="flex">
@@ -172,7 +205,10 @@ export default function OrdersPage() {
               {/* Order Status Filter Dropdown */}
               <select
                 value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
+                onChange={(e) => {
+                  setFilterStatus(e.target.value);
+                  setCurrentPage(1); // Reset to page 1 when filter changes
+                }}
                 className="border px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
               >
                 <option value="">All Statuses</option>
@@ -198,8 +234,8 @@ export default function OrdersPage() {
               </tr>
             </thead>
             <tbody>
-              {filteredOrders.length > 0 ? (
-                filteredOrders.map((order, index) => (
+              {displayedOrders.length > 0 ? (
+                displayedOrders.map((order, index) => (
                   <tr key={index} className="border-t">
                     <td className="p-3">{order.orderNumber || "N/A"}</td>
                     <td className="p-3">
@@ -252,23 +288,38 @@ export default function OrdersPage() {
             </tbody>
           </table>
 
-          {/* Pagination */}
-          <div className="flex justify-end mt-6 pr-4">
-            <div className="flex items-center border rounded-md overflow-hidden shadow-md">
-              <button className="px-4 py-2 border-r bg-white hover:bg-gray-200">
-                Previous
-              </button>
-              <button className="px-4 py-2 bg-orange-500 text-white font-semibold">
-                1
-              </button>
-              <button className="px-4 py-2 border-l bg-white hover:bg-gray-200">
-                2
-              </button>
-              <button className="px-4 py-2 border-l bg-white hover:bg-gray-200">
-                Next
-              </button>
+          {/* Pagination - Updated */}
+          {filteredOrders.length > 0 && (
+            <div className="flex justify-center mt-6">
+              <div className="flex items-center gap-2">
+                <button
+                  className={`px-4 py-2 rounded-md ${
+                    currentPage === 1
+                      ? "bg-orange-200 text-gray-700 cursor-not-allowed"
+                      : "bg-orange-500 text-white hover:bg-orange-600"
+                  }`}
+                  onClick={handlePreviousPage}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </button>
+                <span className="mx-2 text-gray-600">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  className={`px-4 py-2 rounded-md ${
+                    currentPage === totalPages
+                      ? "bg-orange-200 text-gray-700 cursor-not-allowed"
+                      : "bg-orange-500 text-white hover:bg-orange-600"
+                  }`}
+                  onClick={handleNextPage}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                </button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { MagnifyingGlassIcon } from '@heroicons/react/24/solid';
 import {
   EyeIcon,
   BellIcon,
@@ -24,6 +25,13 @@ interface InventoryItem {
   image: string;
 }
 
+// Define interface for search suggestions
+interface SearchSuggestion {
+  id: string;
+  name: string;
+  image: string;
+}
+
 export default function InventoryList() {
   const router = useRouter();
   
@@ -34,7 +42,13 @@ export default function InventoryList() {
   const [error, setError] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
+  const [filter, setFilter] = useState('All'); // Filter state
+  const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
   
+  // Reference for search bar
+  const searchRef = useRef<HTMLDivElement | null>(null);
+
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10); // Show 10 inventory items per page
@@ -47,6 +61,13 @@ export default function InventoryList() {
     outOfStock: 0,
     newlyAdded: 0
   });
+
+  // Handle suggestion click
+  const handleSuggestionClick = (name: string) => {
+    setSearchQuery(name);
+    setShowSuggestions(false);
+    handleSearch(undefined);
+  };
 
   // Fetch inventory data
   useEffect(() => {
@@ -131,7 +152,8 @@ export default function InventoryList() {
   };
 
   // Handle search
-  const handleSearch = () => {
+  const handleSearch = (e?: React.FormEvent) => {
+      e?.preventDefault(); // Make sure this is present to prevent form submission
     if (searchQuery.trim() === '') {
       // Reset search, show all items with the current filter
       applyClientSidePagination(allInventory);
@@ -148,6 +170,12 @@ export default function InventoryList() {
     
     // Apply pagination to filtered results
     applyClientSidePagination(filtered);
+  };
+
+  // Handle clear search
+  const handleClearSearch = () => {
+    setSearchQuery("");
+    applyClientSidePagination(allInventory);
   };
 
   // Handle filter by status
@@ -388,23 +416,71 @@ export default function InventoryList() {
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2">
-              <div className="flex">
-                <input
-                  type="text"
-                  placeholder="🔍 Search"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                  className="border px-3 py-2 rounded-l-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-                />
-                <button 
-                  className="bg-orange-500 text-white px-4 py-2 rounded-r-md"
-                  onClick={handleSearch}
+            
+            {/* Add Search Bar Here */}
+            <div className="relative w-full max-w-md">
+              <form onSubmit={handleSearch} className="flex items-center">
+                <div className="relative flex-grow">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search inventory..."
+                    className="w-full pl-10 pr-4 py-2 border rounded-l-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  />
+                  <MagnifyingGlassIcon className="h-5 w-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+                  {searchQuery && (
+                  <button
+                  type="button"
+                  onClick={handleClearSearch}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                  </button>
+                )}
+
+                </div>
+                <button
+                  type="submit"
+                  className="bg-orange-500 text-white px-4 py-2 rounded-r-md hover:bg-orange-600"
                 >
                   Search
                 </button>
-              </div>
+              </form>
+              
+              {/* Search Suggestions with Images */}
+              {showSuggestions && suggestions.length > 0 && (
+                <div className="absolute z-10 w-full bg-white mt-1 border rounded-md shadow-lg max-h-60 overflow-auto">
+                  {suggestions.map((suggestion) => (
+                    <div
+                      key={suggestion.id}
+                      className="px-4 py-2 hover:bg-gray-100 cursor-pointer flex items-center"
+                      onClick={() => handleSuggestionClick(suggestion.name)}
+                    >
+                      {/* Product Image */}
+                      <div className="w-10 h-10 flex-shrink-0 mr-3 bg-gray-100 rounded overflow-hidden">
+                        <img 
+                          src={suggestion.image} 
+                          alt={suggestion.name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = '/placeholder.png';
+                          }}
+                        />
+                      </div>
+                      {/* Product Name */}
+                      <div className="flex-grow">
+                        <span className="text-sm">{suggestion.name}</span>
+                      </div>
+                      {/* Search Icon */}
+                      <MagnifyingGlassIcon className="h-4 w-4 text-gray-400 ml-2" />
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
