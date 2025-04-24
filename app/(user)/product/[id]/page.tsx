@@ -253,17 +253,19 @@ export default function EnhancedProductDetailPage() {
       id: productData.id,
       name: productData.name,
       price: productData.price,
+      discountedPrice: productData.discountedPrice, // Log discounted price
       selectedSize,
       selectedColor,
       image: selectedImg,
       quantity
     });
 
-    // Ensure we're passing all required data
+    // Ensure we're passing all required data including discountedPrice
     addToCart({
       id: productData.id,
       name: productData.name,
       price: productData.price,
+      discountedPrice: productData.discountedPrice, // Add discounted price here
       image: selectedImg,
       quantity: quantity,
       size: selectedSize || undefined,
@@ -296,11 +298,12 @@ export default function EnhancedProductDetailPage() {
       return;
     }
 
-    // Pass the entire product object with correct ID
+    // Pass the entire product object with correct ID and discountedPrice
     debouncedAddToCart({
-      id: product.id, // Ensure we're using the correct ID
+      id: product.id, 
       name: product.name,
       price: product.price,
+      discountedPrice: product.discountedPrice, // Add discounted price here
     });
 
     // Track this action for preferences
