@@ -21,6 +21,7 @@ interface ProductData {
   fitType?: string;
   sizingTrend?: number;
   sizingNotes?: string;
+  sizeChartImage?: string;
   colors?: { name: string; quantity: number }[];
   inventory?: Record<string, number>;
 }
@@ -374,7 +375,53 @@ export default function ProductDetails() {
                   </div>
                 </div>
               )}
-            </div>
+           
+
+
+            {product.sizes && product.sizes.length > 0 && (
+              <div className="mt-4">
+                <span className="text-sm text-gray-500 block mb-2">Available Sizes</span>
+                <div className="flex flex-wrap gap-2">
+                  {product.sizes.map((size) => (
+                    <span
+                      key={size}
+                      className="px-4 py-2 bg-gray-100 rounded-md text-sm font-medium"
+                    >
+                      {size}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Size Chart Image Display */}
+            {product.sizeChartImage && (
+              <div className="mt-6">
+                <span className="text-sm text-gray-500 block mb-2">Size Chart</span>
+                <div className="border rounded-lg overflow-hidden cursor-pointer"
+                    onClick={() => openImageModal(product.sizeChartImage ?? "/placeholder.png")}
+                    title="Click to enlarge">
+                  <img
+                    src={product.sizeChartImage}
+                    alt="Size Chart"
+                    className="w-full max-h-48 object-contain hover:opacity-90 transition-opacity"
+                  />
+                  <div className="bg-gray-50 py-2 px-3 text-xs text-center">
+                    Click to view size chart
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {product.sizingNotes && (
+              <div className="mt-4">
+                <span className="text-sm text-gray-500 block mb-2">Sizing Notes</span>
+                <p className="text-gray-700 text-sm border p-3 rounded-md bg-gray-50">
+                  {product.sizingNotes}
+                </p>
+              </div>
+            )}
+            </div> 
 
             {/* Right Section - Inventory & Sizing */}
             <div className="space-y-6">
@@ -519,23 +566,23 @@ export default function ProductDetails() {
                 </div>
               )}
 
-              {/* Action Buttons */}
-              <div className="flex justify-end gap-4 mt-8">
+               {/* Action Buttons */}
+               <div className="flex flex-wrap justify-end gap-4 mt-8 sticky bottom-4 bg-white p-4 rounded-lg shadow-md">
                 <button
                   onClick={() => router.push(`/admin/productedit/${id}`)}
-                  className="px-20 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors"
+                  className="px-10 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors w-full sm:w-auto"
                 >
                   EDIT
                 </button>
                 <button
                   onClick={() => inventory ? router.push(`/admin/inventorydetails?id=${inventory._id}`) : null}
-                  className={`px-20 py-2 ${inventory ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 cursor-not-allowed'} text-white rounded-md transition-colors`}
+                  className={`px-10 py-2 ${inventory ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 cursor-not-allowed'} text-white rounded-md transition-colors w-full sm:w-auto`}
                 >
                   INVENTORY
                 </button>
                 <button
                   onClick={() => router.push("/admin/productlist")}
-                  className="px-20 py-2 border rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+                  className="px-10 py-2 border rounded-md text-gray-700 hover:bg-gray-50 transition-colors w-full sm:w-auto"
                 >
                   BACK
                 </button>
