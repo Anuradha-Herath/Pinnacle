@@ -1,176 +1,30 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import Header from "./components/Header";
 import ProductCarousel from "./components/ProductCarousel";
 import Footer from "./components/Footer";
 import Link from "next/link";
 import HeaderPlaceholder from "./components/HeaderPlaceholder";
-import { API_ENDPOINTS, CATEGORIES, IMAGES, UI_TEXT } from "@/lib/constants";
+import { CATEGORIES, IMAGES, UI_TEXT } from "@/lib/constants";
+import { useProducts } from "@/hooks/useProducts";
 
 const HomePage = () => {
-  const [products, setProducts] = useState([]);
-  const [trendingProducts, setTrendingProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [genderLoading, setGenderLoading] = useState(false);
-  const [accessoriesLoading, setAccessoriesLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedGender, setSelectedGender] = useState<'men' | 'women'>('women');
+  // Use our custom hook for product management
+  const {
+    products,
+    trendingProducts,
+    loading,
+    genderLoading,
+    accessoriesLoading,
+    selectedGender,
+    categoryProducts,
+    fetchProducts,
+    fetchProductsByCategory,
+    fetchAccessoriesProducts,
+    handleGenderToggle,
+  } = useProducts();
   
-  // Categories we want to display - use lowercase consistently
-  const categories = [
-    CATEGORIES.MEN.stateKey, 
-    CATEGORIES.WOMEN.stateKey, 
-    CATEGORIES.ACCESSORIES.id
-  ];
-  
-  const [categoryProducts, setCategoryProducts] = useState<Record<string, any[]>>({
-    [CATEGORIES.MEN.stateKey]: [],
-    [CATEGORIES.WOMEN.stateKey]: [],
-    [CATEGORIES.ACCESSORIES.id]: []
-  });
-
-  // Function to fetch all products and categorize them
-  const fetchProducts = async () => {
-    try {
-      setLoading(true);
-      
-      // Fetch all products
-      const response = await fetch(API_ENDPOINTS.PRODUCTS);
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch products');
-      }
-      
-      const data = await response.json();
-      
-      if (data.products && data.products.length > 0) {
-        setProducts(data.products);
-        
-        // Organize products by category - use lowercase consistently
-        const productsByCategory: Record<string, any[]> = {
-          [CATEGORIES.MEN.stateKey]: [],
-          [CATEGORIES.WOMEN.stateKey]: [],
-          [CATEGORIES.ACCESSORIES.id]: []
-        };
-        
-        data.products.forEach((product: any) => {
-          const category = product.category?.toLowerCase() || "";
-          console.log(`Product: ${product.name}, Category: ${category}`);
-          
-          // Match category to our predefined categories
-          if (category === CATEGORIES.MEN.id || category === CATEGORIES.MEN.stateKey) {
-            productsByCategory[CATEGORIES.MEN.stateKey].push(product);
-          } else if (category === CATEGORIES.WOMEN.id || category === CATEGORIES.WOMEN.stateKey) {
-            productsByCategory[CATEGORIES.WOMEN.stateKey].push(product);
-          } else {
-            productsByCategory[CATEGORIES.ACCESSORIES.id].push(product);
-          }
-        });
-        
-        console.log("Categorized products:", {
-          menProducts: productsByCategory[CATEGORIES.MEN.stateKey].length,
-          womenProducts: productsByCategory[CATEGORIES.WOMEN.stateKey].length,
-          accessoriesProducts: productsByCategory[CATEGORIES.ACCESSORIES.id].length
-        });
-        
-        setCategoryProducts(productsByCategory);
-      }
-      
-      // Fetch trending products (newly created + recently stocked)
-      const trendingResponse = await fetch(API_ENDPOINTS.TRENDING);
-      
-      if (trendingResponse.ok) {
-        const trendingData = await trendingResponse.json();
-        setTrendingProducts(trendingData.products || []);
-      }
-      
-    } catch (err) {
-      console.error('Error fetching products:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load products');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Fetch products by specific category when gender toggle changes
-  const fetchProductsByCategory = async (category: string) => {
-    try {
-      setGenderLoading(true);
-      
-      // Convert 'men'/'women' to match API parameter ('Men'/'Women')
-      const apiCategory = category === CATEGORIES.MEN.id 
-        ? CATEGORIES.MEN.apiName 
-        : CATEGORIES.WOMEN.apiName;
-      
-      // Fetch products filtered by category
-      const response = await fetch(API_ENDPOINTS.CATEGORY(apiCategory));
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch ${apiCategory} products`);
-      }
-      
-      const data = await response.json();
-      console.log(`Fetched ${apiCategory} products:`, data.products?.length || 0);
-      
-      // Update just the specific category in our state
-      if (data.products) {
-        setCategoryProducts(prev => ({
-          ...prev,
-          [category + 's']: data.products
-        }));
-      }
-      
-    } catch (err) {
-      console.error(`Error fetching ${category} products:`, err);
-    } finally {
-      setGenderLoading(false);
-    }
-  };
-
-  // Improved fetchAccessoriesProducts with better error handling
-  const fetchAccessoriesProducts = async () => {
-    try {
-      setAccessoriesLoading(true);
-      
-      // Ensure consistent casing by using "Accessories" exactly
-      console.log('Fetching accessories products...');
-      
-      const response = await fetch(API_ENDPOINTS.CATEGORY(CATEGORIES.ACCESSORIES.apiName));
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch accessories products: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      console.log(`Fetched ${data.products?.length || 0} accessories products`);
-      
-      // Debug the categories to make sure matching is working
-      if (data.products?.length > 0) {
-        console.log('Accessories product categories:', 
-          data.products.map((p: any) => p.category));
-      } else {
-        console.log('No accessories products found in the API response');
-      }
-      
-      // Update state only if we have products or an empty array
-      setCategoryProducts(prev => ({
-        ...prev,
-        [CATEGORIES.ACCESSORIES.id]: data.products || []
-      }));
-      
-    } catch (err) {
-      console.error(`Error fetching accessories products:`, err);
-      // On error, ensure we don't leave the carousel in a loading state
-      setCategoryProducts(prev => ({
-        ...prev,
-        [CATEGORIES.ACCESSORIES.id]: [] // Reset to empty array on error
-      }));
-    } finally {
-      setAccessoriesLoading(false);
-    }
-  };
-
   // Initial product fetch
   useEffect(() => {
     const loadAllData = async () => {
@@ -181,18 +35,12 @@ const HomePage = () => {
     };
     
     loadAllData();
-  }, []);
+  }, [fetchProducts, fetchAccessoriesProducts]);
 
   // Fetch products when gender toggle changes
   useEffect(() => {
     fetchProductsByCategory(selectedGender);
-  }, [selectedGender]);
-
-  // Handle gender toggle with debug info
-  const handleGenderToggle = (gender: 'men' | 'women') => {
-    console.log(`Switching to ${gender} products`);
-    setSelectedGender(gender);
-  };
+  }, [selectedGender, fetchProductsByCategory]);
 
   return (
     <div className="bg-white min-h-screen flex flex-col">
