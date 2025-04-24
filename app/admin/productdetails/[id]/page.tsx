@@ -382,39 +382,7 @@ export default function ProductDetails() {
               <div className="space-y-4">
                 <span className="text-xl font-bold text-black">Sizing Information</span>
 
-                {product.sizingTrend !== undefined && (
-                  <div className="bg-gray-50 p-4 rounded-lg space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-sm text-gray-500">Size Accuracy</span>
-                      <span className="font-medium">{getSizingTrendText(product.sizingTrend)}</span>
-                    </div>
-
-                    <div className="relative h-2 bg-gray-200 rounded-full w-full">
-                      <div
-                        className={`absolute h-full rounded-full ${
-                          product.sizingTrend === -1
-                            ? "bg-blue-500 w-1/3 left-0"
-                            : product.sizingTrend === 1
-                            ? "bg-green-500 w-1/3 right-0"
-                            : "bg-yellow-500 w-1/3 left-1/3"
-                        }`}
-                      ></div>
-                      <div className="flex justify-between text-xs text-gray-500 mt-1">
-                        <span>Runs Small</span>
-                        <span>True to Size</span>
-                        <span>Runs Large</span>
-                      </div>
-                    </div>
-
-                    {product.sizingNotes && (
-                      <div className="mt-3 pt-3 border-t border-gray-200">
-                        <span className="text-sm text-gray-500 block mb-1">Sizing Notes</span>
-                        <p className="text-sm italic">{product.sizingNotes}</p>
-                      </div>
-                    )}
-                  </div>
-                )}
-
+                
                 {product.sizes && product.sizes.length > 0 && (
                   <div className="mt-4">
                     <span className="text-sm text-gray-500 block mb-2">Available Sizes</span>
