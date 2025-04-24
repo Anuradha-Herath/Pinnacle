@@ -6,6 +6,7 @@ import ProductCarousel from "./components/ProductCarousel";
 import Footer from "./components/Footer";
 import Link from "next/link";
 import HeaderPlaceholder from "./components/HeaderPlaceholder";
+import { API_ENDPOINTS, CATEGORIES, IMAGES, UI_TEXT } from "@/lib/constants";
 
 const HomePage = () => {
   const [products, setProducts] = useState([]);
@@ -17,11 +18,16 @@ const HomePage = () => {
   const [selectedGender, setSelectedGender] = useState<'men' | 'women'>('women');
   
   // Categories we want to display - use lowercase consistently
-  const categories = ["mens", "womens", "accessories"];
+  const categories = [
+    CATEGORIES.MEN.stateKey, 
+    CATEGORIES.WOMEN.stateKey, 
+    CATEGORIES.ACCESSORIES.id
+  ];
+  
   const [categoryProducts, setCategoryProducts] = useState<Record<string, any[]>>({
-    mens: [],
-    womens: [],
-    accessories: []
+    [CATEGORIES.MEN.stateKey]: [],
+    [CATEGORIES.WOMEN.stateKey]: [],
+    [CATEGORIES.ACCESSORIES.id]: []
   });
 
   // Function to fetch all products and categorize them
@@ -30,7 +36,7 @@ const HomePage = () => {
       setLoading(true);
       
       // Fetch all products
-      const response = await fetch('/api/customer/products');
+      const response = await fetch(API_ENDPOINTS.PRODUCTS);
       
       if (!response.ok) {
         throw new Error('Failed to fetch products');
@@ -43,9 +49,9 @@ const HomePage = () => {
         
         // Organize products by category - use lowercase consistently
         const productsByCategory: Record<string, any[]> = {
-          mens: [],
-          womens: [],
-          accessories: []
+          [CATEGORIES.MEN.stateKey]: [],
+          [CATEGORIES.WOMEN.stateKey]: [],
+          [CATEGORIES.ACCESSORIES.id]: []
         };
         
         data.products.forEach((product: any) => {
@@ -53,26 +59,26 @@ const HomePage = () => {
           console.log(`Product: ${product.name}, Category: ${category}`);
           
           // Match category to our predefined categories
-          if (category === "men" || category === "mens") {
-            productsByCategory.mens.push(product);
-          } else if (category === "women" || category === "womens") {
-            productsByCategory.womens.push(product);
+          if (category === CATEGORIES.MEN.id || category === CATEGORIES.MEN.stateKey) {
+            productsByCategory[CATEGORIES.MEN.stateKey].push(product);
+          } else if (category === CATEGORIES.WOMEN.id || category === CATEGORIES.WOMEN.stateKey) {
+            productsByCategory[CATEGORIES.WOMEN.stateKey].push(product);
           } else {
-            productsByCategory.accessories.push(product);
+            productsByCategory[CATEGORIES.ACCESSORIES.id].push(product);
           }
         });
         
         console.log("Categorized products:", {
-          menProducts: productsByCategory.mens.length,
-          womenProducts: productsByCategory.womens.length,
-          accessoriesProducts: productsByCategory.accessories.length
+          menProducts: productsByCategory[CATEGORIES.MEN.stateKey].length,
+          womenProducts: productsByCategory[CATEGORIES.WOMEN.stateKey].length,
+          accessoriesProducts: productsByCategory[CATEGORIES.ACCESSORIES.id].length
         });
         
         setCategoryProducts(productsByCategory);
       }
       
       // Fetch trending products (newly created + recently stocked)
-      const trendingResponse = await fetch('/api/customer/trending');
+      const trendingResponse = await fetch(API_ENDPOINTS.TRENDING);
       
       if (trendingResponse.ok) {
         const trendingData = await trendingResponse.json();
@@ -93,10 +99,12 @@ const HomePage = () => {
       setGenderLoading(true);
       
       // Convert 'men'/'women' to match API parameter ('Men'/'Women')
-      const apiCategory = category === 'men' ? 'Men' : 'Women';
+      const apiCategory = category === CATEGORIES.MEN.id 
+        ? CATEGORIES.MEN.apiName 
+        : CATEGORIES.WOMEN.apiName;
       
       // Fetch products filtered by category
-      const response = await fetch(`/api/customer/products?category=${apiCategory}`);
+      const response = await fetch(API_ENDPOINTS.CATEGORY(apiCategory));
       
       if (!response.ok) {
         throw new Error(`Failed to fetch ${apiCategory} products`);
@@ -128,7 +136,7 @@ const HomePage = () => {
       // Ensure consistent casing by using "Accessories" exactly
       console.log('Fetching accessories products...');
       
-      const response = await fetch(`/api/customer/products?category=Accessories`);
+      const response = await fetch(API_ENDPOINTS.CATEGORY(CATEGORIES.ACCESSORIES.apiName));
       
       if (!response.ok) {
         throw new Error(`Failed to fetch accessories products: ${response.status}`);
@@ -148,7 +156,7 @@ const HomePage = () => {
       // Update state only if we have products or an empty array
       setCategoryProducts(prev => ({
         ...prev,
-        accessories: data.products || []
+        [CATEGORIES.ACCESSORIES.id]: data.products || []
       }));
       
     } catch (err) {
@@ -156,7 +164,7 @@ const HomePage = () => {
       // On error, ensure we don't leave the carousel in a loading state
       setCategoryProducts(prev => ({
         ...prev,
-        accessories: [] // Reset to empty array on error
+        [CATEGORIES.ACCESSORIES.id]: [] // Reset to empty array on error
       }));
     } finally {
       setAccessoriesLoading(false);
@@ -193,14 +201,14 @@ const HomePage = () => {
       
       {/* Banner */}
       <div className="banner">
-        <img src="/banner2.jpg" alt="Banner" className="w-full h-auto" />
+        <img src={IMAGES.BANNER} alt="Banner" className="w-full h-auto" />
       </div>
 
       {/* Main Content */}
       <div className="flex-grow">
         {/* Trending Products - Newly Created + Recently Stocked */}
         <ProductCarousel 
-          title="Trending Products" 
+          title={UI_TEXT.TRENDING_TITLE} 
           products={trendingProducts.length > 0 ? trendingProducts : products} 
           loading={loading}
         />
@@ -211,15 +219,15 @@ const HomePage = () => {
           <div className="relative w-full md:w-[45%] overflow-hidden rounded-xl shadow-xl transform transition-all duration-500 hover:shadow-2xl group">
             <div className="aspect-[4/3] w-full">
               <img
-                src="/shopmen.webp"
+                src={IMAGES.MEN}
                 alt="Shop Men"
                 className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-105"
               />
             </div>
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent flex items-end justify-center pb-10 md:pb-12">
-              <Link href="/category/Men" className="block">
+              <Link href={`/category/${CATEGORIES.MEN.apiName}`} className="block">
                 <button className="bg-white text-black font-semibold py-3 px-8 rounded-lg transform transition-all duration-300 hover:bg-black hover:text-white hover:scale-105 hover:shadow-lg border-2 border-transparent hover:border-white">
-                  SHOP MEN
+                  {UI_TEXT.SHOP_MEN}
                 </button>
               </Link>
             </div>
@@ -229,15 +237,15 @@ const HomePage = () => {
           <div className="relative w-full md:w-[45%] overflow-hidden rounded-xl shadow-xl transform transition-all duration-500 hover:shadow-2xl group mt-6 md:mt-0">
             <div className="aspect-[4/3] w-full">
               <img
-                src="/shopwomen.webp"
+                src={IMAGES.WOMEN}
                 alt="Shop Women"
                 className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-105"
               />
             </div>
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent flex items-end justify-center pb-10 md:pb-12">
-              <Link href="/category/Women" className="block">
+              <Link href={`/category/${CATEGORIES.WOMEN.apiName}`} className="block">
                 <button className="bg-white text-black font-semibold py-3 px-8 rounded-lg transform transition-all duration-300 hover:bg-black hover:text-white hover:scale-105 hover:shadow-lg border-2 border-transparent hover:border-white">
-                  SHOP WOMEN
+                  {UI_TEXT.SHOP_WOMEN}
                 </button>
               </Link>
             </div>
@@ -249,15 +257,15 @@ const HomePage = () => {
           <div className="relative overflow-hidden rounded-xl shadow-xl transform transition-all duration-500 hover:shadow-2xl group">
             <div className="aspect-[16/5] w-full">
               <img
-                src="/cap.jpg"
+                src={IMAGES.ACCESSORIES}
                 alt="Accessories"
                 className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
               />
             </div>
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent flex items-end md:items-center justify-center md:justify-end pb-10 md:pb-0 md:pr-20">
-              <Link href="/category/Accessories" className="block">
+              <Link href={`/category/${CATEGORIES.ACCESSORIES.apiName}`} className="block">
                 <button className="bg-white text-black font-semibold py-3 px-8 rounded-lg transform transition-all duration-300 hover:bg-black hover:text-white hover:scale-105 hover:shadow-lg border-2 border-transparent hover:border-white">
-                  SHOP ACCESSORIES
+                  {UI_TEXT.SHOP_ACCESSORIES}
                 </button>
               </Link>
             </div>
@@ -268,27 +276,27 @@ const HomePage = () => {
         <div className="px-4 md:px-8 lg:px-12 my-8">
           {/* Title with Toggle Buttons */}
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-black">Best Sellers</h2>
+            <h2 className="text-2xl font-bold text-black">{UI_TEXT.BEST_SELLERS}</h2>
             <div className="bg-gray-200 rounded-full p-1 inline-flex">
               <button 
                 className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${
-                  selectedGender === 'men' 
+                  selectedGender === CATEGORIES.MEN.id 
                     ? 'bg-[black] text-white' 
                     : 'text-black hover:bg-gray-300'
                 }`}
-                onClick={() => handleGenderToggle('men')}
+                onClick={() => handleGenderToggle(CATEGORIES.MEN.id as 'men')}
               >
-                MEN
+                {CATEGORIES.MEN.name.toUpperCase()}
               </button>
               <button 
                 className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${
-                  selectedGender === 'women' 
+                  selectedGender === CATEGORIES.WOMEN.id 
                     ? 'bg-[black] text-white' 
                     : 'text-black hover:bg-gray-300'
                 }`}
-                onClick={() => handleGenderToggle('women')}
+                onClick={() => handleGenderToggle(CATEGORIES.WOMEN.id as 'women')}
               >
-                WOMEN
+                {CATEGORIES.WOMEN.name.toUpperCase()}
               </button>
             </div>
           </div>
@@ -297,19 +305,19 @@ const HomePage = () => {
           <ProductCarousel
             title=""
             products={
-              selectedGender === 'men'
-                ? categoryProducts.mens.length > 0 ? categoryProducts.mens : []
-                : categoryProducts.womens.length > 0 ? categoryProducts.womens : []
+              selectedGender === CATEGORIES.MEN.id
+                ? categoryProducts[CATEGORIES.MEN.stateKey].length > 0 ? categoryProducts[CATEGORIES.MEN.stateKey] : []
+                : categoryProducts[CATEGORIES.WOMEN.stateKey].length > 0 ? categoryProducts[CATEGORIES.WOMEN.stateKey] : []
             }
             loading={genderLoading}
           />
           
           {/* Show message if no products in category */}
           {!genderLoading && 
-            ((selectedGender === 'men' && categoryProducts.mens.length === 0) || 
-             (selectedGender === 'women' && categoryProducts.womens.length === 0)) && (
+            ((selectedGender === CATEGORIES.MEN.id && categoryProducts[CATEGORIES.MEN.stateKey].length === 0) || 
+             (selectedGender === CATEGORIES.WOMEN.id && categoryProducts[CATEGORIES.WOMEN.stateKey].length === 0)) && (
             <div className="text-center py-8 text-black">
-              No products found for {selectedGender === 'men' ? 'men' : 'women'}.
+              {UI_TEXT.NO_PRODUCTS_FOR_GENDER(selectedGender === CATEGORIES.MEN.id ? CATEGORIES.MEN.name.toLowerCase() : CATEGORIES.WOMEN.name.toLowerCase())}
             </div>
           )}
         </div>
@@ -317,9 +325,9 @@ const HomePage = () => {
         {/* Accessories - Updated to match the loading style of other carousels */}
         <div className="px-4 md:px-8 lg:px-12 my-8">
           <ProductCarousel
-            title="Accessories"
-            products={categoryProducts.accessories && categoryProducts.accessories.length > 0 
-              ? categoryProducts.accessories 
+            title={CATEGORIES.ACCESSORIES.name}
+            products={categoryProducts[CATEGORIES.ACCESSORIES.id] && categoryProducts[CATEGORIES.ACCESSORIES.id].length > 0 
+              ? categoryProducts[CATEGORIES.ACCESSORIES.id] 
               : []
             }
             loading={accessoriesLoading}
@@ -327,10 +335,10 @@ const HomePage = () => {
           
           {/* Show message if no accessories products and not loading */}
           {!accessoriesLoading && 
-            categoryProducts.accessories && 
-            categoryProducts.accessories.length === 0 && (
+            categoryProducts[CATEGORIES.ACCESSORIES.id] && 
+            categoryProducts[CATEGORIES.ACCESSORIES.id].length === 0 && (
             <div className="text-center py-8 text-black">
-              No accessories products found.
+              {UI_TEXT.NO_ACCESSORIES_FOUND}
             </div>
           )}
         </div>
