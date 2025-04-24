@@ -259,8 +259,15 @@ function Checkout() {
                         </div>
                       </div>
                       <div className="font-medium text-gray-900">
-                        ${(item.price * item.quantity).toFixed(2)}
-                      </div>
+                      {item.discountedPrice !== undefined ? (
+                          <div className="flex items-center gap-2">
+                             <p className="text-xs text-gray-500 line-through">${(item.price * item.quantity).toFixed(2)}</p>
+                            <span className="text-gray-900">${(item.discountedPrice * item.quantity).toFixed(2)}</span>
+                           
+                          </div>
+                        ) : (
+                          <>${(item.price * item.quantity).toFixed(2)}</>
+                        )}                      </div>
                     </div>
                   ))}
                 </div>
