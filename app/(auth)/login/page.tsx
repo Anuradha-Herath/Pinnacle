@@ -30,7 +30,7 @@ const LoginPage = () => {
         authNotifications.loginSuccess();
         router.push("/"); // Redirect to home page
       } else {
-        authNotifications.loginError();
+        authNotifications.loginError("Login failed. Please check your credentials.");
       }
     } catch (error) {
       authNotifications.loginError("An error occurred during login");
@@ -42,7 +42,7 @@ const LoginPage = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-white">
-      <div className="w-full max-w-sm text-center">
+      <div className="w-full max-w-sm text-center ">
         <h1 className="text-5xl font-bold mb-2">LOGIN</h1>
         <p className="text-gray-600 text-sm mb-6">
           If you have an account with us, please log in.
