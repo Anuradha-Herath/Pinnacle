@@ -23,10 +23,31 @@ export async function GET() {
     await connectDB();
     console.log('Database connected, fetching discounts...');
     
+    // First, update expired discounts
+    const today = new Date().toISOString().split('T')[0]; // Get current date in YYYY-MM-DD format
+    
+    // Find and update all active discounts that have end dates before today
+    const updateResult = await Discount.updateMany(
+      { 
+        status: 'Active', 
+        endDate: { $lt: today } 
+      },
+      { 
+        $set: { status: 'Inactive' } 
+      }
+    );
+    
+    console.log(`Updated ${updateResult.modifiedCount} expired discounts to Inactive status`);
+    
+    // Then fetch all discounts (now with correct statuses)
     const discounts = await Discount.find({}).sort({ createdAt: -1 });
     console.log(`Found ${discounts.length} discounts`);
     
-    return NextResponse.json({ discounts });
+    return NextResponse.json({ 
+      discounts,
+      updated: updateResult.modifiedCount > 0
+    });
+    
   } catch (error) {
     console.error("Error fetching discounts:", error);
     // Return a more informative error
