@@ -2,14 +2,56 @@ import mongoose, { Schema, model, models } from 'mongoose';
 
 const CouponSchema = new Schema(
   {
-    product: { type: String, required: true },
-    price: { type: Number, required: true },
-    discount: { type: Number, required: true },
-    code: { type: String, required: true, unique: true },
-    startDate: { type: Date, required: true },
-    endDate: { type: Date, required: true },
-    status: { type: String, required: true },
-    description: { type: String, default: '' },
+    product: { 
+      type: String, 
+      required: [true, 'Please provide a product name'],
+      trim: true 
+    },
+    price: { 
+      type: String, 
+      required: [true, 'Please provide a price'] 
+    },
+    discount: { 
+      type: String, 
+      required: [true, 'Please provide a discount value'] 
+    },
+    code: { 
+      type: String, 
+      required: [true, 'Please provide a coupon code'], 
+      unique: true,
+      trim: true 
+    },
+    startDate: { 
+      type: String, 
+      required: [true, 'Please provide a start date'] 
+    },
+    endDate: { 
+      type: String, 
+      required: [true, 'Please provide an end date'] 
+    },
+    status: { 
+      type: String, 
+      required: [true, 'Please provide a status'],
+      enum: ['Active', 'Inactive', 'Expired', 'Future'],
+      default: 'Active'
+    },
+    description: { 
+      type: String, 
+      default: '' 
+    },
+    customerEligibility: {
+      type: String,
+      enum: ['new user', 'loyalty customers', 'all'],
+      default: 'all',
+    },
+    limit: {
+      type: String,
+      default: '0',
+    },
+    oneTimeUse: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );
