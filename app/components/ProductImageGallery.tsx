@@ -6,17 +6,19 @@ import Image from "next/image";
 interface ProductImageGalleryProps {
   images: string[];
   additionalImages?: string[];
-  selectedImage?: number;
-  onImageSelect?: (index: number) => void;
+  selectedImage: number;
+  onImageSelect: (index: number) => void;
   onThumbnailClick?: (index: number) => void;
+  isOutOfStock?: boolean; // Add out of stock parameter
 }
 
 const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({ 
   images,
   additionalImages = [],
-  selectedImage = 0, 
+  selectedImage, 
   onImageSelect,
-  onThumbnailClick
+  onThumbnailClick,
+  isOutOfStock = false // Default to false
 }) => {
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const placeholderImage = '/placeholder.png';
@@ -74,16 +76,16 @@ const ProductImageGallery: React.FC<ProductImageGalleryProps> = ({
 
   return (
     <div className="space-y-4">
-      {/* Main Image - optimized with explicit width/height */}
-      <div className="w-full aspect-square bg-gray-100 rounded-lg overflow-hidden relative">
+      {/* Main image - add blur filter only if explicitly out of stock */}
+      <div className="relative h-[500px] w-full bg-gray-50 rounded-lg overflow-hidden">
         <Image
-          src={activeImageUrl}
-          alt="Product image"
+          src={activeImageUrl || placeholderImage}
+          alt="Product Image"
           fill
-          className="object-contain"
-          sizes="(max-width: 768px) 100vw, 50vw"
-          priority
-          style={{objectFit: 'contain'}}
+          className={`object-contain ${isOutOfStock ? 'filter blur-sm' : ''}`}
+          onError={(e) => {
+            (e.target as HTMLImageElement).src = placeholderImage;
+          }}
         />
       </div>
 
