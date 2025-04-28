@@ -11,38 +11,41 @@ const AdminLoginPage: React.FC = () => {
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const [isCheckingRole, setIsCheckingRole] = useState(false);
   
   const { login, user } = useAuth();
   const router = useRouter();
   
-  // If user is already logged in as admin, redirect to dashboard
+  // Check user state changes to handle navigation
   useEffect(() => {
-    if (user && user.role === 'admin') {
-      router.push('/dashboard');
+    if (user && isCheckingRole) {
+      setIsCheckingRole(false);
+      
+      if (user.role === 'admin') {
+        toast.success("Admin login successful!");
+        router.push('/admin/dashboard');
+      } else {
+        setError("Access denied. Admin privileges only.");
+        toast.error("Access denied. Admin privileges only.");
+        // You might want to add logout functionality here
+      }
     }
-  }, [user, router]);
-
+  }, [user, router, isCheckingRole]);
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setIsLoading(true);
     
     try {
+      // Directly attempt the login without checking if user exists first
       const success = await login(email, password);
       
       if (success) {
-        // Verify admin role after login
-        if (user && user.role === 'admin') {
-          toast.success("Admin login successful!");
-          router.push('/dashboard');
-        } else {
-          // User is authenticated but not an admin
-          setError("Access denied. Admin privileges required.");
-          // Logout the non-admin user
-          // logoutFunction would need to be implemented
-          toast.error("Access denied. Admin privileges required.");
-        }
+        // Login successful, let the useEffect handle admin check
+        setIsCheckingRole(true);
       } else {
+        // Login failed
         setError("Invalid credentials");
         toast.error("Invalid credentials");
       }

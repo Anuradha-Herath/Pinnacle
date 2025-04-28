@@ -7,84 +7,8 @@ import Footer from "./components/Footer";
 import Link from "next/link";
 import HeaderPlaceholder from "./components/HeaderPlaceholder";
 
-// Updated mock products with simplified images - all using existing images
-const mockProducts = [
-  {
-    id: "1",
-    name: "T-Shirt",
-    price: 19.99,
-    image: "/p1.webp",
-    colors: ["/p1.webp", "/p1.webp", "/p1.webp"], // All using the same image
-    sizes: ["S", "M", "L", "XL"],
-  },
-  {
-    id: "2",
-    name: "Sneakers",
-    price: 49.99,
-    image: "/p2.webp",
-    colors: ["/p2.webp", "/p2.webp", "/p2.webp"], // All using the same image
-    sizes: ["6", "7", "8", "9", "10"],
-  },
-  {
-    id: "3",
-    name: "Jacket",
-    price: 79.99,
-    image: "/p3.webp",
-    colors: ["/p3.webp", "/p3.webp", "/p3.webp"], // All using the same image
-    sizes: ["S", "M", "L", "XL"],
-  },
-  {
-    id: "4",
-    name: "Hat",
-    price: 14.99,
-    image: "/p4.webp",
-    colors: ["/p4.webp", "/p4.webp", "/p4.webp"], // All using the same image
-    sizes: ["One Size"],
-  },
-  {
-    id: "5",
-    name: "Jeans",
-    price: 39.99,
-    image: "/p5.webp",
-    colors: ["/p5.webp", "/p5.webp"], // All using the same image
-    sizes: ["28", "30", "32", "34", "36"],
-  },
-  {
-    id: "6",
-    name: "Watch",
-    price: 59.99,
-    image: "/p6.webp",
-    colors: ["/p6.webp", "/p6.webp", "/p6.webp"], // All using the same image
-    sizes: ["One Size"],
-  },
-  {
-    id: "7",
-    name: "Backpack",
-    price: 34.99,
-    image: "/p7.webp",
-    colors: ["/p7.webp", "/p7.webp", "/p7.webp"], // All using the same image
-    sizes: ["One Size"],
-  },
-  {
-    id: "8",
-    name: "Sunglasses",
-    price: 29.99,
-    image: "/p8.webp",
-    colors: ["/p8.webp", "/p8.webp", "/p8.webp"], // All using the same image
-    sizes: ["One Size"],
-  },
-  {
-    id: "9",
-    name: "Scarf",
-    price: 19.99,
-    image: "/p9.webp",
-    colors: ["/p9.webp", "/p9.webp", "/p9.webp"], // All using the same image
-    sizes: ["One Size"],
-  },
-];
-
 const HomePage = () => {
-  const [products, setProducts] = useState(mockProducts);
+  const [products, setProducts] = useState([]);
   const [trendingProducts, setTrendingProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [genderLoading, setGenderLoading] = useState(false);
@@ -277,7 +201,7 @@ const HomePage = () => {
         {/* Trending Products - Newly Created + Recently Stocked */}
         <ProductCarousel 
           title="Trending Products" 
-          products={trendingProducts.length > 0 ? trendingProducts : products} 
+          products={trendingProducts.length > 0 ? trendingProducts : []} 
           loading={loading}
         />
 

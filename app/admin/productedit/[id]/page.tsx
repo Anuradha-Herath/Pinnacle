@@ -593,53 +593,6 @@ export default function ProductEdit() {
 
               <div>
                 <label className="block text-sm font-medium mb-2">
-                  Size Accuracy
-                </label>
-                <div className="flex space-x-4">
-                  <label className="flex items-center">
-                    <input
-                      type="radio"
-                      name="sizingTrend"
-                      value={-1}
-                      checked={formData.sizingTrend === -1}
-                      onChange={() =>
-                        setFormData((prev) => ({ ...prev, sizingTrend: -1 }))
-                      }
-                      className="mr-2"
-                    />
-                    <span>Runs Small</span>
-                  </label>
-                  <label className="flex items-center">
-                    <input
-                      type="radio"
-                      name="sizingTrend"
-                      value={0}
-                      checked={formData.sizingTrend === 0}
-                      onChange={() =>
-                        setFormData((prev) => ({ ...prev, sizingTrend: 0 }))
-                      }
-                      className="mr-2"
-                    />
-                    <span>True to Size</span>
-                  </label>
-                  <label className="flex items-center">
-                    <input
-                      type="radio"
-                      name="sizingTrend"
-                      value={1}
-                      checked={formData.sizingTrend === 1}
-                      onChange={() =>
-                        setFormData((prev) => ({ ...prev, sizingTrend: 1 }))
-                      }
-                      className="mr-2"
-                    />
-                    <span>Runs Large</span>
-                  </label>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2">
                   Sizing Notes
                 </label>
                 <textarea

@@ -21,6 +21,7 @@ interface ProductData {
   fitType?: string;
   sizingTrend?: number;
   sizingNotes?: string;
+  sizeChartImage?: string;
   colors?: { name: string; quantity: number }[];
   inventory?: Record<string, number>;
 }
@@ -374,7 +375,53 @@ export default function ProductDetails() {
                   </div>
                 </div>
               )}
-            </div>
+           
+
+
+            {product.sizes && product.sizes.length > 0 && (
+              <div className="mt-4">
+                <span className="text-sm text-gray-500 block mb-2">Available Sizes</span>
+                <div className="flex flex-wrap gap-2">
+                  {product.sizes.map((size) => (
+                    <span
+                      key={size}
+                      className="px-4 py-2 bg-gray-100 rounded-md text-sm font-medium"
+                    >
+                      {size}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Size Chart Image Display */}
+            {product.sizeChartImage && (
+              <div className="mt-6">
+                <span className="text-sm text-gray-500 block mb-2">Size Chart</span>
+                <div className="border rounded-lg overflow-hidden cursor-pointer"
+                    onClick={() => openImageModal(product.sizeChartImage ?? "/placeholder.png")}
+                    title="Click to enlarge">
+                  <img
+                    src={product.sizeChartImage}
+                    alt="Size Chart"
+                    className="w-full max-h-48 object-contain hover:opacity-90 transition-opacity"
+                  />
+                  <div className="bg-gray-50 py-2 px-3 text-xs text-center">
+                    Click to view size chart
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {product.sizingNotes && (
+              <div className="mt-4">
+                <span className="text-sm text-gray-500 block mb-2">Sizing Notes</span>
+                <p className="text-gray-700 text-sm border p-3 rounded-md bg-gray-50">
+                  {product.sizingNotes}
+                </p>
+              </div>
+            )}
+            </div> 
 
             {/* Right Section - Inventory & Sizing */}
             <div className="space-y-6">
@@ -382,39 +429,7 @@ export default function ProductDetails() {
               <div className="space-y-4">
                 <span className="text-xl font-bold text-black">Sizing Information</span>
 
-                {product.sizingTrend !== undefined && (
-                  <div className="bg-gray-50 p-4 rounded-lg space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-sm text-gray-500">Size Accuracy</span>
-                      <span className="font-medium">{getSizingTrendText(product.sizingTrend)}</span>
-                    </div>
-
-                    <div className="relative h-2 bg-gray-200 rounded-full w-full">
-                      <div
-                        className={`absolute h-full rounded-full ${
-                          product.sizingTrend === -1
-                            ? "bg-blue-500 w-1/3 left-0"
-                            : product.sizingTrend === 1
-                            ? "bg-green-500 w-1/3 right-0"
-                            : "bg-yellow-500 w-1/3 left-1/3"
-                        }`}
-                      ></div>
-                      <div className="flex justify-between text-xs text-gray-500 mt-1">
-                        <span>Runs Small</span>
-                        <span>True to Size</span>
-                        <span>Runs Large</span>
-                      </div>
-                    </div>
-
-                    {product.sizingNotes && (
-                      <div className="mt-3 pt-3 border-t border-gray-200">
-                        <span className="text-sm text-gray-500 block mb-1">Sizing Notes</span>
-                        <p className="text-sm italic">{product.sizingNotes}</p>
-                      </div>
-                    )}
-                  </div>
-                )}
-
+                
                 {product.sizes && product.sizes.length > 0 && (
                   <div className="mt-4">
                     <span className="text-sm text-gray-500 block mb-2">Available Sizes</span>
@@ -551,23 +566,23 @@ export default function ProductDetails() {
                 </div>
               )}
 
-              {/* Action Buttons */}
-              <div className="flex justify-end gap-4 mt-8">
+               {/* Action Buttons */}
+               <div className="flex flex-wrap justify-end gap-4 mt-8 sticky bottom-4 bg-white p-4 rounded-lg shadow-md">
                 <button
                   onClick={() => router.push(`/admin/productedit/${id}`)}
-                  className="px-20 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors"
+                  className="px-10 py-2 bg-orange-600 text-white rounded-md hover:bg-orange-700 transition-colors w-full sm:w-auto"
                 >
                   EDIT
                 </button>
                 <button
                   onClick={() => inventory ? router.push(`/admin/inventorydetails?id=${inventory._id}`) : null}
-                  className={`px-20 py-2 ${inventory ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 cursor-not-allowed'} text-white rounded-md transition-colors`}
+                  className={`px-10 py-2 ${inventory ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 cursor-not-allowed'} text-white rounded-md transition-colors w-full sm:w-auto`}
                 >
                   INVENTORY
                 </button>
                 <button
                   onClick={() => router.push("/admin/productlist")}
-                  className="px-20 py-2 border rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
+                  className="px-10 py-2 border rounded-md text-gray-700 hover:bg-gray-50 transition-colors w-full sm:w-auto"
                 >
                   BACK
                 </button>
