@@ -320,15 +320,39 @@ export default function InventoryDetailsPage() {
                 <p className="font-semibold">Stock Limit: {inventory.stockLimit || 100}</p>
               </div>
 
-              {/* Edit Buttons */}
-              <div className="mt-4 flex gap-4">
-                <button
-                  onClick={handleEditStock}
-                  className="px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600"
-                >
-                  Edit Stock
-                </button>
+               {/* Add Color-Size Combination Stock Table */}
+            {inventory.colorSizeStock && selectedColor && inventory.sizeStock && Object.keys(inventory.sizeStock).length > 0 && (
+              <div className="bg-white p-4 rounded-lg shadow-lg mt-6">
+                <h2 className="text-lg font-semibold mb-4">
+                  {selectedColor} by Size Combinations
+                </h2>
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th className="p-3 text-left">Size</th>
+                      <th className="p-3 text-right">Quantity</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.keys(inventory.sizeStock).map((size) => {
+                      // Get the quantity safely with defaults
+                      const quantity = inventory.colorSizeStock?.[selectedColor]?.[size] || 0;
+                      
+                      return (
+                        <tr key={size} className="border-t">
+                          <td className="p-3 text-left" >{size}</td>
+                          <td className="p-3 text-right">{quantity}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
+            )}
+
+
+
+              
             </div>
           </div>
 
@@ -348,8 +372,8 @@ export default function InventoryDetailsPage() {
                   <tbody>
                     {Object.entries(inventory.sizeStock).map(([size, quantity]) => (
                       <tr key={size} className="border-t">
-                        <td className="p-3">{size}</td>
-                        <td className="p-3">{quantity}</td>
+                        <td className="p-3 pi-8">{size}</td>
+                        <td className="p-3 pl-12">{quantity}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -392,50 +416,28 @@ export default function InventoryDetailsPage() {
                     })}
                   </tbody>
                 </table>
-              </div>
-            )}
 
-            {/* Add Color-Size Combination Stock Table */}
-            {inventory.colorSizeStock && selectedColor && inventory.sizeStock && Object.keys(inventory.sizeStock).length > 0 && (
-              <div className="bg-white p-6 rounded-lg shadow-lg mt-6">
-                <h2 className="text-lg font-semibold mb-4">
-                  {selectedColor} by Size Combinations
-                </h2>
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="bg-gray-100">
-                      <th className="p-3 text-left">Size</th>
-                      <th className="p-3 text-right">Quantity</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {Object.keys(inventory.sizeStock).map((size) => {
-                      // Get the quantity safely with defaults
-                      const quantity = inventory.colorSizeStock?.[selectedColor]?.[size] || 0;
-                      
-                      return (
-                        <tr key={size} className="border-t">
-                          <td className="p-3">{size}</td>
-                          <td className="p-3 text-right">{quantity}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
               </div>
             )}
+            {/* Edit Buttons */}
+            <div className="mt-10 flex justify-end gap-10">
+              <button
+              onClick={handleEditStock}
+              className="px-10 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600"
+              >
+              Edit Stock
+              </button>
+              <button
+              onClick={() => router.push("/admin/inventorylist")}
+              className="px-10 py-2 bg-gray-300 text-black rounded-md hover:bg-gray-400"
+              >
+              Back
+              </button>
+            </div>
+
           </div>
         </div>
-
-        {/* Back Button */}
-        <div className="mt-6 flex justify-end">
-          <button
-            onClick={() => router.push("/admin/inventorylist")}
-            className="px-6 py-2 bg-gray-300 text-black rounded-md hover:bg-gray-400 w-28"
-          >
-            Back
-          </button>
-        </div>
+    
       </div>
     </div>
   );

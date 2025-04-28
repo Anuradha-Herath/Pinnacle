@@ -43,6 +43,8 @@ export default function EnhancedProductDetailPage() {
   const [selectedColorIndex, setSelectedColorIndex] = useState(0);
   const [currentAdditionalImages, setCurrentAdditionalImages] = useState<string[]>([]);
   const [displayedImageIndex, setDisplayedImageIndex] = useState(0); // Add state to track the displayed image index within the combined array
+  const [isOutOfStock, setIsOutOfStock] = useState(false);
+  const [inventoryStatus, setInventoryStatus] = useState<string | null>(null);
 
   // Context hooks
   const { addToCart } = useCart();
@@ -160,6 +162,22 @@ export default function EnhancedProductDetailPage() {
 
         // Fetch recently viewed products
         fetchRecentlyViewed();
+
+        // Fetch inventory data to check stock status
+        try {
+          const inventoryResponse = await fetch(`/api/inventory/product/${data.product._id}`);
+          if (inventoryResponse.ok) {
+            const inventoryData = await inventoryResponse.json();
+            if (inventoryData.inventory) {
+              setInventoryStatus(inventoryData.inventory.status);
+              // Only mark as out of stock if explicitly "Out Of Stock", not if "Newly Added"
+              setIsOutOfStock(inventoryData.inventory.status === "Out Of Stock");
+              console.log("Inventory status:", inventoryData.inventory.status);
+            }
+          }
+        } catch (error) {
+          console.error("Failed to fetch inventory status:", error);
+        }
 
       } catch (err) {
         console.error('Error fetching product:', err);
@@ -455,12 +473,23 @@ export default function EnhancedProductDetailPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
           {/* Left Column - Product Gallery with updated props */}
           <div className="product-container relative z-10">
+            {/* Out of Stock Overlay */}
+            {isOutOfStock && (
+              <div className="absolute inset-0 z-20 flex items-center justify-center">
+                <div className="absolute inset-0 bg-white opacity-0"></div>
+                <div className="bg-red-500 text-white font-bold py-3 px-6 rounded-lg z-30 shadow-xl transform -rotate-12 text-xl">
+                  Out of Stock
+                </div>
+              </div>
+            )}
+            
             <ProductImageGallery 
               images={product?.images || []} 
               additionalImages={currentAdditionalImages}
               selectedImage={selectedImageIndex}
               onImageSelect={handleImageSelect}
               onThumbnailClick={handleThumbnailClick} // Add the new handler
+              isOutOfStock={isOutOfStock} // Pass out of stock status
             />
           </div>
           
@@ -470,22 +499,29 @@ export default function EnhancedProductDetailPage() {
               product={{
                 ...product,
                 rating: productRating > 0 ? productRating : 0,
+                inventoryStatus: inventoryStatus, // Pass inventory status to ProductInformation
               }}
               quantity={quantity} 
               updateQuantity={updateQuantity}
               selectedSize={selectedSize}
               setSelectedSize={setSelectedSize}
               onImageSelect={handleImageSelect}
+              isOutOfStock={isOutOfStock} // Pass out of stock status
             />
             
             {/* Action Buttons with improved props and debugging */}
             <div className="mt-8 flex flex-col sm:flex-row gap-4">
               <button 
                 onClick={handleAddToCart}
-                className="flex-1 bg-black text-white py-3 rounded-md hover:bg-gray-800 transition-colors flex items-center justify-center"
+                className={`flex-1 py-3 rounded-md transition-colors flex items-center justify-center ${
+                  isOutOfStock 
+                    ? "bg-gray-400 text-white cursor-not-allowed" 
+                    : "bg-black text-white hover:bg-gray-800"
+                }`}
+                disabled={isOutOfStock}
               >
                 <ShoppingBag size={18} className="mr-2" />
-                Add to Cart
+                {isOutOfStock ? "Out of Stock" : "Add to Cart"}
               </button>
               
               <button 

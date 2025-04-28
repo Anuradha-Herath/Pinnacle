@@ -82,8 +82,8 @@ export default function InventoryEditPage() {
             setProductColors(colors);
             
             // Initialize with defaults and copy existing values
-            const colorStock = { ...inventoryData.colorStock } || {};
-            const colorSizeStock = { ...inventoryData.colorSizeStock } || {};
+            const colorStock = inventoryData.colorStock ? { ...inventoryData.colorStock } : {};
+            const colorSizeStock = { ...inventoryData.colorSizeStock };
             
             // Initialize stock data for each color if not present
             colors.forEach((color: ColorItem) => {
@@ -193,7 +193,7 @@ export default function InventoryEditPage() {
         
         // Initialize with zeros for all sizes
         if (inventory.sizeStock) {
-          Object.keys(inventory.sizeStock).forEach(size => {
+          Object.keys(inventory.sizeStock || {}).forEach(size => {
             updatedColorSizeStock[selectedColor][size] = 0;
           });
         }
@@ -258,7 +258,7 @@ export default function InventoryEditPage() {
         }
         
         if (inventory.sizeStock) {
-          Object.keys(inventory.sizeStock).forEach(size => {
+          Object.keys(inventory.sizeStock ?? {}).forEach(size => {
             if (updatedColorSizeStock[color][size] === undefined) {
               updatedColorSizeStock[color][size] = 0;
             }
@@ -331,14 +331,14 @@ export default function InventoryEditPage() {
       setSubmitting(true);
       
       // Create a complete colorSizeStock structure with all combinations
-      const completeColorSizeStock = {};
+      const completeColorSizeStock: { [color: string]: { [size: string]: number } } = {};
       
       // Make sure every color has every size properly initialized
       if (productColors && inventory.sizeStock) {
         productColors.forEach(color => {
           completeColorSizeStock[color.name] = {};
           
-          Object.keys(inventory.sizeStock).forEach(size => {
+          Object.keys(inventory.sizeStock ?? {}).forEach(size => {
             // Get existing stock or default to 0
             const existingStock = 
               inventory.colorSizeStock?.[color.name]?.[size] !== undefined
@@ -546,7 +546,7 @@ export default function InventoryEditPage() {
                           inventory.colorSizeStock[selectedColor] && 
                           inventory.colorSizeStock[selectedColor][size] !== undefined 
                             ? `(${inventory.colorSizeStock[selectedColor][size]})`
-                            : `(${inventory.sizeStock[size] || 0})`
+                            : `(${inventory.sizeStock?.[size] ?? 0})`
                         }
                       </button>
                     ))}
@@ -627,6 +627,44 @@ export default function InventoryEditPage() {
                     : "Reducing stock to zero will change status to \"Out Of Stock\" automatically"}
                 </p>
               </div>
+                    {/* Color-Size Combination Table (show if selected color) */}
+            {selectedColor && productColors && productColors.length > 0 && inventory.sizeStock && (
+              <div className="bg-white p-6 rounded-lg shadow-lg mb-6">
+                <h2 className="text-lg font-semibold mb-4">
+                  {selectedColor} by Size
+                </h2>
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      <th className="p-3 text-left">Size</th>
+                      <th className="p-3 text-right">Quantity</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.keys(inventory.sizeStock).map((size) => {
+                      // Safely access the value with fallback to 0
+                      let sizeQuantity = 0;
+                      
+                      try {
+                        if (inventory.colorSizeStock && 
+                            inventory.colorSizeStock[selectedColor]) {
+                          sizeQuantity = inventory.colorSizeStock[selectedColor][size] || 0;
+                        }
+                      } catch (e) {
+                        console.error(`Error retrieving ${selectedColor}/${size} stock:`, e);
+                      }
+                      
+                      return (
+                        <tr key={size} className="border-t">
+                          <td className="p-3">{size}</td>
+                          <td className="p-3 text-right">{sizeQuantity}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
               
             </div>
           </div>
@@ -697,44 +735,7 @@ export default function InventoryEditPage() {
               </div>
             )}
 
-            {/* Color-Size Combination Table (show if selected color) */}
-            {selectedColor && productColors && productColors.length > 0 && inventory.sizeStock && (
-              <div className="bg-white p-6 rounded-lg shadow-lg mb-6">
-                <h2 className="text-lg font-semibold mb-4">
-                  {selectedColor} by Size
-                </h2>
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="bg-gray-100">
-                      <th className="p-3 text-left">Size</th>
-                      <th className="p-3 text-right">Quantity</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {Object.keys(inventory.sizeStock).map((size) => {
-                      // Safely access the value with fallback to 0
-                      let sizeQuantity = 0;
-                      
-                      try {
-                        if (inventory.colorSizeStock && 
-                            inventory.colorSizeStock[selectedColor]) {
-                          sizeQuantity = inventory.colorSizeStock[selectedColor][size] || 0;
-                        }
-                      } catch (e) {
-                        console.error(`Error retrieving ${selectedColor}/${size} stock:`, e);
-                      }
-                      
-                      return (
-                        <tr key={size} className="border-t">
-                          <td className="p-3">{size}</td>
-                          <td className="p-3 text-right">{sizeQuantity}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
+      
 
             {/* Total Stock Summary */}
             <div className="bg-white p-6 rounded-lg shadow-lg">
