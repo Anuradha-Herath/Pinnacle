@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import ProductCard from "./ProductCard";
+import ProductCardSkeleton from "./ProductCardSkeleton";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface ProductCarouselProps {
@@ -160,8 +161,15 @@ const ProductCarousel = ({ title, products, loading = false }: ProductCarouselPr
       )}
 
       {loading ? (
-        <div className="flex justify-center items-center h-40">
-          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-[black]"></div>
+        <div className="relative">
+          <div className="flex overflow-x-hidden gap-6 pb-8">
+            {/* Show appropriate number of skeleton cards based on screen size */}
+            {Array.from({ length: cardsPerView }).map((_, index) => (
+              <div key={index} className="flex-none">
+                <ProductCardSkeleton />
+              </div>
+            ))}
+          </div>
         </div>
       ) : products.length > 0 ? (
         <div className="relative">
