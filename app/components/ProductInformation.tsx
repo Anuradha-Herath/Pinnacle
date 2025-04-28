@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Star, Minus, Plus, ChevronDown, Twitter, Facebook, MessageCircle } from "lucide-react";
+import { Star, Minus, Plus, ChevronDown, Copy, MessageCircle } from "lucide-react";
 import Image from "next/image";
 import SizeGuideModal from "./SizeGuideModal";
 
@@ -277,20 +277,17 @@ const ProductInformation: React.FC<ProductInformationProps> = ({
        <div className="mb-8">
         <h2 className="text-sm font-medium mb-2">Share</h2>
         <div className="flex space-x-3">
-          <button
-            onClick={shareOnTwitter}
+            <button
+            onClick={() => {
+              navigator.clipboard.writeText(window.location.href);
+              alert("Page URL copied to clipboard!");
+            }}
             className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 transition-colors"
-            aria-label="Share on Twitter"
-          >
-            <Twitter size={20} className="text-black-800" />
-          </button>
-          <button
-            onClick={shareOnFacebook}
-            className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 transition-colors"
-            aria-label="Share on Facebook"
-          >
-            <Facebook size={20} className="text-black-800" />
-          </button>
+            aria-label="Copy Page URL"
+            >
+           
+            <Copy size={20} className="text-black-800" />
+            </button>
            <button
             onClick={shareOnWhatsApp}
             className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 transition-colors"
