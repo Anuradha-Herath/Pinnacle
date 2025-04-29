@@ -26,6 +26,9 @@ interface ProductInformationProps {
   setSelectedSize: (size: string) => void;
   onImageSelect?: (index: number) => void;
   isOutOfStock?: boolean; // Add out of stock parameter
+  colorSizeStock?: Record<string, Record<string, number>>; // Add color-size stock data
+  selectedColor?: string | null; // Add currently selected color
+  isSizeInStock?: (size: string) => boolean; // Function to check if size is in stock
 }
 
 const ProductInformation: React.FC<ProductInformationProps> = ({ 
@@ -36,6 +39,9 @@ const ProductInformation: React.FC<ProductInformationProps> = ({
   setSelectedSize,
   onImageSelect,
   isOutOfStock = false, // Default to false
+  colorSizeStock = {},
+  selectedColor = null,
+  isSizeInStock = () => true, // Default to always in stock
 }) => {
   // State for size guide modal
   const [isSizeGuideOpen, setIsSizeGuideOpen] = useState(false);
@@ -255,20 +261,40 @@ const ProductInformation: React.FC<ProductInformationProps> = ({
             </button>
           </div>
           <div className="flex flex-wrap gap-2">
-            {product.sizes.map((size) => (
-              <button
-                key={size}
-                onClick={() => setSelectedSize(size)}
-                className={`px-4 py-2 border text-sm transition-colors ${
-                  selectedSize === size
-                    ? "border-black bg-black text-white"
-                    : "border-gray-300 hover:border-gray-500"
-                }`}
-              >
-                {size}
-              </button>
-            ))}
+            {product.sizes.map((size) => {
+              const inStock = isSizeInStock(size);
+              return (
+                <button
+                  key={size}
+                  onClick={() => setSelectedSize(size)}
+                  disabled={!inStock}
+                  className={`px-4 py-2 border text-sm transition-colors relative ${
+                    selectedSize === size
+                      ? "border-black bg-black text-white"
+                      : inStock 
+                        ? "border-gray-300 hover:border-gray-500"
+                        : "border-gray-200 text-gray-400 cursor-not-allowed"
+                  }`}
+                >
+                  {size}
+                  
+                  {/* Out of stock indicator */}
+                  {!inStock && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="absolute top-1/2 left-0 right-0 border-t border-gray-400 -rotate-12"></div>
+                    </div>
+                  )}
+                </button>
+              );
+            })}
           </div>
+          
+          {/* Size availability message */}
+          {selectedSize && !isSizeInStock(selectedSize) && selectedColor && (
+            <p className="mt-2 text-sm text-red-600">
+              Size {selectedSize} is currently out of stock in {selectedColor}
+            </p>
+          )}
         </div>
       )}
       
