@@ -636,8 +636,8 @@ export default function InventoryEditPage() {
                 <table className="w-full border-collapse">
                   <thead>
                     <tr className="bg-gray-100">
-                      <th className="p-3 text-left">Size</th>
-                      <th className="p-3 text-right">Quantity</th>
+                      <th className="px-16 py-3 text-center">Size</th>
+                      <th className="px-16 py-3 text-center">Quantity</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -656,8 +656,8 @@ export default function InventoryEditPage() {
                       
                       return (
                         <tr key={size} className="border-t">
-                          <td className="p-3">{size}</td>
-                          <td className="p-3 text-right">{sizeQuantity}</td>
+                          <td className="px-100 py-3 text-center">{size}</td>
+                          <td className="px-100 py-3 text-center">{sizeQuantity}</td>
                         </tr>
                       );
                     })}
@@ -678,8 +678,8 @@ export default function InventoryEditPage() {
                 <table className="w-full border-collapse">
                   <thead>
                     <tr className="bg-gray-100">
-                      <th className="p-3 text-left">Color</th>
-                      <th className="p-3 text-right">Quantity</th>
+                      <th  className="px-16 py-3 text-center">Color</th>
+                      <th  className="px-16 py-3 text-center">Quantity</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -703,7 +703,7 @@ export default function InventoryEditPage() {
                             </div>
                             {colorName}
                           </td>
-                          <td className="p-3 text-right">{quantity}</td>
+                          <td className="px-25 py-3 text-center">{quantity}</td>
                         </tr>
                       );
                     })}
@@ -715,19 +715,19 @@ export default function InventoryEditPage() {
             {/* Size-wise Stock Table */}
             {inventory.sizeStock && Object.keys(inventory.sizeStock).length > 0 && (
               <div className="bg-white p-6 rounded-lg shadow-lg mb-6">
-                <h2 className="text-lg font-semibold mb-4">Size-wise Stock</h2>
+                <h2 className="text-lg font-semibold mb-4 text-center">Size-wise Stock</h2>
                 <table className="w-full border-collapse">
                   <thead>
                     <tr className="bg-gray-100">
-                      <th className="p-3 text-left">Size</th>
-                      <th className="p-3 text-right">Quantity</th>
+                      <th className="px-16 py-3 text-center">Size</th>
+                      <th className="px-16 py-3 text-center">Quantity</th>
                     </tr>
                   </thead>
                   <tbody>
                     {Object.entries(inventory.sizeStock).map(([size, quantity]) => (
                       <tr key={size} className="border-t">
-                        <td className="p-3">{size}</td>
-                        <td className="p-3 text-right">{quantity}</td>
+                        <td className="px-25 py-3 text-center font-medium">{size}</td>
+                        <td className="px-25 py-3 text-center">{quantity}</td>
                       </tr>
                     ))}
                   </tbody>

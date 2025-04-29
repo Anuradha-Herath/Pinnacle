@@ -45,6 +45,7 @@ export default function EnhancedProductDetailPage() {
   const [displayedImageIndex, setDisplayedImageIndex] = useState(0); // Add state to track the displayed image index within the combined array
   const [isOutOfStock, setIsOutOfStock] = useState(false);
   const [inventoryStatus, setInventoryStatus] = useState<string | null>(null);
+  const [colorSizeStock, setColorSizeStock] = useState<Record<string, Record<string, number>>>({});
 
   // Context hooks
   const { addToCart } = useCart();
@@ -173,6 +174,11 @@ export default function EnhancedProductDetailPage() {
               // Only mark as out of stock if explicitly "Out Of Stock", not if "Newly Added"
               setIsOutOfStock(inventoryData.inventory.status === "Out Of Stock");
               console.log("Inventory status:", inventoryData.inventory.status);
+              // Store color-size stock information if available
+              if (inventoryData.inventory.colorSizeStock) {
+                setColorSizeStock(inventoryData.inventory.colorSizeStock);
+                console.log("Color-size stock data:", inventoryData.inventory.colorSizeStock);
+              }
             }
           }
         } catch (error) {
@@ -363,6 +369,14 @@ export default function EnhancedProductDetailPage() {
     setDisplayedImageIndex(index);
   };
 
+  // Helper function to check if a size is in stock for the current color
+  const isSizeInStockForCurrentColor = (size: string): boolean => {
+    if (selectedColor && colorSizeStock && colorSizeStock[selectedColor]) {
+      return (colorSizeStock[selectedColor][size] || 0) > 0;
+    }
+    return true; // Default to in-stock if we don't have data
+  };
+
   // Loading state
   if (loading) {
     return (
@@ -507,6 +521,9 @@ export default function EnhancedProductDetailPage() {
               setSelectedSize={setSelectedSize}
               onImageSelect={handleImageSelect}
               isOutOfStock={isOutOfStock} // Pass out of stock status
+              colorSizeStock={colorSizeStock}
+              selectedColor={selectedColor}
+              isSizeInStock={isSizeInStockForCurrentColor}
             />
             
             {/* Action Buttons with improved props and debugging */}
