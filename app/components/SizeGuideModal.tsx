@@ -4,19 +4,16 @@ import { X, Ruler, ChevronRight } from "lucide-react";
 interface SizeGuideModalProps {
   isOpen: boolean;
   onClose: () => void;
-  category?: string;
-  sizeChartImage?: string; // Add prop for product-specific size chart image
+  sizeChartImage?: string; // Optional prop for product-specific size chart image
 }
 
 const SizeGuideModal: React.FC<SizeGuideModalProps> = ({
   isOpen,
   onClose,
-  category = "apparel", // Default to apparel sizing
-  sizeChartImage, // Accept size chart image from props
+  sizeChartImage,
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
-  const [gender, setGender] = useState<"women" | "men">("women"); // Toggle between men's and women's sizing
 
   // Handle click outside to close
   useEffect(() => {
@@ -58,29 +55,6 @@ const SizeGuideModal: React.FC<SizeGuideModalProps> = ({
 
   if (!isOpen) return null;
 
-  // Size data for women (from the image)
-  const womenSizeData = [
-    { size: "XS", ukSize: "6", length: "27", width: "22" },
-    { size: "S", ukSize: "8", length: "28", width: "23" },
-    { size: "M", ukSize: "10", length: "29", width: "24" },
-    { size: "L", ukSize: "12", length: "30", width: "25" },
-    { size: "XL", ukSize: "14", length: "31", width: "26" },
-    { size: "XXL", ukSize: "16", length: "32", width: "27" },
-  ];
-
-  // Size data for men (adjusted for demonstration; replace with actual data if available)
-  const menSizeData = [
-    { size: "XS", ukSize: "6", length: "28", width: "23" },
-    { size: "S", ukSize: "8", length: "29", width: "24" },
-    { size: "M", ukSize: "10", length: "30", width: "25" },
-    { size: "L", ukSize: "12", length: "31", width: "26" },
-    { size: "XL", ukSize: "14", length: "32", width: "27" },
-    { size: "XXL", ukSize: "16", length: "33", width: "28" },
-  ];
-
-  // Select the size data based on the current gender
-  const currentSizeData = gender === "women" ? womenSizeData : menSizeData;
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-60 transition-all">
       <div
@@ -95,7 +69,7 @@ const SizeGuideModal: React.FC<SizeGuideModalProps> = ({
           <div className="flex justify-between items-center p-4 border-b border-gray-200">
             <div className="flex items-center">
               <Ruler className="text-gray-700 mr-2" size={20} />
-              <h2 className="text-xl font-semibold text-gray-900">Pinnacle Size Guide</h2>
+              <h2 className="text-xl font-semibold text-gray-900">Size Guide</h2>
             </div>
             <button
               onClick={onClose}
@@ -108,41 +82,37 @@ const SizeGuideModal: React.FC<SizeGuideModalProps> = ({
 
           <div className="overflow-auto max-h-[calc(80vh-64px)]">
             <div className="p-6">
-              <div className="grid md:grid-cols-1 gap-6">
-                {/* If product has a specific size chart, show it */}
+              {/* Product-Specific Size Chart or Fallback Message */}
+              <div>
                 {sizeChartImage ? (
-                  <div>
-                    <h3 className="font-medium text-gray-900 mb-3 flex items-center">
-                      <ChevronRight size={16} className="text-gray-500 mr-1" />
-                      Product-Specific Size Chart
-                    </h3>
-                    <img
-                      src={sizeChartImage}
-                      alt="Product Size Chart"
-                      className="w-full rounded-md border border-gray-200"
-                    />
-                  </div>
+                  <img
+                    src={sizeChartImage}
+                    alt="Product Size Chart"
+                    className="w-full rounded-md border border-gray-200"
+                  />
                 ) : (
-                  <div>
-                    <img
-                      src="/SizeguidemodelImage.png"
-                      alt="Size guide"
-                      className="w-full rounded-md border border-gray-200"
-                    />
+                  <div className="text-center py-12 text-gray-500">
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="mx-auto h-12 w-12 text-gray-400"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={1}
+                        d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+                      />
+                    </svg>
+                    <h3 className="mt-2 text-lg font-medium">No Specific Size Chart</h3>
+                    <p className="mt-1">There is no size chart available for this product.</p>
                   </div>
                 )}
               </div>
 
-              <div className="mt-6 bg-gray-50 p-4 rounded-md border border-gray-200">
-                <h3 className="font-medium text-gray-900 mb-1 flex items-center">
-                  <ChevronRight size={16} className="text-gray-500 mr-1" />
-                  Additional Notes
-                </h3>
-                <p className="text-sm text-gray-600">
-                  Pinnacle sizes may vary slightly by collection. For a precise fit, measure carefully and consult specific product details. If between sizes, consider sizing up for a relaxed fit or down for a tailored silhouette.
-                </p>
-              </div>
-
+              
               <div className="mt-6 flex justify-end px-6 pb-6">
                 <button
                   onClick={onClose}

@@ -97,18 +97,36 @@ const ProductCard = ({ product, hideWishlist, imageContainerStyles }: ProductCar
       toast.error("Please select a size");
       return;
     }
-    
-    const hasDiscount = product.discountedPrice !== undefined && product.discountedPrice < product.price;
-    const discountPercentage = hasDiscount 
-      ? Math.round(((product.price - product.discountedPrice!) / product.price) * 100) 
-      : 0;
+    // Check if product has a discount
+  const hasDiscount = product.discountedPrice !== undefined && product.discountedPrice < product.price;
+  
+  // Calculate discount percentage
+  const discountPercentage = hasDiscount 
+    ? Math.round(((product.price - product.discountedPrice!) / product.price) * 100) 
+    : 0;
 
+    // Determine which color image is selected (if any)
     const colorImage = selectedColor || currentImage;
+    
+    // Important: Use the correct discounted price
+    // First, check if product has discountedPrice directly from the API
+    // If not, use our locally calculated discounted price from the state
+    const finalDiscountedPrice = product.discountedPrice !== undefined 
+      ? product.discountedPrice 
+      : (hasDiscount && discountedPrice !== null ? discountedPrice : undefined);
+    
+    console.log("Adding product to cart with prices:", {
+      regular: product.price,
+      discounted: finalDiscountedPrice,
+      hasDiscount: hasDiscount
+    });
     
     addToCart({
       id: product.id,
       name: product.name,
       price: product.price,
+      // Only add discountedPrice if it exists
+      ...(finalDiscountedPrice !== undefined && { discountedPrice: finalDiscountedPrice }),
       image: colorImage || product.image,
       size: !isAccessory ? selectedSize || undefined : undefined,
       color: selectedColor || undefined

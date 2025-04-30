@@ -276,7 +276,7 @@ const HomePage = () => {
         <img src="/banner2.jpg" alt="Banner" className="w-full h-auto object-cover object-center" />
       </div>
       <div className="flex-grow">
-        <div className="max-w-[1400px] mx-auto ">
+        <div className="max-w-[1400px] mx-auto">
           {/* Add custom white title */}
           <h2 className="text-2xl font-bold text-white px-4 md:px-8 pt-8 mb-6">Trending Products</h2>
           <ProductCarousel 
@@ -285,6 +285,8 @@ const HomePage = () => {
             loading={loading}
           />
         </div>
+        
+        {/* Large Shop Now Images */}
         <div className="flex flex-col md:flex-row gap-6 md:gap-8 my-8 md:my-12 px-4 md:px-8 justify-center max-w-[1400px] mx-auto">
           <div className="relative w-full md:w-[45%] overflow-hidden rounded-xl shadow-xl transform transition-all duration-500 hover:shadow-2xl group">
             <div className="aspect-[4/3] w-full max-h-[300px]">

@@ -11,6 +11,7 @@ export interface CartItem {
   id: string;
   name: string;
   price: number;
+  discountedPrice?: number; // Add this line for discounted price
   image: string;
   size?: string;
   color?: string;
@@ -203,7 +204,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       color: item.color,
       displayColor,
       size: item.size,
-      quantity: itemQuantity
+      quantity: itemQuantity,
+      price: item.price,
+      discountedPrice: item.discountedPrice
     });
     
     // Track this action for personalization
@@ -354,7 +357,11 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const getCartTotal = () => {
-    return cart.reduce((total, item) => total + (item.price * item.quantity), 0);
+    return cart.reduce((total, item) => {
+      // Use discounted price if available, otherwise use regular price
+      const priceToUse = item.discountedPrice !== undefined ? item.discountedPrice : item.price;
+      return total + (priceToUse * item.quantity);
+    }, 0);
   };
 
   const getCartCount = () => {
