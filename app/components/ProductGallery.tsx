@@ -21,6 +21,8 @@ interface ProductGalleryProps {
   onUpdateColor: (index: number, color: string) => void;
   onAddAdditionalImage: (colorIndex: number, newImage: AdditionalImage) => void;
   onRemoveAdditionalImage: (colorIndex: number, imageIndex: number) => void;
+  colorRequired?: boolean; // Optional prop to indicate if color is required
+  allowMultipleAdditionalImages?: boolean; // Optional prop to allow multiple additional images
 }
 
 const commonColors = [
@@ -45,7 +47,9 @@ const ProductGallery: React.FC<ProductGalleryProps> = ({
   onRemoveImage,
   onUpdateColor,
   onAddAdditionalImage,
-  onRemoveAdditionalImage
+  onRemoveAdditionalImage,
+  colorRequired = true, // Default to true for color being required
+  allowMultipleAdditionalImages = false,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [expandedColorIndex, setExpandedColorIndex] = useState<number | null>(null);
@@ -176,9 +180,9 @@ const ProductGallery: React.FC<ProductGalleryProps> = ({
   };
 
   return (
-    <div>
-      <label className="block text-sm font-medium mb-2">
-        Product Colors <span className="text-red-500">*</span>
+    <div className="space-y-4">
+      <label className="block text-sm font-medium">
+        Product Gallery <span className="text-red-500">*</span>
       </label>
       <div className="space-y-6">
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
