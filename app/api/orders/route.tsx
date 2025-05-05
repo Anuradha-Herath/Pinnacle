@@ -11,10 +11,24 @@ export async function GET(request: Request) {
             process.env.MONGODB_URI || "mongodb://localhost:27017/pinnacle"
             );
             console.log("Connected to MongoDB");
-            }
-        const orders = await Order.find().sort({ createdAt: -1 });
-        return NextResponse.json(orders, { status: 200 });
+        }
+        
+        // Get URL to extract query parameters
+        const url = new URL(request.url);
+        const userId = url.searchParams.get("userId");
+        
+        // If userId is provided, filter orders for that user
+        const query = userId ? { userId: userId } : {};
+        
+        // Fetch orders based on the query
+        const orders = await Order.find(query).sort({ createdAt: -1 });
+        
+        return NextResponse.json({ success: true, orders }, { status: 200 });
     } catch (error) {
-        return NextResponse.json({ error: "Failed to fetch orders" }, { status: 500 });
+        console.error("Error fetching orders:", error);
+        return NextResponse.json({ 
+            success: false, 
+            error: error instanceof Error ? error.message : "Failed to fetch orders" 
+        }, { status: 500 });
     }
 }
