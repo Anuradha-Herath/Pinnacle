@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter, useParams } from "next/navigation"; // Add useParams hook
 import { authNotifications } from "@/lib/notificationService";
 
-const ResetPasswordPage = () => {
+const TokenResetPasswordPage = () => {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
@@ -127,4 +127,4 @@ const ResetPasswordPage = () => {
   );
 };
 
-export default ResetPasswordPage;
+export default TokenResetPasswordPage;
