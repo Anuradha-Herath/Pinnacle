@@ -6,6 +6,7 @@ const toastConfig = {
   duration: 5000
 };
 
+// User authentication notifications
 export const authNotifications = {
   loginSuccess: (message = 'Login successful!') => 
     toast.success(message, toastConfig),
@@ -23,6 +24,9 @@ export const authNotifications = {
     toast.success(message, toastConfig),
 
   passwordResetSuccess: (message?: string) => `Password reset successful: ${message || ''}`,
+
+  passwordResetSent: () => toast.success('Password reset instructions sent to your email'),
+  accessDenied: () => toast.error('Access denied. Please log in.'),
 };
 
 export const cartNotifications = {

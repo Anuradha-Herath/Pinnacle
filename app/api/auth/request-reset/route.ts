@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import User from '@/models/User';
 import crypto from 'crypto';
-import { sendEmail } from '../../../../lib/emailService';
+import { sendEmail } from '@/lib/emailService';
 
 // Connect to MongoDB
 const connectDB = async () => {

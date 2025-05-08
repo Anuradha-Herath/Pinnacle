@@ -1,19 +1,28 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter, useParams } from "next/navigation"; // Add useParams hook
+import { useRouter, useParams } from "next/navigation";
 import { authNotifications } from "@/lib/notificationService";
 
-const ResetPasswordPage = () => {
+const TokenResetPage = () => {
+  // Get token from URL parameter
+  const params = useParams();
+  const token = params.token as string;
+  
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const router = useRouter();
-  const params = useParams();
-  const token = params.token as string; // Use the token from params
+
+  // Set isMounted to true after component mounts (prevents hydration issues)
+  useEffect(() => {
+    setIsMounted(true);
+    console.log("Token from URL:", token);
+  }, [token]);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -65,12 +74,15 @@ const ResetPasswordPage = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-white">
       <div className="w-full max-w-sm text-center">
-        {/* Title - Added negative margin to shift slightly left */}
         <h1 className="text-3xl font-bold mb-2 whitespace-nowrap ml-[-30px]">
           RESET YOUR PASSWORD
         </h1>
         
-        {isSuccess ? (
+        {!isMounted ? (
+          <div className="animate-pulse h-40 flex items-center justify-center">
+            <div className="w-12 h-12 border-4 border-gray-300 border-t-gray-900 rounded-full animate-spin"></div>
+          </div>
+        ) : isSuccess ? (
           <div className="bg-green-50 border border-green-200 p-4 rounded-md mb-4">
             <p className="text-green-800 mb-2">Password reset successful!</p>
             <p className="text-sm text-gray-600">
@@ -84,7 +96,6 @@ const ResetPasswordPage = () => {
           <>
             <p className="text-gray-600 text-sm mb-6">Enter your new password.</p>
 
-            {/* Reset Password Form */}
             <form onSubmit={handleSubmit} className="space-y-4">
               <input
                 type="password"
@@ -106,10 +117,8 @@ const ResetPasswordPage = () => {
                 disabled={isLoading}
               />
 
-              {/* Error Message */}
               {error && <p className="text-red-500 text-sm">{error}</p>}
 
-              {/* Reset Password Button */}
               <button
                 type="submit"
                 className={`w-3/4 bg-gray-900 text-white font-semibold py-2 rounded-full hover:bg-gray-800 transition ${
@@ -127,4 +136,4 @@ const ResetPasswordPage = () => {
   );
 };
 
-export default ResetPasswordPage;
+export default TokenResetPage;
