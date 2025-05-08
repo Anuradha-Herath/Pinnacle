@@ -5,9 +5,6 @@ import { useRouter } from "next/navigation";
 import { MagnifyingGlassIcon } from '@heroicons/react/24/solid';
 import {
   EyeIcon,
-  BellIcon,
-  Cog6ToothIcon,
-  ClockIcon,
   PencilIcon,
   TrashIcon,
   PlusCircleIcon,
