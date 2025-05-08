@@ -202,7 +202,9 @@ const ProductInformation: React.FC<ProductInformationProps> = ({
       {/* Product Images - Replacing color circles */}
       {product.images && product.images.length > 1 && (
         <div className="mb-6">
-          <h2 className="text-sm font-medium mb-2">Available Colors</h2>
+            <h2 className="text-sm font-medium mb-2">
+            Available Colors {selectedColor ? ` : ${selectedColor}` : ""}
+            </h2>
           <div className="flex space-x-3 overflow-x-auto py-2">
             {product.images.map((image, index) => (
               <button
