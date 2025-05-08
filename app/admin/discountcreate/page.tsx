@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { BellIcon, Cog6ToothIcon, ClockIcon, MagnifyingGlassIcon } from "@heroicons/react/24/solid";
+import { MagnifyingGlassIcon } from "@heroicons/react/24/solid";
 import Sidebar from "../../components/Sidebar";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import TopBar from "@/app/components/TopBar";
 
 interface Product {
   _id: string;
@@ -220,33 +221,14 @@ export default function DiscountCreate() {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
+    <div className="flex min-h-screen bg-gray-50">
       <Sidebar />
       <div className="flex-1">
-        <div className="flex justify-between items-center p-4">
-          <div></div>
-          <div className="flex items-center gap-4">
-            <button className="p-2 hover:bg-gray-200 rounded-full">
-              <BellIcon className="h-5 w-5 text-gray-600" />
-            </button>
-            <button className="p-2 hover:bg-gray-200 rounded-full">
-              <Cog6ToothIcon className="h-5 w-5 text-gray-600" />
-            </button>
-            <button className="p-2 hover:bg-gray-200 rounded-full">
-              <ClockIcon className="h-5 w-5 text-gray-600" />
-            </button>
-            <button className="rounded-full">
-              <img src="/p4.webp" alt="Profile" className="h-8 w-8 rounded-full object-cover" />
-            </button>
-          </div>
-        </div>
+       <TopBar title="Create Discount"/>
+       <p className="text-sm text-gray-500 pl-6">Home &gt; Discounts &gt; Create</p>
 
         <div className="p-6">
-          <div className="mb-6">
-            <h1 className="text-xl font-semibold">Create Discount</h1>
-            <p className="text-sm text-gray-500">Home &gt; Discounts &gt; Create</p>
-          </div>
-
+          
           {error && (
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
               {error}
