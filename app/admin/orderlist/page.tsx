@@ -17,24 +17,21 @@ import { CogIcon, ShoppingCartIcon } from "lucide-react";
 
 // Define the Order interface
 interface Order {
-  _id: string;
   orderNumber?: string;
   createdAt?: string;
   customer?: {
-    firstName: string;
-    lastName: string;
+    firstName?: string;
   };
   amount?: {
-    total: number;
+    total?: number | string;
   };
   status?: string;
+  deliveryNumber?: string;
 }
 
 export default function OrdersPage() {
   const router = useRouter();
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   // State for filtering orders by status
   const [filterStatus, setFilterStatus] = useState("");
@@ -49,30 +46,14 @@ export default function OrdersPage() {
     // Fetch orders from the API
     const fetchOrders = async () => {
       try {
-        setLoading(true);
         const response = await fetch("/api/orders");
-        
         if (!response.ok) {
           throw new Error("Failed to fetch orders");
         }
-        
         const data = await response.json();
-        
-        // Check if data has the orders property and it's an array
-        if (data.success && Array.isArray(data.orders)) {
-          setOrders(data.orders);
-        } else if (Array.isArray(data)) {
-          // Handle the case where the API might return an array directly
-          setOrders(data);
-        } else {
-          console.error("Unexpected data format:", data);
-          throw new Error("Received invalid data format from API");
-        }
+        setOrders(data);
       } catch (error) {
         console.error("Error fetching orders:", error);
-        setError(error instanceof Error ? error.message : "An error occurred");
-      } finally {
-        setLoading(false);
       }
     };
 
@@ -94,12 +75,6 @@ export default function OrdersPage() {
 
   // Handle pagination
   const applyPagination = (items: Order[]) => {
-    if (!Array.isArray(items)) {
-      console.error("Expected items to be an array but got:", items);
-      setDisplayedOrders([]);
-      return;
-    }
-    
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     setDisplayedOrders(items.slice(startIndex, endIndex));
@@ -117,46 +92,6 @@ export default function OrdersPage() {
       setCurrentPage(currentPage + 1);
     }
   };
-
-  // Function to view order details
-  const handleViewOrder = (orderId: string) => {
-    router.push(`/admin/adminorderdetails?id=${orderId}`);
-  };
-
-  // Loading state
-  if (loading) {
-    return (
-      <div className="flex">
-        <Sidebar />
-        <div className="min-h-screen bg-gray-50 p-6 flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-orange-500 border-r-transparent"></div>
-            <p className="mt-2">Loading orders...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Error state
-  if (error) {
-    return (
-      <div className="flex">
-        <Sidebar />
-        <div className="min-h-screen bg-gray-50 p-6 flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <p className="text-red-500 mb-4">{error}</p>
-            <button 
-              onClick={() => window.location.reload()}
-              className="px-4 py-2 bg-orange-500 text-white rounded-md"
-            >
-              Retry
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex">
@@ -315,7 +250,7 @@ export default function OrdersPage() {
             <tbody>
               {displayedOrders.length > 0 ? (
                 displayedOrders.map((order, index) => (
-                  <tr key={order._id || index} className="border-t">
+                  <tr key={index} className="border-t">
                     <td className="p-3">{order.orderNumber || "N/A"}</td>
                     <td className="p-3">
                       {order.createdAt
@@ -351,10 +286,7 @@ export default function OrdersPage() {
                       </span>
                     </td>
                     <td className="p-3">
-                      <button 
-                        onClick={() => handleViewOrder(order._id)}
-                        className="p-2 bg-orange-500 text-white rounded-md shadow-md hover:bg-orange-600"
-                      >
+                      <button className="p-2 bg-orange-500 text-white rounded-md shadow-md hover:bg-orange-600">
                         <EyeIcon className="h-5 w-5" />
                       </button>
                     </td>

@@ -58,14 +58,14 @@ export default function CustomerDetails() {
         const customerData = await customerResponse.json();
         setCustomer(customerData.user);
 
-        // Fetch customer orders
-        const ordersResponse = await fetch(`/api/orders?userId=${customerId}`);
+        // Fetch customer orders - using the new dedicated API endpoint
+        const ordersResponse = await fetch(`/api/users/orders?userId=${customerId}`);
         if (!ordersResponse.ok) {
           throw new Error("Failed to fetch customer orders");
         }
         const ordersData = await ordersResponse.json();
         
-        if (ordersData.orders) {
+        if (ordersData.success && ordersData.orders) {
           setOrders(ordersData.orders);
           setTotalOrders(ordersData.orders.length);
           
@@ -75,6 +75,10 @@ export default function CustomerDetails() {
             0
           );
           setTotalSpent(total);
+        } else {
+          setOrders([]);
+          setTotalOrders(0);
+          setTotalSpent(0);
         }
       } catch (err) {
         console.error("Error fetching customer data:", err);
