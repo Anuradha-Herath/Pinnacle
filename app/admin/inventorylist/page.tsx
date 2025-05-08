@@ -14,6 +14,7 @@ import {
 } from "@heroicons/react/24/solid";
 import Sidebar from "../../components/Sidebar";
 import Image from "next/image";
+import TopBar from "@/app/components/TopBar";
 
 // Define interface for inventory item
 interface InventoryItem {
@@ -234,51 +235,7 @@ export default function InventoryList() {
     <div className="flex">
       <Sidebar />
       <div className="min-h-screen bg-gray-50 p-6 flex-1">
-        {/* Top Bar with Icons */}
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-semibold text-gray-600">
-            Inventory List
-          </h1>
-
-          {/* Top-Right Icons */}
-          <div className="flex items-center gap-2">
-            {/* Notifications */}
-            <button
-              onClick={() => router.push("/admin/notifications")}
-              className="p-2 hover:bg-gray-200 rounded-lg"
-            >
-              <BellIcon className="h-6 w-6 text-gray-600" />
-            </button>
-
-            {/* Settings */}
-            <button
-              onClick={() => router.push("/admin/settings")}
-              className="p-2 hover:bg-gray-200 rounded-lg"
-            >
-              <Cog6ToothIcon className="h-6 w-6 text-gray-600" />
-            </button>
-
-            {/* Clock Icon */}
-            <button
-              onClick={() => router.push("/admin/history")}
-              className="p-2 hover:bg-gray-200 rounded-lg"
-            >
-              <ClockIcon className="h-6 w-6 text-gray-600" />
-            </button>
-
-            {/* Profile */}
-            <button
-              onClick={() => router.push("/admin/adminprofile")}
-              className="p-1 rounded-full border-2 border-gray-300"
-            >
-              <img
-                src="/p9.webp"
-                alt="Profile"
-                className="h-8 w-8 rounded-full object-cover"
-              />
-            </button>
-          </div>
-        </div>
+       <TopBar title="Inventory List"/>
 
         {/* First row - Three cards: Total, In Stock, Out of Stock */}
         <div className="grid grid-cols-3 gap-6 mb-6 text-gray-600">
