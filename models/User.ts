@@ -26,6 +26,8 @@ export interface IUser extends Document {
   address?: string; // Add address field
   resetPasswordToken?: string;
   resetPasswordExpires?: number;
+  passwordResetToken?: string; // Add password reset token field
+  passwordResetExpires?: Date; // Add password reset expires field
   createdAt: Date;
   updatedAt: Date;
   comparePassword: (candidatePassword: string) => Promise<boolean>;
@@ -119,6 +121,13 @@ const UserSchema = new Schema<IUser>(
     
     resetPasswordToken: String,
     resetPasswordExpires: Number,
+    
+    passwordResetToken: {
+      type: String,
+    },
+    passwordResetExpires: {
+      type: Date,
+    },
   },
   { timestamps: true }
 );

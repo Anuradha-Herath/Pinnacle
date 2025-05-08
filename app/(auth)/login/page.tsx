@@ -87,7 +87,7 @@ const LoginPage = () => {
           </Link>{" "}
           or{" "}
           <Link
-            href="/forgot-password"
+            href="/request-reset"
             className="font-semibold hover:underline"
           >
             Forgot your password?
