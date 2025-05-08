@@ -2,17 +2,18 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation"; // Add useParams hook
 import { authNotifications } from "@/lib/notificationService";
 
 const ResetPasswordPage = () => {
-  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const router = useRouter();
+  const params = useParams();
+  const token = params.token as string; // Use the token from params
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -32,12 +33,12 @@ const ResetPasswordPage = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/auth/direct-reset-password', {
+      const response = await fetch('/api/auth/reset-password', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ token, password }),
       });
 
       const data = await response.json();
@@ -81,21 +82,10 @@ const ResetPasswordPage = () => {
           </div>
         ) : (
           <>
-            <p className="text-gray-600 text-sm mb-6">Enter your email and new password.</p>
+            <p className="text-gray-600 text-sm mb-6">Enter your new password.</p>
 
             {/* Reset Password Form */}
             <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Added email field to identify the user */}
-              <input
-                type="email"
-                placeholder="Your Email Address"
-                className="w-3/4 px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-gray-800"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                disabled={isLoading}
-              />
-
               <input
                 type="password"
                 placeholder="New Password"
