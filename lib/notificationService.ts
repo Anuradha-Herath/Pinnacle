@@ -21,6 +21,8 @@ export const authNotifications = {
   
   logoutSuccess: (message = 'Logged out successfully!') => 
     toast.success(message, toastConfig),
+
+  passwordResetSuccess: (message?: string) => `Password reset successful: ${message || ''}`,
 };
 
 export const cartNotifications = {
