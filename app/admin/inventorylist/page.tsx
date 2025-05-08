@@ -41,8 +41,10 @@ export default function InventoryList() {
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
   const [filter, setFilter] = useState('All'); // Filter state
-  const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
+  const [suggestions, setSuggestions] = useState<InventoryItem[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
+  const inputRef = useRef<HTMLInputElement | null>(null);
   
   // Reference for search bar
   const searchRef = useRef<HTMLDivElement | null>(null);
@@ -61,11 +63,7 @@ export default function InventoryList() {
   });
 
   // Handle suggestion click
-  const handleSuggestionClick = (name: string) => {
-    setSearchQuery(name);
-    setShowSuggestions(false);
-    handleSearch(undefined);
-  };
+  // (Removed duplicate declaration to avoid redeclaration error)
 
   // Fetch inventory data
   useEffect(() => {
@@ -76,6 +74,18 @@ export default function InventoryList() {
   useEffect(() => {
     applyClientSidePagination();
   }, [currentPage, allInventory]);
+
+  // Add a click outside handler to close suggestions
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+      }
+    }
+    
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const fetchInventory = async (status: string | null = null) => {
     try {
@@ -228,6 +238,73 @@ export default function InventoryList() {
     router.push(`/admin/inventoryedit?id=${id}`);
   };
 
+  // Function to generate search suggestions based on input
+  const generateSuggestions = (query: string) => {
+    if (!query || query.length < 2) {
+      setSuggestions([]);
+      return;
+    }
+    
+    const filteredItems = allInventory.filter(item => 
+      item.productName.toLowerCase().includes(query.toLowerCase())
+    ).slice(0, 5); // Limit to 5 suggestions for better UX
+    
+    setSuggestions(filteredItems);
+    setShowSuggestions(filteredItems.length > 0);
+  };
+
+  // Modify search query handler to generate suggestions as user types
+  const handleSearchQueryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchQuery(value);
+    generateSuggestions(value);
+    setSelectedSuggestionIndex(-1);
+  };
+
+  // Handle keyboard navigation in suggestions
+  const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showSuggestions) return;
+    
+    switch (e.key) {
+      case 'ArrowDown':
+        e.preventDefault();
+        setSelectedSuggestionIndex(prev => 
+          prev < suggestions.length - 1 ? prev + 1 : prev
+        );
+        break;
+        
+      case 'ArrowUp':
+        e.preventDefault();
+        setSelectedSuggestionIndex(prev => prev > 0 ? prev - 1 : -1);
+        break;
+        
+      case 'Enter':
+        if (selectedSuggestionIndex >= 0) {
+          e.preventDefault();
+          handleSuggestionClick(suggestions[selectedSuggestionIndex].productName);
+        }
+        break;
+        
+      case 'Escape':
+        setShowSuggestions(false);
+        break;
+    }
+  };
+
+  // Handle suggestion click
+  const handleSuggestionClick = (productName: string) => {
+    setSearchQuery(productName);
+    setShowSuggestions(false);
+    
+    // Filter inventory based on selected suggestion
+    const filtered = allInventory.filter(item => 
+      item.productName.toLowerCase().includes(productName.toLowerCase())
+    );
+    
+    setCurrentPage(1); // Reset to first page
+    applyClientSidePagination(filtered);
+  };
+
   return (
     <div className="flex">
       <Sidebar />
@@ -372,13 +449,20 @@ export default function InventoryList() {
             </div>
             
             {/* Add Search Bar Here */}
-            <div className="relative w-full max-w-md">
+            <div className="relative w-full max-w-md" ref={searchRef}>
               <form onSubmit={handleSearch} className="flex items-center">
                 <div className="relative flex-grow">
                   <input
+                    ref={inputRef}
                     type="text"
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={handleSearchQueryChange}
+                    onKeyDown={handleSearchKeyDown}
+                    onFocus={() => {
+                      if (searchQuery.length >= 2) {
+                        setShowSuggestions(suggestions.length > 0);
+                      }
+                    }}
                     placeholder="Search inventory..."
                     className="w-full pl-10 pr-4 py-2 border rounded-l-md focus:outline-none focus:ring-2 focus:ring-orange-500"
                   />
@@ -406,31 +490,43 @@ export default function InventoryList() {
               
               {/* Search Suggestions with Images */}
               {showSuggestions && suggestions.length > 0 && (
-                <div className="absolute z-10 w-full bg-white mt-1 border rounded-md shadow-lg max-h-60 overflow-auto">
-                  {suggestions.map((suggestion) => (
+                <div className="absolute z-20 w-full bg-white rounded-md shadow-lg border border-gray-200 mt-1 py-1 max-h-60 overflow-y-auto">
+                  {suggestions.map((item, index) => (
                     <div
-                      key={suggestion.id}
-                      className="px-4 py-2 hover:bg-gray-100 cursor-pointer flex items-center"
-                      onClick={() => handleSuggestionClick(suggestion.name)}
+                      key={item._id}
+                      onClick={() => handleSuggestionClick(item.productName)}
+                      className={`px-4 py-2 flex items-center gap-3 cursor-pointer ${
+                        index === selectedSuggestionIndex ? 'bg-gray-100' : 'hover:bg-gray-50'
+                      }`}
                     >
                       {/* Product Image */}
-                      <div className="w-10 h-10 flex-shrink-0 mr-3 bg-gray-100 rounded overflow-hidden">
-                        <img 
-                          src={suggestion.image} 
-                          alt={suggestion.name}
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.src = '/placeholder.png';
-                          }}
+                      <div className="w-10 h-10 relative flex-shrink-0">
+                        <Image
+                          src={item.image || "/placeholder.png"}
+                          alt={item.productName}
+                          fill
+                          className="rounded-md object-cover"
+                          sizes="40px"
                         />
                       </div>
-                      {/* Product Name */}
-                      <div className="flex-grow">
-                        <span className="text-sm">{suggestion.name}</span>
+                      
+                      {/* Product Information */}
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium">{item.productName}</span>
+                        <div className="flex items-center gap-2 text-xs text-gray-500">
+                          <span>Stock: {item.stock}</span>
+                          <span className={`px-2 py-0.5 rounded-full text-xs
+                            ${item.status === "In Stock" 
+                              ? "bg-green-100 text-green-700"
+                              : item.status === "Out Of Stock" 
+                              ? "bg-red-100 text-red-700"
+                              : "bg-yellow-100 text-yellow-700"
+                            }`}
+                          >
+                            {item.status}
+                          </span>
+                        </div>
                       </div>
-                      {/* Search Icon */}
-                      <MagnifyingGlassIcon className="h-4 w-4 text-gray-400 ml-2" />
                     </div>
                   ))}
                 </div>
