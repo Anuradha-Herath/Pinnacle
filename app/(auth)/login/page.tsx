@@ -11,7 +11,7 @@ const LoginPage = () => {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -22,10 +22,15 @@ const LoginPage = () => {
       const success = await login(email, password);
       
       if (success) {
+        // If this is the regular login page, set flag for admins
+        if (user?.role === 'admin') {
+          localStorage.setItem('adminLoginSource', 'regular');
+        }
+        
         authNotifications.loginSuccess();
         router.push("/"); // Redirect to home page
       } else {
-        authNotifications.loginError();
+        authNotifications.loginError("Login failed. Please check your credentials.");
       }
     } catch (error) {
       authNotifications.loginError("An error occurred during login");
@@ -37,7 +42,7 @@ const LoginPage = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-white">
-      <div className="w-full max-w-sm text-center">
+      <div className="w-full max-w-sm text-center ">
         <h1 className="text-5xl font-bold mb-2">LOGIN</h1>
         <p className="text-gray-600 text-sm mb-6">
           If you have an account with us, please log in.
@@ -82,7 +87,7 @@ const LoginPage = () => {
           </Link>{" "}
           or{" "}
           <Link
-            href="/forgot-password"
+            href="/request-reset"
             className="font-semibold hover:underline"
           >
             Forgot your password?
