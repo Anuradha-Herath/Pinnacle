@@ -284,7 +284,10 @@ export default function ProductCreate() {
   };
 
   const handleSave = async () => {
-    // Modified validation logic to handle accessories category
+    // Check that all images in gallery have colors
+    const imagesWithoutColor = formData.gallery.filter(item => !item.color || item.color.trim() === '');
+    
+    // Modified validation logic to handle accessories category and enforce color selection
     if (
       !formData.productName ||
       !formData.category ||
@@ -292,23 +295,19 @@ export default function ProductCreate() {
       !formData.subCategory ||
       // Only validate sizes for non-accessories categories
       (formData.category !== "Accessories" && !(formData.sizes.length > 0)) ||
-      formData.gallery.length === 0
+      formData.gallery.length === 0 ||
+      imagesWithoutColor.length > 0
     ) {
+      // Custom error message based on what's missing
+      if (imagesWithoutColor.length > 0) {
+        alert("Each image must have a color selected. Please assign colors to all product images.");
+        return;
+      }
+      
       alert(
         `Please fill in all required fields (Product Name, ${
           formData.category !== "Accessories" ? "Sizes, " : ""
         }Category, Sub-Category, Regular Price) and add at least one product image with color!`
-      );
-      return;
-    }
-
-    // Validate that all gallery items have color information
-    const missingColorItems = formData.gallery.filter(
-      (item) => !item.color || item.color.trim() === ""
-    );
-    if (missingColorItems.length > 0) {
-      alert(
-        "Please specify a color for all product images. Colors help customers identify products and improve search results."
       );
       return;
     }
@@ -711,7 +710,17 @@ export default function ProductCreate() {
                 onUpdateColor={handleUpdateColor}
                 onAddAdditionalImage={handleAddAdditionalImage}
                 onRemoveAdditionalImage={handleRemoveAdditionalImage}
+                colorRequired={true} // Ensure color is required
+                allowMultipleAdditionalImages={true} 
               />
+              
+              <div className="text-sm text-red-500 font-medium">
+                <span className="text-red-500">*</span> Color selection is mandatory for all product images
+              </div>
+              <div className="text-sm text-blue-500">
+                You can add multiple additional images for each color variant
+              </div>
+              
               {/* Show size selector only when not in Accessories category */}
               {formData.category !== "Accessories" && (
                 <div>
