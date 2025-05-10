@@ -80,10 +80,11 @@ export default function InventoryEditPage() {
             })) || [];
             
             setProductColors(colors);
-            
+
             // Initialize with defaults and copy existing values
-            const colorStock = { ...inventoryData.colorStock } || {};
-            const colorSizeStock = { ...inventoryData.colorSizeStock } || {};
+            const colorStock = inventoryData.colorStock ? { ...inventoryData.colorStock } : {};
+            const colorSizeStock = { ...inventoryData.colorSizeStock };
+
             
             // Initialize stock data for each color if not present
             colors.forEach((color: ColorItem) => {
@@ -193,7 +194,7 @@ export default function InventoryEditPage() {
         
         // Initialize with zeros for all sizes
         if (inventory.sizeStock) {
-          Object.keys(inventory.sizeStock).forEach(size => {
+          Object.keys(inventory.sizeStock ?? {}).forEach(size => {
             updatedColorSizeStock[selectedColor][size] = 0;
           });
         }
@@ -258,7 +259,7 @@ export default function InventoryEditPage() {
         }
         
         if (inventory.sizeStock) {
-          Object.keys(inventory.sizeStock).forEach(size => {
+          Object.keys(inventory.sizeStock ?? {}).forEach(size => {
             if (updatedColorSizeStock[color][size] === undefined) {
               updatedColorSizeStock[color][size] = 0;
             }
@@ -331,14 +332,14 @@ export default function InventoryEditPage() {
       setSubmitting(true);
       
       // Create a complete colorSizeStock structure with all combinations
-      const completeColorSizeStock = {};
+      const completeColorSizeStock: { [color: string]: { [size: string]: number } } = {};
       
       // Make sure every color has every size properly initialized
       if (productColors && inventory.sizeStock) {
         productColors.forEach(color => {
           completeColorSizeStock[color.name] = {};
           
-          Object.keys(inventory.sizeStock).forEach(size => {
+          Object.keys(inventory.sizeStock || {}).forEach(size => {
             // Get existing stock or default to 0
             const existingStock = 
               inventory.colorSizeStock?.[color.name]?.[size] !== undefined
@@ -546,7 +547,7 @@ export default function InventoryEditPage() {
                           inventory.colorSizeStock[selectedColor] && 
                           inventory.colorSizeStock[selectedColor][size] !== undefined 
                             ? `(${inventory.colorSizeStock[selectedColor][size]})`
-                            : `(${inventory.sizeStock[size] || 0})`
+                            : `(${inventory.sizeStock?.[size] ?? 0})`
                         }
                       </button>
                     ))}
