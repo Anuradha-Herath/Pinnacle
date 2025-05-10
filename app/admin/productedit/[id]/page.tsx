@@ -4,7 +4,7 @@ import { useParams } from "next/navigation";
 import TopBar from "../../../components/TopBar";
 import Sidebar from "../../../components/Sidebar";
 import ProductForm from "@/app/components/product/ProductForm";
-import { initialProductFormData } from "@/app/hooks/useProductForm";
+import { initialProductFormData } from "@/app/hooks/product/useProductForm";
 
 export default function ProductEdit() {
   const { id } = useParams();

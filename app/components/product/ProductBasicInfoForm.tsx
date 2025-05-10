@@ -1,5 +1,5 @@
 import React from "react";
-import { useCategories } from "@/app/hooks/useCategories";
+import { useCategories } from "@/app/hooks/product/useCategories";
 
 interface ProductBasicInfoFormProps {
   productName: string;

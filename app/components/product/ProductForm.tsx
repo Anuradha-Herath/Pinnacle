@@ -1,6 +1,6 @@
 import React from "react";
 import { useRouter } from "next/navigation";
-import { useProductForm, initialProductFormData } from "@/app/hooks/useProductForm";
+import { useProductForm, initialProductFormData } from "@/app/hooks/product/useProductForm";
 import ProductBasicInfoForm from "./ProductBasicInfoForm";
 import ProductAttributesForm from "./ProductAttributesForm";
 import SizeChartUploader from "./SizeChartUploader";
