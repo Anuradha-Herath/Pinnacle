@@ -1,10 +1,19 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import ProductGallery from "@/app/components/ProductGallery";
 import TopBar from "../../components/TopBar";
 import Sidebar from "../../components/Sidebar";
+import { debugLog } from "@/app/utils/debugHelpers";
+import { 
+  FormInput, 
+  FormTextArea, 
+  FormSelect, 
+  CheckboxButtonGroup,
+  SizeChartUploader
+} from "./FormComponents";
 
+// Types and interfaces
 interface AdditionalImage {
   id: string;
   src: string | ArrayBuffer | null;
@@ -51,6 +60,82 @@ interface ProductFormProps {
   breadcrumbTitle: string;
 }
 
+// Constants for form options
+const MAIN_CATEGORIES = [
+  { value: "", label: "Select Main Category" },
+  { value: "Men", label: "Men" },
+  { value: "Women", label: "Women" },
+  { value: "Accessories", label: "Accessories" }
+];
+
+const FIT_TYPES = [
+  { value: "Slim Fit", label: "Slim Fit" },
+  { value: "Regular Fit", label: "Regular Fit" },
+  { value: "Relaxed Fit", label: "Relaxed Fit" },
+  { value: "Oversized", label: "Oversized" },
+  { value: "Tailored", label: "Tailored" }
+];
+
+const OCCASION_OPTIONS = [
+  { value: "Casual", label: "Casual" },
+  { value: "Formal", label: "Formal" },
+  { value: "Business", label: "Business" },
+  { value: "Party", label: "Party" },
+  { value: "Wedding", label: "Wedding" },
+  { value: "Beach", label: "Beach" },
+  { value: "Outdoor", label: "Outdoor" },
+  { value: "Sportswear", label: "Sportswear" }
+];
+
+const STYLE_OPTIONS = [
+  { value: "Classic", label: "Classic" },
+  { value: "Modern", label: "Modern" },
+  { value: "Vintage", label: "Vintage" },
+  { value: "Bohemian", label: "Bohemian" },
+  { value: "Minimalist", label: "Minimalist" },
+  { value: "Elegant", label: "Elegant" },
+  { value: "Casual", label: "Casual" },
+  { value: "Trendy", label: "Trendy" }
+];
+
+const SEASON_OPTIONS = [
+  { value: "Spring", label: "Spring" },
+  { value: "Summer", label: "Summer" },
+  { value: "Fall", label: "Fall" },
+  { value: "Winter", label: "Winter" },
+  { value: "All Seasons", label: "All Seasons" }
+];
+
+const SIZE_OPTIONS = [
+  { value: "XS", label: "XS" },
+  { value: "S", label: "S" },
+  { value: "M", label: "M" },
+  { value: "L", label: "L" },
+  { value: "XL", label: "XL" },
+  { value: "2XL", label: "2XL" },
+  { value: "3XL", label: "3XL" }
+];
+
+// Default form data
+const DEFAULT_FORM_DATA: ProductFormData = {
+  productName: "",
+  description: "",
+  category: "",
+  subCategory: "",
+  regularPrice: "1000",
+  tag: "",
+  sizes: [],
+  gallery: [],
+  occasions: [],
+  style: [],
+  season: [],
+  fitType: "Regular Fit",
+  sizingTrend: 0,
+  sizingNotes: "",
+  sizeChart: {},
+  sizeChartImage: null
+};
+
 export default function ProductForm({
   isEditMode,
   initialData,
@@ -60,28 +145,7 @@ export default function ProductForm({
 }: ProductFormProps) {
   const router = useRouter();
   const [isClient, setIsClient] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  
-  const defaultFormData: ProductFormData = {
-    productName: "",
-    description: "",
-    category: "",
-    subCategory: "",
-    regularPrice: "1000",
-    tag: "",
-    sizes: [],
-    gallery: [],
-    occasions: [],
-    style: [],
-    season: [],
-    fitType: "Regular Fit",
-    sizingTrend: 0,
-    sizingNotes: "",
-    sizeChart: {},
-    sizeChartImage: null
-  };
-  
-  const [formData, setFormData] = useState<ProductFormData>(defaultFormData);
+  const [formData, setFormData] = useState<ProductFormData>(DEFAULT_FORM_DATA);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -89,25 +153,23 @@ export default function ProductForm({
   const [mainProductImage, setMainProductImage] = useState<string | ArrayBuffer | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const sizeChartInputRef = useRef<HTMLInputElement>(null);
-
-  // Set isClient to true after component mounts
+  // Set client-side rendering flag
   useEffect(() => {
     setIsClient(true);
   }, []);
 
-  // Initialize form data when initialData changes
+  // Initialize form data with initialData if available
   useEffect(() => {
     if (initialData) {
       setFormData(initialData);
       
-      // Set main product image if gallery has items
       if (initialData.gallery && initialData.gallery.length > 0) {
         setMainProductImage(initialData.gallery[0].src);
       }
     }
   }, [initialData]);
 
+  // Fetch categories from API
   useEffect(() => {
     const fetchCategories = async () => {
       try {
@@ -131,6 +193,7 @@ export default function ProductForm({
     fetchCategories();
   }, []);
 
+  // Filter subcategories based on selected category
   useEffect(() => {
     if (formData.category) {
       const filtered = categories.filter(
@@ -140,33 +203,27 @@ export default function ProductForm({
     }
   }, [formData.category, categories]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  // Form field change handler
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-  };
+  }, []);
 
-  const handleSizeChange = (size: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      sizes: prev.sizes.includes(size)
-        ? prev.sizes.filter((s) => s !== size)
-        : [...prev.sizes, size]
-    }));
-  };
-
-  const handleToggleAttribute = (attribute: string, field: keyof ProductFormData) => {
+  // Toggle selection in array fields (like sizes, occasions, etc.)
+  const handleToggleItem = useCallback((value: string, field: keyof ProductFormData) => {
     setFormData((prev) => {
       const currentArray = prev[field] as string[];
       return {
         ...prev,
-        [field]: currentArray.includes(attribute)
-          ? currentArray.filter((item) => item !== attribute)
-          : [...currentArray, attribute]
+        [field]: currentArray.includes(value)
+          ? currentArray.filter((item) => item !== value)
+          : [...currentArray, value]
       };
     });
-  };
+  }, []);
 
-  const handleAddImages = (newItems: GalleryItem[]) => {
+  // Gallery image handlers
+  const handleAddImages = useCallback((newItems: GalleryItem[]) => {
     const processedItems = newItems.map(item => ({
       ...item,
       additionalImages: item.additionalImages || []
@@ -179,9 +236,9 @@ export default function ProductForm({
       }
       return { ...prev, gallery: updatedGallery };
     });
-  };
+  }, [mainProductImage]);
 
-  const handleRemoveImage = (index: number) => {
+  const handleRemoveImage = useCallback((index: number) => {
     setFormData((prev) => {
       const updatedGallery = [...prev.gallery];
       updatedGallery.splice(index, 1);
@@ -192,9 +249,9 @@ export default function ProductForm({
       }
       return { ...prev, gallery: updatedGallery };
     });
-  };
+  }, []);
 
-  const handleUpdateColor = (index: number, color: string) => {
+  const handleUpdateColor = useCallback((index: number, color: string) => {
     setFormData((prev) => {
       const updatedGallery = [...prev.gallery];
       updatedGallery[index] = { 
@@ -203,12 +260,11 @@ export default function ProductForm({
       };
       return { ...prev, gallery: updatedGallery };
     });
-  };
+  }, []);
 
-  const handleAddAdditionalImage = (colorIndex: number, newImage: AdditionalImage) => {
+  const handleAddAdditionalImage = useCallback((colorIndex: number, newImage: AdditionalImage) => {
     setFormData((prev) => {
       const updatedGallery = [...prev.gallery];
-
       if (!updatedGallery[colorIndex].additionalImages) {
         updatedGallery[colorIndex].additionalImages = [];
       }
@@ -218,23 +274,17 @@ export default function ProductForm({
         id: newImage.id || `img_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`
       };
 
-      const existingImageIndex = updatedGallery[colorIndex].additionalImages!
+      const existingIndex = updatedGallery[colorIndex].additionalImages!
         .findIndex(img => img.id === imageWithId.id);
 
-      if (existingImageIndex >= 0) {
-        return prev;
-      }
+      if (existingIndex >= 0) return prev;
 
       updatedGallery[colorIndex].additionalImages!.push(imageWithId);
-
-      return {
-        ...prev,
-        gallery: updatedGallery
-      };
+      return { ...prev, gallery: updatedGallery };
     });
-  };
+  }, []);
 
-  const handleRemoveAdditionalImage = (colorIndex: number, imageIndex: number) => {
+  const handleRemoveAdditionalImage = useCallback((colorIndex: number, imageIndex: number) => {
     setFormData((prev) => {
       const updatedGallery = [...prev.gallery];
       if (updatedGallery[colorIndex].additionalImages) {
@@ -242,23 +292,26 @@ export default function ProductForm({
       }
       return { ...prev, gallery: updatedGallery };
     });
-  };
+  }, []);
 
-  const handleSizeChartUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Size chart image handlers
+  const handleSizeChartUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setFormData(prev => ({
-          ...prev,
-          sizeChartImage: reader.result
-        }));
+        setFormData(prev => ({ ...prev, sizeChartImage: reader.result }));
       };
       reader.readAsDataURL(file);
     }
-  };
+  }, []);
 
-  const validateForm = () => {
+  const handleSizeChartRemove = useCallback(() => {
+    setFormData(prev => ({ ...prev, sizeChartImage: null }));
+  }, []);
+
+  // Form validation
+  const validateForm = useCallback(() => {
     if (
       !formData.productName ||
       !formData.category ||
@@ -278,15 +331,18 @@ export default function ProductForm({
     }
     
     return true;
-  };
+  }, [formData]);
 
+  // Form submission
   const handleSave = async () => {
     if (!validateForm()) return;
     
     setIsSubmitting(true);
     try {
+      debugLog("Saving product", formData);
       const dataToSend = JSON.parse(JSON.stringify(formData));
 
+      // Ensure additionalImages is never undefined
       dataToSend.gallery = dataToSend.gallery.map((item: GalleryItem) => ({
         ...item,
         additionalImages: item.additionalImages || []
@@ -319,13 +375,28 @@ export default function ProductForm({
     }
   };
 
+  // Loading states
   if (!isClient) {
     return <div className="min-h-screen bg-gray-100 flex items-center justify-center">Loading...</div>;
   }
 
-  if (isEditMode && isLoading) {
-    return <div className="min-h-screen bg-gray-100 flex items-center justify-center">Loading product data...</div>;
-  }
+  // Create subcategory options
+  const subCategoryOptions = [
+    { 
+      value: "", 
+      label: loadingCategories
+        ? "Loading subcategories..."
+        : !formData.category
+        ? "Select main category first"
+        : filteredSubCategories.length === 0
+        ? "No subcategories available"
+        : "Select Sub Category" 
+    },
+    ...filteredSubCategories.map(category => ({
+      value: category.title,
+      label: category.title
+    }))
+  ];
 
   return (
     <div className="flex min-h-screen relative">
@@ -333,301 +404,129 @@ export default function ProductForm({
       <div className="flex flex-col flex-1 pb-20">
         <TopBar title={title} />
         <div className="p-6 mx-auto w-full max-w-6xl">
+          {/* Breadcrumb */}
           <div className="text-sm text-gray-500 mb-6">
             <span>Home</span> &gt; <span>All Products</span> &gt;
             <span className="font-semibold"> {breadcrumbTitle}</span>
           </div>
+          
           <h1 className="text-2xl font-bold mb-8">{title}</h1>
+          
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <form className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Product Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  name="productName"
-                  value={formData.productName}
-                  onChange={handleChange}
-                  className="w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
+            {/* Left column - Form fields */}
+            <div className="space-y-6">
+              <FormInput
+                label="Product Name"
+                name="productName"
+                value={formData.productName}
+                onChange={handleChange}
+                required={true}
+              />
               
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Description
-                </label>
-                <textarea
-                  name="description"
-                  value={formData.description}
-                  onChange={handleChange}
-                  className="w-full p-3 border rounded-md h-32 focus:ring-2 focus:ring-blue-500"
-                ></textarea>
-              </div>
+              <FormTextArea
+                label="Description"
+                name="description"
+                value={formData.description}
+                onChange={handleChange}
+                rows={6}
+              />
 
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Main Category <span className="text-red-500">*</span>
-                </label>
-                <select
-                  name="category"
-                  value={formData.category}
-                  onChange={handleChange}
-                  className="w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="">Select Main Category</option>
-                  <option value="Men">Men</option>
-                  <option value="Women">Women</option>
-                  <option value="Accessories">Accessories</option>
-                </select>
-              </div>
+              <FormSelect
+                label="Main Category"
+                name="category"
+                value={formData.category}
+                onChange={handleChange}
+                options={MAIN_CATEGORIES}
+                required={true}
+              />
 
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Sub Category <span className="text-red-500">*</span>
-                </label>
-                <select
-                  name="subCategory"
-                  value={formData.subCategory}
-                  onChange={handleChange}
-                  className="w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500"
-                  disabled={
-                    !formData.category || filteredSubCategories.length === 0
-                  }
-                >
-                  <option value="">
-                    {loadingCategories
-                      ? "Loading subcategories..."
-                      : !formData.category
-                      ? "Select main category first"
-                      : filteredSubCategories.length === 0
-                      ? "No subcategories available"
-                      : "Select Sub Category"}
-                  </option>
-                  {filteredSubCategories.map((category) => (
-                    <option key={category._id} value={category.title}>
-                      {category.title}
-                    </option>
-                  ))}
-                </select>
-                {formData.category &&
-                  filteredSubCategories.length === 0 &&
-                  !loadingCategories && (
-                    <div className="text-sm text-orange-500 mt-1">
-                      No subcategories found for {formData.category}.{" "}
-                      <a href="/admin/categorycreate" className="underline">
-                        Create one
-                      </a>
-                    </div>
-                  )}
-              </div>
+              <FormSelect
+                label="Sub Category"
+                name="subCategory"
+                value={formData.subCategory}
+                onChange={handleChange}
+                options={subCategoryOptions}
+                required={true}
+                disabled={!formData.category || filteredSubCategories.length === 0}
+              />
               
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Regular Price ($) <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="number"
-                  name="regularPrice"
-                  value={formData.regularPrice}
-                  onChange={handleChange}
-                  className="w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
+              {formData.category &&
+                filteredSubCategories.length === 0 &&
+                !loadingCategories && (
+                  <div className="text-sm text-orange-500 mt-1">
+                    No subcategories found for {formData.category}.{" "}
+                    <a href="/admin/categorycreate" className="underline">
+                      Create one
+                    </a>
+                  </div>
+                )}
               
-              <div>
-                <label className="block text-sm font-medium mb-2">Tag</label>
-                <input
-                  type="text"
-                  name="tag"
-                  value={formData.tag}
-                  onChange={handleChange}
-                  className="w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
+              <FormInput
+                label="Regular Price ($)"
+                name="regularPrice"
+                value={formData.regularPrice}
+                onChange={handleChange}
+                type="number"
+                required={true}
+              />
+              
+              <FormInput
+                label="Tag"
+                name="tag"
+                value={formData.tag}
+                onChange={handleChange}
+              />
 
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Suitable Occasions
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    "Casual",
-                    "Formal",
-                    "Business",
-                    "Party",
-                    "Wedding",
-                    "Beach",
-                    "Outdoor",
-                    "Sportswear",
-                  ].map((occasion) => (
-                    <label key={occasion} className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={formData.occasions.includes(occasion)}
-                        onChange={() => handleToggleAttribute(occasion, 'occasions')}
-                        className="hidden"
-                      />
-                      <span
-                        className={`inline-flex items-center justify-center px-3 py-1 text-sm font-medium rounded-md border border-gray-300 cursor-pointer ${
-                          formData.occasions.includes(occasion)
-                            ? "bg-blue-500 text-white"
-                            : "bg-gray-100"
-                        }`}
-                      >
-                        {occasion}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              </div>
+              <CheckboxButtonGroup
+                label="Suitable Occasions"
+                options={OCCASION_OPTIONS}
+                selectedValues={formData.occasions}
+                onChange={(value) => handleToggleItem(value, 'occasions')}
+                colorScheme="blue"
+              />
 
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Style Attributes
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    "Classic",
-                    "Modern",
-                    "Vintage",
-                    "Bohemian",
-                    "Minimalist",
-                    "Elegant",
-                    "Casual",
-                    "Trendy",
-                  ].map((style) => (
-                    <label key={style} className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={formData.style.includes(style)}
-                        onChange={() => handleToggleAttribute(style, 'style')}
-                        className="hidden"
-                      />
-                      <span
-                        className={`inline-flex items-center justify-center px-3 py-1 text-sm font-medium rounded-md border border-gray-300 cursor-pointer ${
-                          formData.style.includes(style)
-                            ? "bg-purple-500 text-white"
-                            : "bg-gray-100"
-                        }`}
-                      >
-                        {style}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              </div>
+              <CheckboxButtonGroup
+                label="Style Attributes"
+                options={STYLE_OPTIONS}
+                selectedValues={formData.style}
+                onChange={(value) => handleToggleItem(value, 'style')}
+                colorScheme="purple"
+              />
 
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Suitable Seasons
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    "Spring",
-                    "Summer",
-                    "Fall",
-                    "Winter",
-                    "All Seasons",
-                  ].map((season) => (
-                    <label key={season} className="flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={formData.season.includes(season)}
-                        onChange={() => handleToggleAttribute(season, 'season')}
-                        className="hidden"
-                      />
-                      <span
-                        className={`inline-flex items-center justify-center px-3 py-1 text-sm font-medium rounded-md border border-gray-300 cursor-pointer ${
-                          formData.season.includes(season)
-                            ? "bg-green-500 text-white"
-                            : "bg-gray-100"
-                        }`}
-                      >
-                        {season}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              </div>
+              <CheckboxButtonGroup
+                label="Suitable Seasons"
+                options={SEASON_OPTIONS}
+                selectedValues={formData.season}
+                onChange={(value) => handleToggleItem(value, 'season')}
+                colorScheme="green"
+              />
 
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Fit Type
-                </label>
-                <select
-                  name="fitType"
-                  value={formData.fitType}
-                  onChange={handleChange}
-                  className="w-full p-3 border rounded-md focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="Slim Fit">Slim Fit</option>
-                  <option value="Regular Fit">Regular Fit</option>
-                  <option value="Relaxed Fit">Relaxed Fit</option>
-                  <option value="Oversized">Oversized</option>
-                  <option value="Tailored">Tailored</option>
-                </select>
-              </div>
+              <FormSelect
+                label="Fit Type"
+                name="fitType"
+                value={formData.fitType}
+                onChange={handleChange}
+                options={FIT_TYPES}
+              />
 
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  Sizing Notes
-                </label>
-                <textarea
-                  name="sizingNotes"
-                  value={formData.sizingNotes}
-                  onChange={handleChange}
-                  placeholder="E.g.: This shirt has a slim fit through the chest and shoulders. We recommend sizing up if you prefer a looser fit."
-                  className="w-full p-3 border rounded-md h-32 focus:ring-2 focus:ring-blue-500"
-                ></textarea>
-              </div>
+              <FormTextArea
+                label="Sizing Notes"
+                name="sizingNotes"
+                value={formData.sizingNotes}
+                onChange={handleChange}
+                placeholder="E.g.: This shirt has a slim fit through the chest and shoulders. We recommend sizing up if you prefer a looser fit."
+              />
 
               {formData.category !== "Accessories" && (
-                <div className="border-t pt-4 mt-4">
-                  <label className="block text-sm font-medium mb-2">Size Chart Image</label>
-                  <div className="mt-2">
-                    <input
-                      type="file"
-                      ref={sizeChartInputRef}
-                      accept="image/*"
-                      onChange={handleSizeChartUpload}
-                      className="hidden"
-                    />
-                    
-                    {formData.sizeChartImage ? (
-                      <div className="relative border rounded-md p-2">
-                        <img
-                          src={typeof formData.sizeChartImage === 'string' ? formData.sizeChartImage : ''}
-                          alt="Size Chart"
-                          className="max-h-48 mx-auto"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => setFormData(prev => ({ ...prev, sizeChartImage: null }))}
-                          className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-sm text-gray-500 hover:text-gray-700"
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => sizeChartInputRef.current?.click()}
-                        className="w-full border-2 border-dashed border-gray-300 rounded-md p-6 flex flex-col items-center justify-center hover:border-blue-500 transition-colors"
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
-                          <path fillRule="evenodd" d="M4 5a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2V7a2 2 0 00-2-2h-1.586a1 1 0 01-.707-.293l-1.121-1.121A2 2 0 0011.172 3H8.828a2 2 0 00-1.414.586L6.293 4.707A1 1 0 015.586 5H4zm6 9a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
-                        </svg>
-                        <span className="mt-2 text-sm text-gray-500">Upload Size Chart</span>
-                      </button>
-                    )}
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Upload a detailed size chart image for this product. This will help customers find their perfect fit.
-                  </p>
-                </div>
+                <SizeChartUploader
+                  sizeChartImage={formData.sizeChartImage}
+                  onUpload={handleSizeChartUpload}
+                  onRemove={handleSizeChartRemove}
+                />
               )}
-            </form>
+            </div>
+
+            {/* Right column - Gallery and sizes */}
             <div className="space-y-6">
               <div className="w-full h-64 bg-gray-200 rounded-md flex items-center justify-center">
                 {mainProductImage ? (
@@ -640,6 +539,7 @@ export default function ProductForm({
                   <span className="text-gray-500">Main Product Image</span>
                 )}
               </div>
+
               <ProductGallery
                 gallery={formData.gallery}
                 onAddImages={handleAddImages}
@@ -648,30 +548,21 @@ export default function ProductForm({
                 onAddAdditionalImage={handleAddAdditionalImage}
                 onRemoveAdditionalImage={handleRemoveAdditionalImage}
               />
+              
               {formData.category !== "Accessories" && (
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    Size <span className="text-red-500">*</span>
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {["XS", "S", "M", "L", "XL", "2XL", "3XL"].map(size => (
-                      <label key={size} className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={formData.sizes.includes(size)}
-                          onChange={() => handleSizeChange(size)}
-                          className="hidden"
-                        />
-                        <span className={`inline-flex items-center justify-center px-4 py-3 text-sm font-medium rounded-md border border-gray-300 cursor-pointer ${formData.sizes.includes(size) ? "bg-gray-500 text-white" : "bg-gray-300"}`}>
-                          {size}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
+                <CheckboxButtonGroup
+                  label="Size"
+                  options={SIZE_OPTIONS}
+                  selectedValues={formData.sizes}
+                  onChange={(value) => handleToggleItem(value, 'sizes')}
+                  required={true}
+                  className="mt-4"
+                />
               )}
             </div>
           </div>
+          
+          {/* Buttons */}
           <div className="flex justify-end gap-4 mt-6">
             <button
               type="button"
