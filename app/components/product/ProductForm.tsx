@@ -5,7 +5,7 @@ import ProductBasicInfoForm from "./ProductBasicInfoForm";
 import ProductAttributesForm from "./ProductAttributesForm";
 import SizeChartUploader from "./SizeChartUploader";
 import SizeSelector from "./SizeSelector";
-import ProductGallery from "../ProductGallery";
+import ProductGallery from "./ProductGallery";
 
 interface ProductFormProps {
   initialData?: typeof initialProductFormData;
