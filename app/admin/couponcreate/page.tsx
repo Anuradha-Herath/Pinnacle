@@ -216,7 +216,7 @@ export default function CouponCreate() {
                   <h2 className="text-md font-medium mb-4">Coupon Information</h2>
                   <hr className="mb-4" />
                   <div className="mb-4 flex items-center gap-4">
-                  <div pl-10>
+                  <div className="pl-10">
                     <label className="block text-sm mb-1 pr-10">Coupon Code</label>
                     <input
                     type="text"

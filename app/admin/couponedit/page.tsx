@@ -94,7 +94,6 @@ export default function CouponEdit() {
   interface StatusMap {
     [key: string]: string;
   }
-
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSubmitting(true);
@@ -112,9 +111,25 @@ export default function CouponEdit() {
         ...formData,
         status: statusMap[formData.couponStatus] || formData.couponStatus
       };
-      } catch (err) {
+      
+      // Send the data to the API
+      const response = await fetch(`/api/coupons/${couponId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(couponData),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update coupon');
+      }
+      
+      alert('Coupon updated successfully!');
+      router.push('/admin/couponlist');    } catch (err) {
         if (err instanceof Error) {
-          setError(err instanceof Error ? err.message : 'An unknown error occurred');
+          setError(err.message);
           console.error('Error updating coupon:', err);
         } else {
           setError('An unknown error occurred');
@@ -143,10 +158,14 @@ export default function CouponEdit() {
       }
       
       alert('Coupon deleted successfully!');
-      router.push('/admin/couponlist');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An unknown error occurred');
-      console.error('Error deleting coupon:', err);
+      router.push('/admin/couponlist');    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+        console.error('Error deleting coupon:', err);
+      } else {
+        setError('An unknown error occurred');
+        console.error('Unknown error:', err);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -277,9 +296,8 @@ export default function CouponEdit() {
                 {/* Coupon Information and Customer Eligibility */}
                 <div className="bg-white p-4 rounded-lg shadow-md mb-6 max-w-2xl mx-auto">
                   <h2 className="text-md font-medium mb-4">Coupon Information</h2>
-                  <hr className="mb-4" />
-                  <div className="mb-4 flex items-center gap-4">
-                  <div pl-10>
+                  <hr className="mb-4" />                  <div className="mb-4 flex items-center gap-4">
+                  <div className="pl-10">
                     <label className="block text-sm mb-1 pr-10">Coupon Code</label>
                     <input
                     type="text"
