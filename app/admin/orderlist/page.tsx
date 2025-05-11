@@ -15,6 +15,20 @@ import {
 import Sidebar from "../../components/Sidebar";
 import { CogIcon, ShoppingCartIcon } from "lucide-react";
 
+// Define the Order interface
+interface Order {
+  orderNumber?: string;
+  createdAt?: string;
+  customer?: {
+    firstName?: string;
+  };
+  amount?: {
+    total?: number | string;
+  };
+  status?: string;
+  deliveryNumber?: string;
+}
+
 export default function OrdersPage() {
   const router = useRouter();
 
