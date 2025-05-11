@@ -66,7 +66,11 @@ export default function CouponEdit() {
         });
         
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'An unknown error occurred');
+        if (err instanceof Error) {
+          setError(err.message);
+        } else {
+          setError('An unknown error occurred');
+        }
         console.error('Error fetching coupon:', err);
       } finally {
         setLoading(false);
