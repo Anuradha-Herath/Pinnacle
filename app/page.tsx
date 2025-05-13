@@ -193,7 +193,7 @@ const HomePage = () => {
       
       {/* Banner */}
       <div className="banner">
-        <img src="/banner2.jpg" alt="Banner" className="w-full h-auto" />
+        <img src="/banner2.png" alt="Banner" className="w-full h-auto" />
       </div>
 
       {/* Main Content */}
