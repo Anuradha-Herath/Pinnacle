@@ -15,17 +15,14 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  let requestBody = null;
-
   try {
-      const text = await request.text();
-      if (!text) {
-        return NextResponse.json(
-          { error: "Empty request body" },
-          { status: 400 }
-        );
-      }
-      requestBody = JSON.parse(text);
+    const requestBody = await request.json();
+    if (!requestBody) {
+      return NextResponse.json(
+        { error: "Empty request body" },
+        { status: 400 }
+      );
+    }
 
     // Validating required fields
     if (
@@ -44,7 +41,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Cart is empty" }, { status: 400 });
     }
 
-    // Step 3: Validate shipping address if needed
+    // Validating shipping address if needed
     if (requestBody.deliveryMethod === "ship") {
       if (
         !requestBody.address ||
@@ -58,12 +55,6 @@ export async function POST(request: Request) {
         );
       }
     }
-
-    // Getting unique product IDs
-    const uniqueProductIds = [
-      ...new Set(requestBody.cart.map((item: any) => item.id)),
-    ];
-    //console.log("Unique product IDs:", uniqueProductIds);
 
     // Formating line items with simplified structure for database compatibility
     const simpleLineItems = requestBody.cart.map((item: any) => {
@@ -155,7 +146,6 @@ export async function POST(request: Request) {
 
         if (stripe) {
           try {
-            //Creating Stripe checkout session
             // Formating line items for Stripe API requirements
             const stripeLineItems = simpleLineItems.map((item: { price_data: { product_data: any; unit_amount: any; }; metadata: { imageUrl: any; }; quantity: any; }) => ({
               price_data: {
@@ -174,12 +164,8 @@ export async function POST(request: Request) {
               payment_method_types: ["card"],
               line_items: stripeLineItems,
               mode: "payment",
-              success_url: `${
-                process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
-              }/checkout?success=1&order=${newOrder.orderNumber}`,
-              cancel_url: `${
-                process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:3000"
-              }/checkout?canceled=1`,
+              success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/checkout?success=1&order=${newOrder.orderNumber}`,
+              cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/checkout?canceled=1`,
               metadata: { orderId: newOrder._id.toString() },
             });
 
