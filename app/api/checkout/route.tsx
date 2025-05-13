@@ -1,45 +1,13 @@
 import Order from "@/models/Order";
 import { NextResponse } from "next/server";
-import mongoose from "mongoose";
-
-// Safely initialize Stripe with error handling
+import connectDB from "@/lib/db";
 
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
-
-// Define TypeScript interfaces for better type safety
-interface CartItem {
-  id: string;
-  name: string;
-  price: number;
-  quantity: number;
-  image?: string;
-  size?: string;
-  color?: string;
-}
-
-interface CheckoutData {
-  email: string;
-  emailOffers: boolean;
-  deliveryMethod: string;
-  country?: string;
-  firstName: string;
-  lastName: string;
-  address?: string;
-  city?: string;
-  postalCode?: string;
-  phone: string;
-  cart: CartItem[];
-  subtotal: number;
-  shippingCost: number;
-  total: number;
-}
 
 export async function POST(request: Request) {
   let requestBody = null;
 
   try {
-    // Step 1: Parse request body safely
-    try {
       const text = await request.text();
       if (!text) {
         return NextResponse.json(
@@ -48,16 +16,8 @@ export async function POST(request: Request) {
         );
       }
       requestBody = JSON.parse(text);
-      console.log("Successfully parsed request body");
-    } catch (parseError) {
-      console.error("Error parsing JSON:", parseError);
-      return NextResponse.json(
-        { error: "Invalid JSON in request body" },
-        { status: 400 }
-      );
-    }
 
-    // Step 2: Validate basic required fields
+    // Validating required fields
     if (
       !requestBody.email ||
       !requestBody.firstName ||
@@ -89,13 +49,13 @@ export async function POST(request: Request) {
       }
     }
 
-    // Step 4: Extract unique product IDs
+    // Getting unique product IDs
     const uniqueProductIds = [
       ...new Set(requestBody.cart.map((item: any) => item.id)),
     ];
-    console.log("Unique product IDs:", uniqueProductIds);
+    //console.log("Unique product IDs:", uniqueProductIds);
 
-    // Modified Step 5: Format line items with simplified structure for database compatibility
+    // Formating line items with simplified structure for database compatibility
     const simpleLineItems = requestBody.cart.map((item: any) => {
       // Create a more detailed product name that includes color and size
       const productName = item.name;
@@ -134,7 +94,6 @@ export async function POST(request: Request) {
           product_data: fullProductName,
           unit_amount: Math.round(item.price * 100), // Convert to cents
         },
-        // Include metadata as a separate field
         metadata: {
           productId: item.id,
           color: item.color || "N/A",
@@ -144,13 +103,7 @@ export async function POST(request: Request) {
       };
     });
 
-    console.log(
-      "Created simplified line items compatible with the database schema"
-    );
-
-    // Step 6: Create a simplified order object to store
-    try {
-      console.log("Creating order object");
+    // Creating order object to store
       const orderData = {
         customer: {
           email: requestBody.email,
@@ -181,40 +134,24 @@ export async function POST(request: Request) {
         paymentStatus: "pending",
       };
 
-      console.log("Order data prepared for saving");
+        await connectDB();
 
-      // Step 7: Create a new order document
-      try {
-        console.log("Checking MongoDB connection");
-        // Ensure MongoDB is connected
-        if (mongoose.connection.readyState !== 1) {
-          await mongoose.connect(
-            process.env.MONGODB_URI || "mongodb://localhost:27017/pinnacle"
-          );
-          console.log("Connected to MongoDB");
-        }
-
-        console.log("Creating new Order instance");
         const newOrder = new Order(orderData);
 
-        console.log("Saving order to database");
         await newOrder.save();
 
-        console.log("Order saved successfully with ID:", newOrder._id);
-
-        // Step 8: Create Stripe checkout session if Stripe is available
-        let redirectUrl = "/payment"; // Default fallback
+        // Creating Stripe checkout session if Stripe is available
+        let redirectUrl = "/payment"; 
 
         if (stripe) {
           try {
-            console.log("Creating Stripe checkout session");
-
-            // Format line items for Stripe API requirements
+            //Creating Stripe checkout session
+            // Formating line items for Stripe API requirements
             const stripeLineItems = simpleLineItems.map((item: { price_data: { product_data: any; unit_amount: any; }; metadata: { imageUrl: any; }; quantity: any; }) => ({
               price_data: {
                 currency: "USD",
                 product_data: {
-                  name: item.price_data.product_data, // Includes color and size
+                  name: item.price_data.product_data, 
                   images: [item.metadata.imageUrl].filter(Boolean),
                 },
                 unit_amount: item.price_data.unit_amount,
@@ -222,13 +159,7 @@ export async function POST(request: Request) {
               quantity: item.quantity,
             }));
 
-            // Log the items being sent to Stripe
-            console.log(
-              "Stripe line items:",
-              JSON.stringify(stripeLineItems, null, 2)
-            );
-
-            // Create the Stripe session
+            // Creating the Stripe session
             const session = await stripe.checkout.sessions.create({
               payment_method_types: ["card"],
               line_items: stripeLineItems,
@@ -241,71 +172,28 @@ export async function POST(request: Request) {
               }/checkout?canceled=1`,
               metadata: { orderId: newOrder._id.toString() },
             });
-            console.log("metadata:", session.metadata);
-            console.log("Stripe session created:", session.id);
 
-            // Use Stripe's checkout URL
+            // Stripe's checkout URL is put to redirectUrl
             redirectUrl = session.url;
+
           } catch (stripeError) {
             console.error("Stripe session creation failed:", stripeError);
-            // Continue with local payment processing when Stripe fails
           }
         } else {
           console.log("Skipping Stripe - not initialized");
         }
 
-        // When sending to the client, include images in the response
-        const clientLineItems = simpleLineItems.map((item: { quantity: any; price_data: { currency: any; product_data: any; unit_amount: any; }; metadata: { imageUrl: any; }; }) => ({
-          quantity: item.quantity,
-          price_data: {
-            currency: item.price_data.currency,
-            product_data: {
-              name: item.price_data.product_data,
-              images: [item.metadata.imageUrl].filter(Boolean),
-            },
-            unit_amount: item.price_data.unit_amount,
-          },
-          metadata: item.metadata,
-        }));
-
-        // Return success with order info and appropriate redirect
         return NextResponse.json({
-          success: true,
-          orderId: newOrder.orderNumber || newOrder._id.toString(),
-          line_items: clientLineItems, // Send the enriched version to client
+          message: "Order created successfully", 
+          order: newOrder,
           redirect: redirectUrl,
+          status: 200,
         });
-      } catch (dbError: any) {
-        console.error("Database error:", dbError);
-        console.error("Database error stack:", dbError.stack);
-        return NextResponse.json(
-          {
-            error: "Database error",
-            details: dbError.message,
-            stack: dbError.stack,
-          },
-          { status: 500 }
-        );
-      }
-    } catch (orderCreationError: any) {
-      console.error("Error creating order:", orderCreationError);
-      return NextResponse.json(
-        {
-          error: "Failed to create order",
-          details: orderCreationError.message,
-        },
-        { status: 500 }
-      );
-    }
-  } catch (generalError: any) {
-    console.error("General error in checkout:", generalError);
-    console.error("Error stack:", generalError.stack);
+
+  } catch (error) {
+    console.error("General error in checkout:", error);
     return NextResponse.json(
-      {
-        error: "Checkout process failed",
-        details: generalError.message,
-        stack: generalError.stack,
-      },
+      { error: "Failed to create order"},
       { status: 500 }
     );
   }

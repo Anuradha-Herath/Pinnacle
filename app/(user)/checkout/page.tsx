@@ -36,21 +36,15 @@ function Checkout() {
     if (isClient && !cartClearedRef.current) {
       const searchParams = new URLSearchParams(window.location.search);
       if (searchParams.get("success") === "1") {
-        // Use async IIFE to properly handle the async clearCart
         (async () => {
           try {
             console.log("Success parameter detected, clearing cart");
-            cartClearedRef.current = true; // Set the flag first to prevent multiple attempts
+            cartClearedRef.current = true; 
             
             await clearCart();
             console.log("Cart cleared successfully after payment");
-            
-            // Force reload the page to ensure clean state
-            // This is optional but can help ensure a fresh start
-            // setTimeout(() => window.location.reload(), 500);
           } catch (error) {
             console.error("Error clearing cart:", error);
-            // Still mark as cleared even if there was an error to prevent endless retries
           }
         })();
       }
@@ -86,7 +80,7 @@ function Checkout() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Create an object with all the form data
+    // Creating an object with all the form data
     const checkoutData = {
       ...formData,
       cart: cart,
@@ -97,8 +91,7 @@ function Checkout() {
 
     console.log("Submitting checkout data:", checkoutData);
 
-    // Here you would typically send this data to your backend
-    fetch("/api/checkout", {
+    fetch("/api/orders", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -112,10 +105,9 @@ function Checkout() {
         return response.json();
       })
       .then((data) => {
-        // Handle successful checkout
         console.log("Checkout successful:", data);
 
-        // Store line items in session storage
+        // Storing line items in session storage
         if (data.line_items) {
           sessionStorage.setItem(
             "checkout_line_items",
@@ -156,7 +148,6 @@ function Checkout() {
     }, 200);
   };
 
-  // Function to get a nice display name for a color
   const getDisplayColorName = (color?: string): string => {
     if (!color) return "Default";
 
@@ -169,7 +160,6 @@ function Checkout() {
     return color;
   };
 
-  // If the component hasn't mounted yet, return a loading state
   if (!isClient) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -182,7 +172,7 @@ function Checkout() {
     );
   }
 
-  // Check URL parameters directly in the render function for success message
+  // Checking URL parameters directly in the render function for success message
   const isSuccess =
     typeof window !== "undefined" &&
     new URLSearchParams(window.location.search).get("success") === "1";
@@ -221,7 +211,7 @@ function Checkout() {
         <h1 className="text-3xl font-bold mb-6">Checkout</h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* LEFT SECTION: Order Summary (previously on right) */}
+  
           <div className="lg:col-span-7 order-2 lg:order-1">
             <div className="bg-white rounded-lg shadow-md p-6 sticky top-24">
               <h2 className="text-xl font-semibold mb-4 pb-2 border-b">
@@ -326,11 +316,9 @@ function Checkout() {
             </div>
           </div>
 
-          {/* RIGHT SECTION: Checkout Form (previously on left) */}
           <div className="lg:col-span-5 order-1 lg:order-2">
             <div className="bg-white rounded-lg shadow-md p-6">
               <form onSubmit={handleSubmit}>
-                {/* Contact Information */}
                 <section className="mb-8">
                   <h2 className="text-xl font-semibold mb-4">
                     Contact Information
