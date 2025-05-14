@@ -190,18 +190,18 @@ const HomePage = () => {
     <div className="bg-white min-h-screen flex flex-col">
       <Header />
       <HeaderPlaceholder />
-      
+
       {/* Banner */}
       <div className="banner">
-        <img src="/banner2.jpg" alt="Banner" className="w-full h-auto" />
+        <img src="/banner2.png" alt="Banner" className="w-full h-auto" />
       </div>
 
       {/* Main Content */}
       <div className="flex-grow">
         {/* Trending Products - Newly Created + Recently Stocked */}
-        <ProductCarousel 
-          title="Trending Products" 
-          products={trendingProducts.length > 0 ? trendingProducts : []} 
+        <ProductCarousel
+          title="Trending Products"
+          products={trendingProducts.length > 0 ? trendingProducts : []}
           loading={loading}
         />
 
@@ -211,9 +211,9 @@ const HomePage = () => {
           <div className="relative w-full md:w-[45%] overflow-hidden rounded-xl shadow-xl transform transition-all duration-500 hover:shadow-2xl group">
             <div className="aspect-[4/3] w-full">
               <img
-                src="/shopmen.webp"
+                src="/shopmen.png"
                 alt="Shop Men"
-                className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-105"
+                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
               />
             </div>
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent flex items-end justify-center pb-10 md:pb-12">
@@ -229,9 +229,9 @@ const HomePage = () => {
           <div className="relative w-full md:w-[45%] overflow-hidden rounded-xl shadow-xl transform transition-all duration-500 hover:shadow-2xl group mt-6 md:mt-0">
             <div className="aspect-[4/3] w-full">
               <img
-                src="/shopwomen.webp"
+                src="/shopwomen.jpg"
                 alt="Shop Women"
-                className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-105"
+                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
               />
             </div>
             <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent flex items-end justify-center pb-10 md:pb-12">
@@ -270,69 +270,77 @@ const HomePage = () => {
           <div className="flex justify-between items-center mb-6">
             <h2 className="text-2xl font-bold text-black">Best Sellers</h2>
             <div className="bg-gray-200 rounded-full p-1 inline-flex">
-              <button 
+              <button
                 className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${
-                  selectedGender === 'men' 
-                    ? 'bg-[black] text-white' 
-                    : 'text-black hover:bg-gray-300'
+                  selectedGender === "men"
+                    ? "bg-[black] text-white"
+                    : "text-black hover:bg-gray-300"
                 }`}
-                onClick={() => handleGenderToggle('men')}
+                onClick={() => handleGenderToggle("men")}
               >
                 MEN
               </button>
-              <button 
+              <button
                 className={`px-6 py-2 rounded-full text-sm font-medium transition-all ${
-                  selectedGender === 'women' 
-                    ? 'bg-[black] text-white' 
-                    : 'text-black hover:bg-gray-300'
+                  selectedGender === "women"
+                    ? "bg-[black] text-white"
+                    : "text-black hover:bg-gray-300"
                 }`}
-                onClick={() => handleGenderToggle('women')}
+                onClick={() => handleGenderToggle("women")}
               >
                 WOMEN
               </button>
             </div>
           </div>
-          
+
           {/* Products Carousel without title (using empty string) */}
           <ProductCarousel
             title=""
             products={
-              selectedGender === 'men'
-                ? categoryProducts.mens.length > 0 ? categoryProducts.mens : []
-                : categoryProducts.womens.length > 0 ? categoryProducts.womens : []
+              selectedGender === "men"
+                ? categoryProducts.mens.length > 0
+                  ? categoryProducts.mens
+                  : []
+                : categoryProducts.womens.length > 0
+                ? categoryProducts.womens
+                : []
             }
             loading={genderLoading}
           />
-          
+
           {/* Show message if no products in category */}
-          {!genderLoading && 
-            ((selectedGender === 'men' && categoryProducts.mens.length === 0) || 
-             (selectedGender === 'women' && categoryProducts.womens.length === 0)) && (
-            <div className="text-center py-8 text-black">
-              No products found for {selectedGender === 'men' ? 'men' : 'women'}.
-            </div>
-          )}
+          {!genderLoading &&
+            ((selectedGender === "men" && categoryProducts.mens.length === 0) ||
+              (selectedGender === "women" &&
+                categoryProducts.womens.length === 0)) && (
+              <div className="text-center py-8 text-black">
+                No products found for{" "}
+                {selectedGender === "men" ? "men" : "women"}.
+              </div>
+            )}
         </div>
 
         {/* Accessories - Updated to match the loading style of other carousels */}
         <div className="px-4 md:px-8 lg:px-12 my-8">
           <ProductCarousel
             title="Accessories"
-            products={categoryProducts.accessories && categoryProducts.accessories.length > 0 
-              ? categoryProducts.accessories 
-              : []
+            products={
+              categoryProducts.accessories &&
+              categoryProducts.accessories.length > 0
+                ? categoryProducts.accessories
+                : []
             }
             loading={accessoriesLoading}
           />
-          
+
           {/* Show message if no accessories products and not loading */}
-          {!accessoriesLoading && 
-            categoryProducts.accessories && 
+          {!accessoriesLoading &&
+            categoryProducts.accessories &&
             categoryProducts.accessories.length === 0 && (
-            <div className="text-center py-8 text-black">
-              No accessories products found.
-            </div>
-          )}
+              <div className="text-center py-8 text-black">
+                No accessories products found.
+              </div>
+            )}
         </div>
       </div>
 
