@@ -29,8 +29,7 @@ const TopBar = ( { heading } : TopBarProps ) => {
         >
           <Cog6ToothIcon className="h-6 w-6 text-gray-600" />
         </button>
-
-        {/* Clock Icon (e.g., Order History, Activity Log, etc.) */}
+        
         <button
           onClick={() => router.push("/admin/history")}
           className="p-2 hover:bg-gray-200 rounded-lg"
