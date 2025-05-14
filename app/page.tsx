@@ -211,7 +211,7 @@ const HomePage = () => {
           <div className="relative w-full md:w-[45%] overflow-hidden rounded-xl shadow-xl transform transition-all duration-500 hover:shadow-2xl group">
             <div className="aspect-[4/3] w-full">
               <img
-                src="/shopmen.webp"
+                src="/shopmen.png"
                 alt="Shop Men"
                 className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-105"
               />
@@ -229,7 +229,7 @@ const HomePage = () => {
           <div className="relative w-full md:w-[45%] overflow-hidden rounded-xl shadow-xl transform transition-all duration-500 hover:shadow-2xl group mt-6 md:mt-0">
             <div className="aspect-[4/3] w-full">
               <img
-                src="/shopwomen.webp"
+                src="/shopwomen.jpg"
                 alt="Shop Women"
                 className="w-full h-full object-contain transition-transform duration-700 group-hover:scale-105"
               />
