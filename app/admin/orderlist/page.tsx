@@ -113,11 +113,6 @@ export default function OrdersPage() {
               />
               {/* Order Status Filter Dropdown */}
               <select
-                // value={filterStatus}
-                // onChange={(e) => {
-                //   setFilterStatus(e.target.value);
-                //   setCurrentPage(1); // Reset to page 1 when filter changes
-                // }}
                 className="border px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
               >
                 <option value="">All Statuses</option>
@@ -163,17 +158,16 @@ export default function OrdersPage() {
                     <td className="p-3">
                       <span
                         className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${
-                          order.status === "Order Confirmed"
-                            ? "bg-blue-300 text-blue-800"
-                            : order.status === "Order Completed"
+                          order.status === "Order Completed"
                             ? "bg-green-300 text-green-800"
                             : order.status === "Out For Delivery"
                             ? "bg-orange-300 text-orange-800"
                             : order.status === "Shipping"
                             ? "bg-cyan-300 text-cyan-800"
-                            : order.status === "Processing" ||
-                              order.status === "pending"
-                            ? "bg-yellow-300 text-yellow-800"
+                            : order.status === "Processing" 
+                            ?"bg-yellow-300 text-yellow-800"
+                            : order.status === "pending"
+                            ? "bg-gray-200 text-black-800"
                             : "bg-gray-100 text-gray-800"
                         }`}
                       >
@@ -196,39 +190,6 @@ export default function OrdersPage() {
               )}
             </tbody>
           </table>
-
-          {/* Pagination - Updated */}
-          {/* {orders.length > 0 && (
-            <div className="flex justify-center mt-6">
-              <div className="flex items-center gap-2">
-                <button
-                  className={`px-4 py-2 rounded-md ${
-                    currentPage === 1
-                      ? "bg-orange-200 text-gray-700 cursor-not-allowed"
-                      : "bg-orange-500 text-white hover:bg-orange-600"
-                  }`}
-                  onClick={handlePreviousPage}
-                  disabled={currentPage === 1}
-                >
-                  Previous
-                </button>
-                <span className="mx-2 text-gray-600">
-                  Page {currentPage} of {totalPages}
-                </span>
-                <button
-                  className={`px-4 py-2 rounded-md ${
-                    currentPage === totalPages
-                      ? "bg-orange-200 text-gray-700 cursor-not-allowed"
-                      : "bg-orange-500 text-white hover:bg-orange-600"
-                  }`}
-                  onClick={handleNextPage}
-                  disabled={currentPage === totalPages}
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          )} */}
         </div>
       </div>
     </div>

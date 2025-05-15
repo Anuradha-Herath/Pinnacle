@@ -56,20 +56,16 @@ export async function POST(request: Request) {
       }
     }
 
-    // Formating line items with simplified structure for database compatibility
     const simpleLineItems = requestBody.cart.map((item: any) => {
-      // Create a more detailed product name that includes color and size
       const productName = item.name;
       const productDetails = [];
 
       if (item.color) {
-        // Extract just the filename from the color URL if it's a URL
         let colorName = item.color;
         if (colorName.startsWith("http") || colorName.includes("/")) {
-          // Extract the filename without extension
           const parts = colorName.split("/");
           const fileName = parts[parts.length - 1];
-          colorName = fileName.split(".")[0]; // Remove file extension
+          colorName = fileName.split(".")[0];
         }
         productDetails.push(`Color: ${colorName}`);
       }
@@ -78,22 +74,19 @@ export async function POST(request: Request) {
         productDetails.push(`Size: ${item.size}`);
       }
 
-      // Full product description including variants
       const fullProductName =
         productDetails.length > 0
           ? `${productName} (${productDetails.join(", ")})`
           : productName;
 
-      // Store image URL separately for session storage
       const imageUrl = item.image || "";
 
       return {
         quantity: item.quantity,
         price_data: {
           currency: "USD",
-          // Convert to string to match the schema expectation
           product_data: fullProductName,
-          unit_amount: Math.round(item.price * 100), // Convert to cents
+          unit_amount: Math.round(item.price * 100),
         },
         metadata: {
           productId: item.id,
