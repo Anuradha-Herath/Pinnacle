@@ -6,8 +6,6 @@ import { Button, Link, CircularProgress } from "@mui/material";
 import Header from "@/app/components/Header";
 import Footer from "@/app/components/Footer";
 import Sidebar from "@/app/components/Sidebar"; // Import the Sidebar component
-import ReviewButton from "@/app/components/ViewDetailsButtonInReivew";
-import ProfilePageToNav from "@/app/components/ProfilePageToNav";
 import { useAuth } from "@/app/context/AuthContext";
 import { useRouter } from "next/navigation";
 
