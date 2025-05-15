@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useAuth } from "./AuthContext";
 import { toast } from "react-hot-toast";
-import { getValidImageUrl } from "@/lib/imageUtils"; // Import this utility
+import { getValidImageUrl } from "@/lib/imageUtils"; 
 import { trackProductAction } from '@/lib/userPreferenceService';
 
 // Define types
@@ -11,12 +11,11 @@ export interface CartItem {
   id: string;
   name: string;
   price: number;
-  discountedPrice?: number; // Add this line for discounted price
+  discountedPrice?: number; 
   image: string;
   size?: string;
   color?: string;
   quantity: number;
-  // Add missing properties that are used in trackProductAction
   category?: string;
   subCategory?: string;
 }

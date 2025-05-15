@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Star, Minus, Plus, ChevronDown, Twitter, Facebook, MessageCircle } from "lucide-react";
+import { Star, Minus, Plus, ChevronDown, Copy, MessageCircle } from "lucide-react";
 import Image from "next/image";
 import SizeGuideModal from "./SizeGuideModal";
 
@@ -18,12 +18,17 @@ interface ProductInformationProps {
     rating: number;
     category?: string;
     sizeChartImage?: string; // Add field for size chart image
+    inventoryStatus?: string | null; // Add inventory status
   };
   quantity: number;
   updateQuantity: (value: number) => void;
   selectedSize: string | null;
   setSelectedSize: (size: string) => void;
   onImageSelect?: (index: number) => void;
+  isOutOfStock?: boolean; // Add out of stock parameter
+  colorSizeStock?: Record<string, Record<string, number>>; // Add color-size stock data
+  selectedColor?: string | null; // Add currently selected color
+  isSizeInStock?: (size: string) => boolean; // Function to check if size is in stock
 }
 
 const ProductInformation: React.FC<ProductInformationProps> = ({ 
@@ -32,7 +37,11 @@ const ProductInformation: React.FC<ProductInformationProps> = ({
   updateQuantity, 
   selectedSize, 
   setSelectedSize,
-  onImageSelect 
+  onImageSelect,
+  isOutOfStock = false, // Default to false
+  colorSizeStock = {},
+  selectedColor = null,
+  isSizeInStock = () => true, // Default to always in stock
 }) => {
   // State for size guide modal
   const [isSizeGuideOpen, setIsSizeGuideOpen] = useState(false);
@@ -142,6 +151,23 @@ const ProductInformation: React.FC<ProductInformationProps> = ({
       {/* Product Name */}
       <h1 className="text-3xl font-bold mb-2">{product.name}</h1>
       
+      {/* Add inventory status badge */}
+      {product.inventoryStatus && (
+        <div className="mb-4">
+          <span className={`inline-block px-3 py-1 text-sm font-semibold rounded-full ${
+            product.inventoryStatus === "In Stock" 
+              ? "bg-green-100 text-green-800" 
+              : product.inventoryStatus === "Out Of Stock" 
+              ? "bg-red-100 text-red-800"
+              : product.inventoryStatus === "Newly Added"
+              ? "bg-yellow-100 text-yellow-800"
+              : "bg-gray-100 text-gray-800"
+          }`}>
+            {product.inventoryStatus}
+          </span>
+        </div>
+      )}
+      
       {/* Rating */}
       <div className="flex items-center mb-4">
         <div className="flex text-black mr-2">
@@ -176,7 +202,9 @@ const ProductInformation: React.FC<ProductInformationProps> = ({
       {/* Product Images - Replacing color circles */}
       {product.images && product.images.length > 1 && (
         <div className="mb-6">
-          <h2 className="text-sm font-medium mb-2">Available Colors</h2>
+            <h2 className="text-sm font-medium mb-2">
+            Available Colors {selectedColor ? ` : ${selectedColor}` : ""}
+            </h2>
           <div className="flex space-x-3 overflow-x-auto py-2">
             {product.images.map((image, index) => (
               <button
@@ -235,62 +263,90 @@ const ProductInformation: React.FC<ProductInformationProps> = ({
             </button>
           </div>
           <div className="flex flex-wrap gap-2">
-            {product.sizes.map((size) => (
-              <button
-                key={size}
-                onClick={() => setSelectedSize(size)}
-                className={`px-4 py-2 border text-sm transition-colors ${
-                  selectedSize === size
-                    ? "border-black bg-black text-white"
-                    : "border-gray-300 hover:border-gray-500"
-                }`}
-              >
-                {size}
-              </button>
-            ))}
+            {product.sizes.map((size) => {
+              const inStock = isSizeInStock(size);
+              return (
+                <button
+                  key={size}
+                  onClick={() => setSelectedSize(size)}
+                  disabled={!inStock}
+                  className={`px-4 py-2 border text-sm transition-colors relative ${
+                    selectedSize === size
+                      ? "border-black bg-black text-white"
+                      : inStock 
+                        ? "border-gray-300 hover:border-gray-500"
+                        : "border-gray-200 text-gray-400 cursor-not-allowed"
+                  }`}
+                >
+                  {size}
+                  
+                  {/* Out of stock indicator */}
+                  {!inStock && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="absolute top-1/2 left-0 right-0 border-t border-gray-400 -rotate-12"></div>
+                    </div>
+                  )}
+                </button>
+              );
+            })}
           </div>
+          
+          {/* Size availability message */}
+          {selectedSize && !isSizeInStock(selectedSize) && selectedColor && (
+            <p className="mt-2 text-sm text-red-600">
+              Size {selectedSize} is currently out of stock in {selectedColor}
+            </p>
+          )}
         </div>
       )}
       
-      {/* Quantity */}
+      {/* Quantity - disable buttons only when out of stock (not when newly added) */}
       <div className="mb-8">
         <h2 className="text-sm font-medium mb-2">Quantity</h2>
         <div className="inline-flex items-center border">
           <button
             onClick={() => updateQuantity(-1)}
-            className="px-4 py-2 hover:bg-gray-100"
-            disabled={quantity <= 1}
+            className={`px-4 py-2 ${isOutOfStock ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'}`}
+            disabled={quantity <= 1 || isOutOfStock}
           >
             <Minus size={16} />
           </button>
           <span className="px-6 py-2 border-x">{quantity}</span>
           <button
             onClick={() => updateQuantity(1)}
-            className="px-4 py-2 hover:bg-gray-100"
+            className={`px-4 py-2 ${isOutOfStock ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'}`}
+            disabled={isOutOfStock}
           >
             <Plus size={16} />
           </button>
         </div>
+        {isOutOfStock && (
+          <p className="mt-2 text-sm text-red-600">
+            This item is currently out of stock
+          </p>
+        )}
+        {product.inventoryStatus === "Newly Added" && (
+          <p className="mt-2 text-sm text-yellow-600">
+            This is a newly added product. It will be available soon.
+          </p>
+        )}
       </div>
       
        {/* Social Media Sharing */}
        <div className="mb-8">
         <h2 className="text-sm font-medium mb-2">Share</h2>
         <div className="flex space-x-3">
-          <button
-            onClick={shareOnTwitter}
+            <button
+            onClick={() => {
+              navigator.clipboard.writeText(window.location.href);
+              alert("Page URL copied to clipboard!");
+            }}
             className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 transition-colors"
-            aria-label="Share on Twitter"
-          >
-            <Twitter size={20} className="text-black-800" />
-          </button>
-          <button
-            onClick={shareOnFacebook}
-            className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 transition-colors"
-            aria-label="Share on Facebook"
-          >
-            <Facebook size={20} className="text-black-800" />
-          </button>
+            aria-label="Copy Page URL"
+            >
+           
+            <Copy size={20} className="text-black-800" />
+            </button>
            <button
             onClick={shareOnWhatsApp}
             className="p-2 rounded-full bg-gray-200 hover:bg-gray-300 transition-colors"

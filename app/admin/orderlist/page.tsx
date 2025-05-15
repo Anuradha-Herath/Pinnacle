@@ -1,32 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import {
-  EyeIcon,
-  BellIcon,
-  Cog6ToothIcon,
-  ClockIcon,
-  CheckCircleIcon,
-  TruckIcon,
-  CubeIcon,
-  ShieldCheckIcon,
-} from "@heroicons/react/24/solid";
+import { CubeIcon, EyeIcon } from "@heroicons/react/24/solid";
 import Sidebar from "../../components/Sidebar";
-import { CogIcon, ShoppingCartIcon } from "lucide-react";
+import { ShoppingCartIcon, CheckCircleIcon, TruckIcon, ShieldCheckIcon } from "lucide-react";
+import TopBar from "@/app/components/admin/TopBar";
 
 export default function OrdersPage() {
-  const router = useRouter();
-
-  const [orders, setOrders] = useState<Order[]>([]);
-  // State for filtering orders by status
-  const [filterStatus, setFilterStatus] = useState("");
-
-  // Add pagination state
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10); // Show 10 orders per page
-  const [totalPages, setTotalPages] = useState(1);
-  const [displayedOrders, setDisplayedOrders] = useState<Order[]>([]);
+  
+  const [orders, setOrders] = useState([]);
 
   useEffect(() => {
     // Fetch orders from the API
@@ -46,86 +28,13 @@ export default function OrdersPage() {
     fetchOrders();
   }, []);
 
-  // Filter orders based on selected status
-  const filteredOrders = filterStatus
-    ? orders.filter((order) => order.status === filterStatus)
-    : orders;
-
-  // Apply pagination when filtered orders or page changes
-  useEffect(() => {
-    applyPagination(filteredOrders);
-    // Calculate total pages
-    const total = Math.ceil(filteredOrders.length / itemsPerPage);
-    setTotalPages(total > 0 ? total : 1);
-  }, [currentPage, filteredOrders, itemsPerPage]);
-
-  // Handle pagination
-  const applyPagination = (items: Order[]) => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    setDisplayedOrders(items.slice(startIndex, endIndex));
-  };
-
-  // Handle pagination navigation
-  const handlePreviousPage = () => {
-    if (currentPage > 1) {
-      setCurrentPage(currentPage - 1);
-    }
-  };
-
-  const handleNextPage = () => {
-    if (currentPage < totalPages) {
-      setCurrentPage(currentPage + 1);
-    }
-  };
 
   return (
     <div className="flex">
       <Sidebar />
       <div className="min-h-screen bg-gray-50 p-6 flex-1">
-        {/* Top Bar with Icons */}
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-semibold">Orders List</h1>
 
-          {/* Top-Right Icons */}
-          <div className="flex items-center gap-2">
-            {/* Notifications */}
-            <button
-              onClick={() => router.push("/admin/notifications")}
-              className="p-2 hover:bg-gray-200 rounded-lg"
-            >
-              <BellIcon className="h-6 w-6 text-gray-600" />
-            </button>
-
-            {/* Settings */}
-            <button
-              onClick={() => router.push("/admin/settings")}
-              className="p-2 hover:bg-gray-200 rounded-lg"
-            >
-              <Cog6ToothIcon className="h-6 w-6 text-gray-600" />
-            </button>
-
-            {/* Clock Icon (e.g., Order History, Activity Log, etc.) */}
-            <button
-              onClick={() => router.push("/admin/history")}
-              className="p-2 hover:bg-gray-200 rounded-lg"
-            >
-              <ClockIcon className="h-6 w-6 text-gray-600" />
-            </button>
-
-            {/* Profile */}
-            <button
-              onClick={() => router.push("../../profilepage")}
-              className="p-1 rounded-full border-2 border-gray-300"
-            >
-              <img
-                src="/p9.webp"
-                alt="Profile"
-                className="h-8 w-8 rounded-full object-cover"
-              />
-            </button>
-          </div>
-        </div>
+        <TopBar heading="Order List" />
 
         {/* Orders Summary Cards */}
         <div className="grid grid-cols-3 gap-6 mb-8">
@@ -204,11 +113,6 @@ export default function OrdersPage() {
               />
               {/* Order Status Filter Dropdown */}
               <select
-                value={filterStatus}
-                onChange={(e) => {
-                  setFilterStatus(e.target.value);
-                  setCurrentPage(1); // Reset to page 1 when filter changes
-                }}
                 className="border px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
               >
                 <option value="">All Statuses</option>
@@ -234,8 +138,8 @@ export default function OrdersPage() {
               </tr>
             </thead>
             <tbody>
-              {displayedOrders.length > 0 ? (
-                displayedOrders.map((order, index) => (
+              {orders.length > 0 ? (
+                orders.map((order: { orderNumber: string; createdAt: string; customer: { firstName: string; }; amount: { total: string; }; status: string; }, index) => (
                   <tr key={index} className="border-t">
                     <td className="p-3">{order.orderNumber || "N/A"}</td>
                     <td className="p-3">
@@ -247,24 +151,23 @@ export default function OrdersPage() {
                       {order.customer?.firstName || "N/A"}
                     </td>
                     <td className="p-3">
-                      <span className="text-orange-500">$</span>{" "}
+                      <span className="text-orange-500">$</span>
                       {order.amount?.total || "N/A"}
                     </td>
                     {/* <td className="p-3">{order.deliveryNumber}</td> */}
                     <td className="p-3">
                       <span
                         className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${
-                          order.status === "Order Confirmed"
-                            ? "bg-blue-300 text-blue-800"
-                            : order.status === "Order Completed"
+                          order.status === "Order Completed"
                             ? "bg-green-300 text-green-800"
                             : order.status === "Out For Delivery"
                             ? "bg-orange-300 text-orange-800"
                             : order.status === "Shipping"
                             ? "bg-cyan-300 text-cyan-800"
-                            : order.status === "Processing" ||
-                              order.status === "pending"
-                            ? "bg-yellow-300 text-yellow-800"
+                            : order.status === "Processing" 
+                            ?"bg-yellow-300 text-yellow-800"
+                            : order.status === "pending"
+                            ? "bg-gray-200 text-black-800"
                             : "bg-gray-100 text-gray-800"
                         }`}
                       >
@@ -287,39 +190,6 @@ export default function OrdersPage() {
               )}
             </tbody>
           </table>
-
-          {/* Pagination - Updated */}
-          {filteredOrders.length > 0 && (
-            <div className="flex justify-center mt-6">
-              <div className="flex items-center gap-2">
-                <button
-                  className={`px-4 py-2 rounded-md ${
-                    currentPage === 1
-                      ? "bg-orange-200 text-gray-700 cursor-not-allowed"
-                      : "bg-orange-500 text-white hover:bg-orange-600"
-                  }`}
-                  onClick={handlePreviousPage}
-                  disabled={currentPage === 1}
-                >
-                  Previous
-                </button>
-                <span className="mx-2 text-gray-600">
-                  Page {currentPage} of {totalPages}
-                </span>
-                <button
-                  className={`px-4 py-2 rounded-md ${
-                    currentPage === totalPages
-                      ? "bg-orange-200 text-gray-700 cursor-not-allowed"
-                      : "bg-orange-500 text-white hover:bg-orange-600"
-                  }`}
-                  onClick={handleNextPage}
-                  disabled={currentPage === totalPages}
-                >
-                  Next
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>

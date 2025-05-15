@@ -398,7 +398,7 @@ const Header = () => {
                 <div className="relative">
                   <input
                     type="text"
-                    placeholder="Search for products or brands"
+                    placeholder="Search for products"
                     value={searchQuery}
                     onChange={(e) => {
                       setSearchQuery(e.target.value);

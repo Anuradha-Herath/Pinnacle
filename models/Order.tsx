@@ -12,7 +12,6 @@ const LineItemSchema = new Schema({
       required: true,
       default: "USD",
     },
-    // Keep as string to ensure compatibility
     product_data: {
       type: String,
       required: true,
@@ -26,7 +25,6 @@ const LineItemSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: "Product",
   },
-  // Add metadata to store additional product information
   metadata: {
     productId: String,
     color: String,

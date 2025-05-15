@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import { Trash2, Plus, Minus, ShoppingBag } from "lucide-react";
-import { useCart } from "../context/CartContext";
-import Header from "../components/Header";
-import Footer from "../components/Footer";
+import { useCart } from "@/app/context/CartContext"; // Updated path
+import Header from "@/app/components/Header"; // Updated path
+import Footer from "@/app/components/Footer"; // Updated path
 import { cartNotifications } from "@/lib/notificationService";
 import { getValidImageUrl, handleImageError } from "@/lib/imageUtils";
 

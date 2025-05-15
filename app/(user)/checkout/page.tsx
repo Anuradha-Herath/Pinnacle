@@ -1,21 +1,17 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { Search, User, Heart, ShoppingBag, ChevronDown } from "react-feather";
 import Footer from "../../components/Footer";
 import Header from "../../components/Header";
 import { useCart, CartItem } from "../../context/CartContext";
 import { getValidImageUrl, handleImageError } from "@/lib/imageUtils";
-import { useRouter } from "next/navigation";
+import Success from "@/app/components/checkout/Success";
+import Cancel from "@/app/components/checkout/Cancel";
 
 function Checkout() {
   const [shipping, setShipping] = useState("ship");
-  const [searchQuery, setSearchQuery] = useState("");
-  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [isClient, setIsClient] = useState(false);
   const { cart, getCartTotal, isLoading, clearCart } = useCart();
-  const router = useRouter();
   const cartClearedRef = useRef(false);
 
   const [formData, setFormData] = useState({
@@ -36,21 +32,15 @@ function Checkout() {
     if (isClient && !cartClearedRef.current) {
       const searchParams = new URLSearchParams(window.location.search);
       if (searchParams.get("success") === "1") {
-        // Use async IIFE to properly handle the async clearCart
         (async () => {
           try {
             console.log("Success parameter detected, clearing cart");
-            cartClearedRef.current = true; // Set the flag first to prevent multiple attempts
+            cartClearedRef.current = true; 
             
             await clearCart();
             console.log("Cart cleared successfully after payment");
-            
-            // Force reload the page to ensure clean state
-            // This is optional but can help ensure a fresh start
-            // setTimeout(() => window.location.reload(), 500);
           } catch (error) {
             console.error("Error clearing cart:", error);
-            // Still mark as cleared even if there was an error to prevent endless retries
           }
         })();
       }
@@ -86,19 +76,18 @@ function Checkout() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Create an object with all the form data
+    // Creating an object with all the form data
     const checkoutData = {
       ...formData,
       cart: cart,
       subtotal: getCartTotal(),
-      shippingCost: shipping === "ship" ? 650 : 0,
-      total: shipping === "ship" ? getCartTotal() + 650 : getCartTotal(),
+      shippingCost: shipping === "ship" ? 10 : 0,
+      total: shipping === "ship" ? getCartTotal() + 10 : getCartTotal(),
     };
 
     console.log("Submitting checkout data:", checkoutData);
 
-    // Here you would typically send this data to your backend
-    fetch("/api/checkout", {
+    fetch("/api/orders", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -112,10 +101,9 @@ function Checkout() {
         return response.json();
       })
       .then((data) => {
-        // Handle successful checkout
         console.log("Checkout successful:", data);
 
-        // Store line items in session storage
+        // Storing line items in session storage
         if (data.line_items) {
           sessionStorage.setItem(
             "checkout_line_items",
@@ -143,20 +131,6 @@ function Checkout() {
     setIsClient(true);
   }, []);
 
-  const handleMouseEnter = (category: string) => {
-    if (timeoutRef.current !== null) {
-      clearTimeout(timeoutRef.current);
-    }
-    setOpenDropdown(category);
-  };
-
-  const handleMouseLeave = () => {
-    timeoutRef.current = setTimeout(() => {
-      setOpenDropdown(null);
-    }, 200);
-  };
-
-  // Function to get a nice display name for a color
   const getDisplayColorName = (color?: string): string => {
     if (!color) return "Default";
 
@@ -169,7 +143,6 @@ function Checkout() {
     return color;
   };
 
-  // If the component hasn't mounted yet, return a loading state
   if (!isClient) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -182,34 +155,18 @@ function Checkout() {
     );
   }
 
-  // Check URL parameters directly in the render function for success message
-  const isSuccess =
-    typeof window !== "undefined" &&
-    new URLSearchParams(window.location.search).get("success") === "1";
-
-  if (isSuccess) {
+  // Checking URL parameters for success or cancel
+  if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("success") === "1") {
     const orderNumber = new URLSearchParams(window.location.search).get(
       "order"
     );
     return (
-      <div className="min-h-screen flex flex-col bg-gray-50">
-        <Header />
-        <div className="m-3 flex items-center justify-center bg-gray-50">
-          <div className="p-6 bg-white rounded-lg shadow-md text-center">
-            <h1 className="text-2xl font-bold text-green-600 mb-4">Success!</h1>
-            <p className="text-lg text-gray-700">
-              Payment successful! Your order number is {orderNumber}.
-            </p>
-            <button
-              onClick={() => router.push("/")}
-              className="mt-6 px-4 py-2 bg-black text-white rounded-md hover:bg-gray-900 transition"
-            >
-              Go to Homepage
-            </button>
-          </div>
-        </div>
-        <Footer />
-      </div>
+      <Success orderNumber={orderNumber || "N/A"} />
+    );
+  }
+  else if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("canceled") === "1"){
+    return (
+      <Cancel />
     );
   }
 
@@ -221,7 +178,7 @@ function Checkout() {
         <h1 className="text-3xl font-bold mb-6">Checkout</h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          {/* LEFT SECTION: Order Summary (previously on right) */}
+  
           <div className="lg:col-span-7 order-2 lg:order-1">
             <div className="bg-white rounded-lg shadow-md p-6 sticky top-24">
               <h2 className="text-xl font-semibold mb-4 pb-2 border-b">
@@ -307,11 +264,11 @@ function Checkout() {
                   <>
                     <div className="flex justify-between py-1">
                       <span className="text-gray-600">Shipping</span>
-                      <span className="font-medium">$650.00</span>
+                      <span className="font-medium">$10.00</span>
                     </div>
                     <div className="flex justify-between py-3 text-lg font-semibold border-t border-gray-200 mt-2">
                       <span>Total</span>
-                      <span>${(getCartTotal() + 650).toFixed(2)}</span>
+                      <span>${(getCartTotal() + 10).toFixed(2)}</span>
                     </div>
                   </>
                 ) : (
@@ -326,11 +283,9 @@ function Checkout() {
             </div>
           </div>
 
-          {/* RIGHT SECTION: Checkout Form (previously on left) */}
           <div className="lg:col-span-5 order-1 lg:order-2">
             <div className="bg-white rounded-lg shadow-md p-6">
               <form onSubmit={handleSubmit}>
-                {/* Contact Information */}
                 <section className="mb-8">
                   <h2 className="text-xl font-semibold mb-4">
                     Contact Information
@@ -651,7 +606,7 @@ function Checkout() {
                         />
                         <span>Standard Shipping</span>
                       </div>
-                      <span className="font-medium">$650.00</span>
+                      <span className="font-medium">$10.00</span>
                     </label>
                   ) : (
                     <div className="p-4 border border-gray-300 rounded-lg bg-gray-50">
@@ -686,25 +641,6 @@ function Checkout() {
                     </div>
                   )}
                 </section>
-
-                <input
-                  type="hidden"
-                  name="cartItems"
-                  value={JSON.stringify(cart)}
-                />
-                <input
-                  type="hidden"
-                  name="subtotal"
-                  value={getCartTotal().toString()}
-                />
-                <input
-                  type="hidden"
-                  name="total"
-                  value={(shipping === "ship"
-                    ? getCartTotal() + 650
-                    : getCartTotal()
-                  ).toString()}
-                />
 
                 <button
                   type="submit"

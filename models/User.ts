@@ -21,8 +21,13 @@ export interface IUser extends Document {
   wishlist: string[]; // Array of product IDs
   cart: CartItem[]; // Array of cart items
   points: number; // Ensure this is required in the interface
+  profilePicture: string; // Add this field for profile picture URL
+  phone?: string; // Add phone field
+  address?: string; // Add address field
   resetPasswordToken?: string;
   resetPasswordExpires?: number;
+  passwordResetToken?: string; // Add password reset token field
+  passwordResetExpires?: Date; // Add password reset expires field
   createdAt: Date;
   updatedAt: Date;
   comparePassword: (candidatePassword: string) => Promise<boolean>;
@@ -99,8 +104,30 @@ const UserSchema = new Schema<IUser>(
       min: 0, // Ensure points can't go below zero
     },
     
+    profilePicture: {
+      type: String,
+      default: '/p9.webp' // Change from '/default-profile.png' to an existing image
+    },
+    
+    phone: {
+      type: String,
+      required: false,
+    },
+    
+    address: {
+      type: String,
+      required: false,
+    },
+    
     resetPasswordToken: String,
     resetPasswordExpires: Number,
+    
+    passwordResetToken: {
+      type: String,
+    },
+    passwordResetExpires: {
+      type: Date,
+    },
   },
   { timestamps: true }
 );
@@ -125,3 +152,5 @@ UserSchema.methods.comparePassword = async function (candidatePassword: string):
 
 // Create or get User model
 export default mongoose.models.User || mongoose.model<IUser>('User', UserSchema);
+
+
