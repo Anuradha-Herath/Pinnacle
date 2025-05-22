@@ -28,6 +28,7 @@ export interface IUser extends Document {
   resetPasswordExpires?: number;
   passwordResetToken?: string; // Add password reset token field
   passwordResetExpires?: Date; // Add password reset expires field
+  stripeCustomerId: string | null; // Add this field for Stripe customer ID
   createdAt: Date;
   updatedAt: Date;
   comparePassword: (candidatePassword: string) => Promise<boolean>;
@@ -58,6 +59,7 @@ const UserSchema = new Schema<IUser>(
       required: [true, 'Password is required'],
       minlength: 6,
     },
+    stripeCustomerId: { type: String, default: null },
     role: {
       type: String,
       enum: ['user', 'admin'],

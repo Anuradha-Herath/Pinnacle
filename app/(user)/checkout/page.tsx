@@ -7,12 +7,15 @@ import { useCart, CartItem } from "../../context/CartContext";
 import { getValidImageUrl, handleImageError } from "@/lib/imageUtils";
 import Success from "@/app/components/checkout/Success";
 import Cancel from "@/app/components/checkout/Cancel";
+import toast from "react-hot-toast";
+import { useRouter } from "next/navigation";
 
 function Checkout() {
   const [shipping, setShipping] = useState("ship");
   const [isClient, setIsClient] = useState(false);
   const { cart, getCartTotal, isLoading, clearCart } = useCart();
   const cartClearedRef = useRef(false);
+  const router = useRouter();
 
   const [formData, setFormData] = useState({
     email: "",
@@ -35,8 +38,8 @@ function Checkout() {
         (async () => {
           try {
             console.log("Success parameter detected, clearing cart");
-            cartClearedRef.current = true; 
-            
+            cartClearedRef.current = true;
+
             await clearCart();
             console.log("Cart cleared successfully after payment");
           } catch (error) {
@@ -73,7 +76,7 @@ function Checkout() {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     // Creating an object with all the form data
@@ -87,43 +90,53 @@ function Checkout() {
 
     console.log("Submitting checkout data:", checkoutData);
 
-    fetch("/api/orders", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(checkoutData),
-    })
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`HTTP error! Status: ${response.status}`);
-        }
-        return response.json();
-      })
-      .then((data) => {
-        console.log("Checkout successful:", data);
-
-        // Storing line items in session storage
-        if (data.line_items) {
-          sessionStorage.setItem(
-            "checkout_line_items",
-            JSON.stringify(data.line_items)
-          );
-        }
-
-        // Redirect to the specified page in the response or default to payment
-        if (data.redirect) {
-          window.location.href = data.redirect;
-        } else {
-          window.location.href = "/payment";
-        }
-      })
-      .catch((error) => {
-        console.error("Checkout error:", error);
-        alert(
-          "There was a problem processing your checkout. Please try again."
-        );
+    try {
+      const response = await fetch("/api/orders", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(checkoutData),
       });
+
+      // Special handling for authentication errors
+      if (response.status === 401) {
+        console.log("Authentication required");
+        toast.error("Please log in to complete your purchase");
+        // Redirect to login page after a brief delay
+        setTimeout(() => {
+          router.push("/login");
+        }, 1500);
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log("Checkout successful:", data);
+
+      // Storing line items in session storage
+      if (data.line_items) {
+        sessionStorage.setItem(
+          "checkout_line_items",
+          JSON.stringify(data.line_items)
+        );
+      }
+
+      // Redirect to the specified page in the response or default to payment
+      if (data.redirect) {
+        window.location.href = data.redirect;
+      } else {
+        window.location.href = "/payment";
+      }
+    } catch (error) {
+      console.error("Checkout error:", error);
+      toast.error(
+        "There was a problem processing your checkout. Please try again."
+      );
+    }
   };
 
   // Fix for hydration issues - only render cart after component mounts
@@ -156,18 +169,19 @@ function Checkout() {
   }
 
   // Checking URL parameters for success or cancel
-  if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("success") === "1") {
+  if (
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("success") === "1"
+  ) {
     const orderNumber = new URLSearchParams(window.location.search).get(
       "order"
     );
-    return (
-      <Success orderNumber={orderNumber || "N/A"} />
-    );
-  }
-  else if (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("canceled") === "1"){
-    return (
-      <Cancel />
-    );
+    return <Success orderNumber={orderNumber || "N/A"} />;
+  } else if (
+    typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).get("canceled") === "1"
+  ) {
+    return <Cancel />;
   }
 
   return (
@@ -178,7 +192,6 @@ function Checkout() {
         <h1 className="text-3xl font-bold mb-6">Checkout</h1>
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-  
           <div className="lg:col-span-7 order-2 lg:order-1">
             <div className="bg-white rounded-lg shadow-md p-6 sticky top-24">
               <h2 className="text-xl font-semibold mb-4 pb-2 border-b">
@@ -216,15 +229,22 @@ function Checkout() {
                         </div>
                       </div>
                       <div className="font-medium text-gray-900">
-                      {item.discountedPrice !== undefined ? (
+                        {item.discountedPrice !== undefined ? (
                           <div className="flex items-center gap-2">
-                             <p className="text-xs text-gray-500 line-through">${(item.price * item.quantity).toFixed(2)}</p>
-                            <span className="text-gray-900">${(item.discountedPrice * item.quantity).toFixed(2)}</span>
-                           
+                            <p className="text-xs text-gray-500 line-through">
+                              ${(item.price * item.quantity).toFixed(2)}
+                            </p>
+                            <span className="text-gray-900">
+                              $
+                              {(item.discountedPrice * item.quantity).toFixed(
+                                2
+                              )}
+                            </span>
                           </div>
                         ) : (
                           <>${(item.price * item.quantity).toFixed(2)}</>
-                        )}                      </div>
+                        )}{" "}
+                      </div>
                     </div>
                   ))}
                 </div>
