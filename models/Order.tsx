@@ -35,6 +35,10 @@ const LineItemSchema = new Schema({
 
 // Main Order schema
 const OrderSchema = new Schema({
+  userId: {
+      type: String,
+      required: true,
+    },
   // Customer information
   customer: {
     email: {
@@ -105,6 +109,14 @@ const OrderSchema = new Schema({
     type: String,
     enum: ["pending", "paid", "failed", "refunded"],
     default: "pending",
+  },
+
+  // Stripe customer ID
+  metadata: {
+    customerId: {
+      type: String,
+      required: true,
+    },
   },
 
   // Order identifier
