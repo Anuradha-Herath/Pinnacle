@@ -21,7 +21,8 @@ interface Order {
   }[];
   createdAt: string;
   totalPrice: number;
-  pointsEarned: number; // Add the pointsEarned field
+  pointsEarned: number;
+  orderNumber: string;
 }
 
 interface UserProfile {
@@ -73,8 +74,27 @@ export default function ProfilePage() {
         if (!ordersRes.ok) throw new Error('Failed to fetch orders');
         
         const ordersData = await ordersRes.json();
+        console.log("Orders data received:", ordersData); // For debugging
+        
         if (ordersData.success) {
-          setOrders(ordersData.orders);
+          // Transform orders if needed to match the expected format
+          const formattedOrders = ordersData.orders.map((order: any) => ({
+            _id: order._id,
+            orderNumber: order.orderNumber || `ORD-${order._id.substring(0, 8)}`,
+            status: order.status || 'processing',
+            orderItems: Array.isArray(order.orderItems) ? order.orderItems : 
+                       (order.line_items ? order.line_items.map((item: any) => ({
+                         name: item.price_data?.product_data || 'Product',
+                         price: item.price_data?.unit_amount ? item.price_data.unit_amount/100 : 0,
+                         quantity: item.quantity || 1,
+                         image: item.metadata?.imageUrl || '/placeholder.jpg'
+                       })) : []),
+            createdAt: order.createdAt || new Date().toISOString(),
+            totalPrice: order.totalPrice || (order.amount?.total || 0),
+            pointsEarned: order.pointsEarned || 0
+          }));
+          
+          setOrders(formattedOrders);
         }
       } catch (err) {
         setError("Failed to load profile data");
@@ -150,9 +170,6 @@ export default function ProfilePage() {
           <p>
             <strong>Phone:</strong> {profile?.phone || 'Not provided'}
           </p>
-          <p>
-            <strong>Delivery Address:</strong> {profile?.address || 'Not provided'}
-          </p>
           <Button className="mt-3 flex items-center gap-2" onClick={handleEditProfile}>
             <FiEdit /> Edit Details
           </Button>
@@ -192,27 +209,37 @@ export default function ProfilePage() {
               className="bg-gray-100 p-4 rounded-lg shadow-md mb-4"
             >
               <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold">Order #{order._id.substring(0, 8)}</h3>
-                <span className="bg-black text-white px-3 py-1 rounded-lg">
-                  {order.status}
+                <h3 className="text-lg font-semibold">
+                  Order #{order.orderNumber || order._id.substring(0, 8)}
+                </h3>
+                <span className={`px-3 py-1 rounded-lg text-white ${
+                  order.status === 'completed' ? 'bg-green-600' :
+                  order.status === 'shipped' ? 'bg-blue-600' :
+                  order.status === 'processing' ? 'bg-orange-500' : 'bg-gray-600'
+                }`}>
+                  {order.status || 'Processing'}
                 </span>
               </div>
-              {order.orderItems.map((item, index) => (
+
+              {/* Order items - handle both structures */}
+              {Array.isArray(order.orderItems) && order.orderItems.map((item, index) => (
                 <div key={index} className="flex items-center gap-4 mt-4">
                   <img
-                    src={item.image}
+                    src={item.image || '/placeholder.jpg'}
                     alt={item.name}
-                    className="w-16 h-16 rounded-lg"
+                    className="w-16 h-16 rounded-lg object-cover"
                   />
                   <div>
                     <p className="font-semibold">{item.name}</p>
                     <p className="text-lg font-bold">
-                      Rs. {item.price.toFixed(2)}
+                      Rs. {typeof item.price === 'number' ? item.price.toFixed(2) : 'N/A'}
                     </p>
                   </div>
                   <p className="ml-auto">Qty: {item.quantity}</p>
                 </div>
               ))}
+
+              {/* Points earned */}
               {order.pointsEarned > 0 && (
                 <div className="mt-2">
                   <span className="text-green-600 text-sm font-medium">
@@ -220,15 +247,9 @@ export default function ProfilePage() {
                   </span>
                 </div>
               )}
+
+              {/* Review button - conditionally show based on status */}
               <ReviewButton status={order.status} />
-              <div className="text-right mt-2">
-                <Button 
-                  className="text-sm font-semibold hover:underline"
-                  onClick={() => router.push(`/orders/${order._id}`)}
-                >
-                  View Details
-                </Button>
-              </div>
             </div>
           ))
         )}

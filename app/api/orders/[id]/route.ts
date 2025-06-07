@@ -15,24 +15,33 @@ const connectDB = async () => {
   }
 };
 
-// GET - Get order details
+// GET - Get order details - completely reworked
 export async function GET(
-  req: NextRequest,
-  { params }: { params: { id: string } }
+  request: NextRequest,
+  context: any
 ) {
   try {
     await connectDB();
 
-    const orderId = params.id;
-    if (!orderId) {
+    // Extract the ID through a more careful approach
+    let orderId;
+    try {
+      // Use optional chaining and type assertion to safely access ID
+      orderId = context?.params?.id;
+    } catch (e) {
+      console.error("Error accessing params:", e);
+    }
+
+    // Validate order ID
+    if (!orderId || typeof orderId !== 'string') {
       return NextResponse.json({
         success: false,
-        error: 'Order ID is required',
+        error: 'Valid order ID is required',
       }, { status: 400 });
     }
 
     // Authenticate user
-    const authResult = await authenticateUser(req);
+    const authResult = await authenticateUser(request);
     if (!authResult.authenticated) {
       return NextResponse.json({
         success: false,
@@ -51,7 +60,20 @@ export async function GET(
     }
 
     // Check if the order belongs to the authenticated user or if user is admin
-    if (order.user.toString() !== authResult.user?.id && authResult.user?.role !== 'admin') {
+    // Handle both user and userId fields for compatibility
+    const orderUserId = order.user?.toString() || order.userId?.toString();
+
+    // If no user ID is associated with the order, only admins can access it
+    if (!orderUserId) {
+      if (authResult.user?.role !== 'admin') {
+        return NextResponse.json({
+          success: false,
+          error: 'Not authorized to access this order',
+        }, { status: 403 });
+      }
+    } 
+    // Otherwise check if the current user owns this order or is an admin
+    else if (orderUserId !== authResult.user?.id && authResult.user?.role !== 'admin') {
       return NextResponse.json({
         success: false,
         error: 'Not authorized to access this order',
