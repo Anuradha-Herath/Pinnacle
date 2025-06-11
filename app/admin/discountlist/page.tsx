@@ -16,6 +16,7 @@ import {
 } from "@heroicons/react/24/solid";
 import Sidebar from "../../components/Sidebar";
 import TopBar from "../../components/TopBar";
+import Pagination from "@/app/components/Pagination";
 
 export default function DiscountList() {
   const router = useRouter();
@@ -676,37 +677,15 @@ export default function DiscountList() {
           </table>
 
           {/* Pagination */}
-          {filteredDiscounts.length > 0 && (
-            <div className="flex justify-center mt-6">
-              <div className="flex items-center gap-2">
-                <button
-                  className={`px-4 py-2 rounded-md ${
-                    currentPage === 1
-                      ? "bg-orange-200 text-gray-700 cursor-not-allowed"
-                      : "bg-orange-500 text-white hover:bg-orange-600"
-                  }`}
-                  onClick={handlePreviousPage}
-                  disabled={currentPage === 1}
-                >
-                  Previous
-                </button>
-                <span className="mx-2 text-gray-600">
-                  Page {currentPage} of {totalPages}
-                </span>
-                <button
-                  className={`px-4 py-2 rounded-md ${
-                    currentPage === totalPages
-                      ? "bg-orange-200 text-gray-700 cursor-not-allowed"
-                      : "bg-orange-500 text-white hover:bg-orange-600"
-                  }`}
-                  onClick={handleNextPage}
-                  disabled={currentPage === totalPages}
-                >
-                  Next
-                </button>
-              </div>
-            </div>
+          {discounts.length > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPrevious={handlePreviousPage}
+              onNext={handleNextPage}
+            />
           )}
+
         </div>
       </div>
     </div>
