@@ -17,6 +17,8 @@ import {
 import Sidebar from "../../components/Sidebar";
 import TopBar from "../../components/TopBar";
 import Pagination from "@/app/components/Pagination";
+import Card from "@/app/components/Card";
+
 
 export default function DiscountList() {
   const router = useRouter();
@@ -482,51 +484,37 @@ export default function DiscountList() {
 
         {/* Discount Stats - Updated to include Future Plans with icons and clickable functionality */}
         <div className="grid grid-cols-3 gap-6 mb-6">
-          <div
-            className={getCardStyle("Active")}
-            onClick={() => handleFilterByStatus("Active")}
-          >
-            <div>
-              <p className="text-gray-700 text-lg font-semibold">
-                Active Discounts
-              </p>
-              <p className="text-gray-900 text-2xl font-bold">
-                {activeDiscounts}
-              </p>
-            </div>
-            <CheckCircleIcon className="h-10 w-10 text-green-500" />
-          </div>
-
-          <div
-            className={getCardStyle("Inactive")}
-            onClick={() => handleFilterByStatus("Inactive")}
-          >
-            <div>
-              <p className="text-gray-700 text-lg font-semibold">
-                Expired Discounts
-              </p>
-              <p className="text-gray-900 text-2xl font-bold">
-                {expiredDiscounts}
-              </p>
-            </div>
-            <XCircleIcon className="h-10 w-10 text-red-500" />
-          </div>
-
-          <div
-            className={getCardStyle("Future Plan")}
-            onClick={() => handleFilterByStatus("Future Plan")}
-          >
-            <div>
-              <p className="text-gray-700 text-lg font-semibold">
-                Future Plan Discounts
-              </p>
-              <p className="text-gray-900 text-2xl font-bold">
-                {futurePlanDiscounts}
-              </p>
-            </div>
-            <CalendarIcon className="h-10 w-10 text-blue-500" />
-          </div>
-        </div>
+  <Card
+    title="Active Discounts"
+    count={activeDiscounts}
+    status="Active"
+    activeFilter={statusFilter}
+    onClick={handleFilterByStatus}
+    bgColor="bg-green-100"
+    textColor="green-500"
+    icon={<CheckCircleIcon className="h-8 w-8 text-green-500" />}
+  />
+  <Card
+    title="Expired Discounts"
+    count={expiredDiscounts}
+    status="Inactive"
+    activeFilter={statusFilter}
+    onClick={handleFilterByStatus}
+    bgColor="bg-red-100"
+    textColor="red-500"
+    icon={<XCircleIcon className="h-8 w-8 text-red-500" />}
+  />
+  <Card
+    title="Future Plan Discounts"
+    count={futurePlanDiscounts}
+    status="Future Plan"
+    activeFilter={statusFilter}
+    onClick={handleFilterByStatus}
+    bgColor="bg-blue-100"
+    textColor="blue-500"
+    icon={<CalendarIcon className="h-8 w-8 text-blue-500" />}
+  />
+</div>
 
         {/* Discount Table */}
         <div className="bg-white p-6 rounded-lg shadow-lg">
