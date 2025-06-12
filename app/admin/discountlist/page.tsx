@@ -3,12 +3,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { 
-  EyeIcon, 
-  PencilIcon, 
-  TrashIcon, 
-  BellIcon, 
-  Cog6ToothIcon, 
-  ClockIcon, 
   PlusIcon, 
   CheckCircleIcon,
   XCircleIcon,
@@ -16,6 +10,10 @@ import {
 } from "@heroicons/react/24/solid";
 import Sidebar from "../../components/Sidebar";
 import TopBar from "../../components/TopBar";
+import Pagination from "@/app/components/Pagination";
+import Card from "@/app/components/Card";
+import DiscountTableBody from "@/app/components/DiscountTableBody";
+
 
 export default function DiscountList() {
   const router = useRouter();
@@ -481,51 +479,37 @@ export default function DiscountList() {
 
         {/* Discount Stats - Updated to include Future Plans with icons and clickable functionality */}
         <div className="grid grid-cols-3 gap-6 mb-6">
-          <div
-            className={getCardStyle("Active")}
-            onClick={() => handleFilterByStatus("Active")}
-          >
-            <div>
-              <p className="text-gray-700 text-lg font-semibold">
-                Active Discounts
-              </p>
-              <p className="text-gray-900 text-2xl font-bold">
-                {activeDiscounts}
-              </p>
-            </div>
-            <CheckCircleIcon className="h-10 w-10 text-green-500" />
+            <Card
+              title="Active Discounts"
+              count={activeDiscounts}
+              status="Active"
+              activeFilter={statusFilter}
+              onClick={handleFilterByStatus}
+              bgColor="bg-green-100"
+              textColor="green-500"
+              icon={<CheckCircleIcon className="h-8 w-8 text-green-500" />}
+            />
+            <Card
+              title="Expired Discounts"
+              count={expiredDiscounts}
+              status="Inactive"
+              activeFilter={statusFilter}
+              onClick={handleFilterByStatus}
+              bgColor="bg-red-100"
+              textColor="red-500"
+              icon={<XCircleIcon className="h-8 w-8 text-red-500" />}
+            />
+            <Card
+              title="Future Plan Discounts"
+              count={futurePlanDiscounts}
+              status="Future Plan"
+              activeFilter={statusFilter}
+              onClick={handleFilterByStatus}
+              bgColor="bg-blue-100"
+              textColor="blue-500"
+              icon={<CalendarIcon className="h-8 w-8 text-blue-500" />}
+            />
           </div>
-
-          <div
-            className={getCardStyle("Inactive")}
-            onClick={() => handleFilterByStatus("Inactive")}
-          >
-            <div>
-              <p className="text-gray-700 text-lg font-semibold">
-                Expired Discounts
-              </p>
-              <p className="text-gray-900 text-2xl font-bold">
-                {expiredDiscounts}
-              </p>
-            </div>
-            <XCircleIcon className="h-10 w-10 text-red-500" />
-          </div>
-
-          <div
-            className={getCardStyle("Future Plan")}
-            onClick={() => handleFilterByStatus("Future Plan")}
-          >
-            <div>
-              <p className="text-gray-700 text-lg font-semibold">
-                Future Plan Discounts
-              </p>
-              <p className="text-gray-900 text-2xl font-bold">
-                {futurePlanDiscounts}
-              </p>
-            </div>
-            <CalendarIcon className="h-10 w-10 text-blue-500" />
-          </div>
-        </div>
 
         {/* Discount Table */}
         <div className="bg-white p-6 rounded-lg shadow-lg">
@@ -580,133 +564,28 @@ export default function DiscountList() {
                 <th className="p-3 text-right">Action</th>
               </tr>
             </thead>
-            <tbody>
-              {displayedDiscounts.length > 0 ? (
-                displayedDiscounts.map((discount) => (
-                  <tr key={discount._id} className="border-t">
-                    <td className="p-3">
-                      <div className="flex items-center">
-                        {itemDetails[discount.product] ? (
-                          <>
-                            <div className="h-10 w-10 relative mr-3 overflow-hidden rounded bg-gray-100">
-                              {loadingItems.has(discount.product) ? (
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                  <div className="w-5 h-5 border-2 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
-                                </div>
-                              ) : (
-                                <img
-                                  src={itemDetails[discount.product].image}
-                                  alt={itemDetails[discount.product].name}
-                                  className="h-full w-full object-cover"
-                                  onError={(e) => {
-                                    (e.target as HTMLImageElement).src = '/placeholder.png';
-                                  }}
-                                  loading="eager"
-                                />
-                              )}
-                            </div>
-                            <span className="font-medium">
-                              {itemDetails[discount.product].name}
-                            </span>
-                          </>
-                        ) : (
-                          <>
-                            <div className="h-10 w-10 relative mr-3 overflow-hidden rounded bg-gray-100 flex items-center justify-center">
-                              <div className="w-5 h-5 border-2 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
-                            </div>
-                            <span>{discount.product}</span>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                    <td className="p-3">{discount.type}</td>
-                    <td className="p-3">{discount.percentage}%</td>
-                    <td className="p-3">{discount.startDate}</td>
-                    <td className="p-3">{discount.endDate}</td>
-                    <td className="p-3">
-                      <span
-                        className={`inline-block px-3 py-1 rounded-full text-sm font-semibold 
-                        ${
-                          discount.status === "Active"
-                            ? "bg-green-300 text-green-800"
-                            : discount.status === "Future Plan"
-                            ? "bg-blue-300 text-blue-800"
-                            : "bg-orange-300 text-orange-800"
-                        }`}
-                      >
-                        {discount.status}
-                      </span>
-                    </td>
-                    <td className="p-3 flex gap-2 justify-end">
-                      <button
-                        onClick={() => handleViewDiscount(discount._id)}
-                        className="p-2 bg-orange-400 text-white rounded-md hover:bg-orange-600"
-                      >
-                        <EyeIcon className="h-5 w-5" />
-                      </button>
-                      <button
-                        onClick={() => handleEditDiscount(discount._id)}
-                        className="p-2 bg-orange-400 text-white rounded-md hover:bg-orange-600"
-                      >
-                        <PencilIcon className="h-5 w-5" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteDiscount(discount._id)}
-                        className="p-2 bg-orange-400 text-white rounded-md hover:bg-orange-600"
-                      >
-                        <TrashIcon className="h-5 w-5" />
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={7} className="p-3 text-center">
-                    {error ? (
-                      <p className="text-red-500">{error}</p>
-                    ) : statusFilter ? (
-                      <p>No {statusFilter} discounts found.</p>
-                    ) : (
-                      <p>No discounts found. Create your first discount!</p>
-                    )}
-                  </td>
-                </tr>
-              )}
-            </tbody>
+            <DiscountTableBody
+              discounts={displayedDiscounts}
+              itemDetails={itemDetails}
+              loadingItems={loadingItems}
+              error={error}
+              statusFilter={statusFilter}
+              onView={handleViewDiscount}
+              onEdit={handleEditDiscount}
+              onDelete={handleDeleteDiscount}
+            />
           </table>
 
           {/* Pagination */}
-          {filteredDiscounts.length > 0 && (
-            <div className="flex justify-center mt-6">
-              <div className="flex items-center gap-2">
-                <button
-                  className={`px-4 py-2 rounded-md ${
-                    currentPage === 1
-                      ? "bg-orange-200 text-gray-700 cursor-not-allowed"
-                      : "bg-orange-500 text-white hover:bg-orange-600"
-                  }`}
-                  onClick={handlePreviousPage}
-                  disabled={currentPage === 1}
-                >
-                  Previous
-                </button>
-                <span className="mx-2 text-gray-600">
-                  Page {currentPage} of {totalPages}
-                </span>
-                <button
-                  className={`px-4 py-2 rounded-md ${
-                    currentPage === totalPages
-                      ? "bg-orange-200 text-gray-700 cursor-not-allowed"
-                      : "bg-orange-500 text-white hover:bg-orange-600"
-                  }`}
-                  onClick={handleNextPage}
-                  disabled={currentPage === totalPages}
-                >
-                  Next
-                </button>
-              </div>
-            </div>
+          {discounts.length > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPrevious={handlePreviousPage}
+              onNext={handleNextPage}
+            />
           )}
+
         </div>
       </div>
     </div>

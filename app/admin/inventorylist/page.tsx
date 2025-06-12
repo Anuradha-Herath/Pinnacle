@@ -12,6 +12,8 @@ import {
 import Sidebar from "../../components/Sidebar";
 import Image from "next/image";
 import TopBar from "@/app/components/TopBar";
+import Card from "@/app/components/Card";
+import Pagination from "@/app/components/Pagination";
 
 // Define interface for inventory item
 interface InventoryItem {
@@ -312,46 +314,39 @@ export default function InventoryList() {
        <TopBar title="Inventory List"/>
 
         {/* First row - Three cards: Total, In Stock, Out of Stock */}
-        <div className="grid grid-cols-3 gap-6 mb-6 text-gray-600">
-          <div 
-            onClick={() => handleFilterByStatus(null)}
-            className={`bg-white p-4 rounded-lg shadow-md flex items-center gap-4 cursor-pointer ${activeFilter === null ? 'ring-2 ring-orange-500' : ''}`}
-          >
-            <div className="flex-1">
-              <h2 className="text-lg font-semibold">Total Products</h2>
-              <p className="text-2xl font-bold inline">{stats.total}</p>
-              <span className="mx-2"></span>
-              <p className="inline">(items)</p>
-            </div>
-            <div className="p-3 bg-orange-100 rounded-lg ml-auto">
-              <svg
+      <div className="grid grid-cols-3 gap-6 mb-6 text-gray-600">
+        <Card
+          title="Total Products"
+          count={stats.total}
+          status={null}
+          activeFilter={activeFilter}
+          onClick={handleFilterByStatus}
+          bgColor="bg-orange-100"
+          textColor="orange-500"
+          icon={
+            <svg
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 24 24"
                 fill="currentColor"
                 className="h-8 w-8 text-orange-500"
-              >
-                <path d="M3.375 3C2.339 3 1.5 3.84 1.5 4.875v.75c0 1.036.84 1.875 1.875 1.875h17.25c1.035 0 1.875-.84 1.875-1.875v-.75C22.5 3.839 21.66 3 20.625 3H3.375Z" />
-                <path
+              > 
+              <path d="M3.375 3C2.339 3 1.5 3.84 1.5 4.875v.75c0 1.036.84 1.875 1.875 1.875h17.25c1.035 0 1.875-.84 1.875-1.875v-.75C22.5 3.839 21.66 3 20.625 3H3.375Z" />
+              <path
                   fillRule="evenodd"
                   d="m3.087 9 .54 9.176A3 3 0 0 0 6.62 21h10.757a3 3 0 0 0 2.995-2.824L20.913 9H3.087Zm6.163 3.75A.75.75 0 0 1 10 12h4a.75.75 0 0 1 0 1.5h-4a.75.75 0 0 1-.75-.75Z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </div>
-          </div>
-          
-          <div 
-            onClick={() => handleFilterByStatus('In Stock')}
-            className={`bg-white p-4 rounded-lg shadow-md flex items-center gap-4 cursor-pointer ${activeFilter === 'In Stock' ? 'ring-2 ring-green-500' : ''}`}
-          >
-            <div>
-              <h2 className="text-lg font-semibold">Instock Products</h2>
-              <p className="text-2xl font-bold inline">{stats.inStock}</p>
-              <span className="mx-2"></span>
-              <p className="inline">(items)</p>
-            </div>
-            <div className="p-3 bg-green-100 rounded-lg ml-auto">
-              <svg
+                  clipRule="evenodd"/></svg>
+          }
+        />
+        <Card
+          title="Instock Products"
+          count={stats.inStock}
+          status="In Stock"
+          activeFilter={activeFilter}
+          onClick={handleFilterByStatus}
+          bgColor="bg-green-100"
+          textColor="green-500"
+          icon={
+            <svg
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 24 24"
                 fill="currentColor"
@@ -364,21 +359,18 @@ export default function InventoryList() {
                   clipRule="evenodd"
                 />
               </svg>
-            </div>
-          </div>
-          
-          <div 
-            onClick={() => handleFilterByStatus('Out Of Stock')}
-            className={`bg-white p-4 rounded-lg shadow-md flex items-center gap-4 cursor-pointer ${activeFilter === 'Out Of Stock' ? 'ring-2 ring-red-500' : ''}`}
-          >
-            <div>
-              <h2 className="text-lg font-semibold">Out Of Stock Products</h2>
-              <p className="text-2xl font-bold inline">{stats.outOfStock}</p>
-              <span className="mx-2"></span>
-              <p className="inline">(items)</p>
-            </div>
-            <div className="p-3 bg-red-100 rounded-lg ml-auto">
-              <svg
+          }
+        />
+        <Card
+          title="Out Of Stock Products"
+          count={stats.outOfStock}
+          status="Out Of Stock"
+          activeFilter={activeFilter}
+          onClick={handleFilterByStatus}
+          bgColor="bg-red-100"
+          textColor="red-500"
+          icon={
+            <svg
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 24 24"
                 fill="currentColor"
@@ -391,24 +383,22 @@ export default function InventoryList() {
                   clipRule="evenodd"
                 />
               </svg>
-            </div>
-          </div>
-        </div>
-        
-        {/* Second row - Just the Newly Added card */}
-        <div className="grid grid-cols-3 gap-6 mb-6 text-gray-600">
-          <div 
-            onClick={() => handleFilterByStatus('Newly Added')}
-            className={`bg-white p-4 rounded-lg shadow-md flex items-center gap-4 cursor-pointer ${activeFilter === 'Newly Added' ? 'ring-2 ring-yellow-500' : ''}`}
-          >
-            <div className="flex-1">
-              <h2 className="text-lg font-semibold">Newly Added Products</h2>
-              <p className="text-2xl font-bold inline">{stats.newlyAdded}</p>
-              <span className="mx-2"></span>
-              <p className="inline">(items)</p>
-            </div>
-            <div className="p-3 bg-yellow-100 rounded-lg ml-auto">
-              <svg
+          }
+        />
+      </div>
+
+      {/* Second row - Just the Newly Added card */}
+      <div className="grid grid-cols-3 gap-6 mb-6 text-gray-600">
+        <Card
+          title="Newly Added Products"
+          count={stats.newlyAdded}
+          status="Newly Added"
+          activeFilter={activeFilter}
+          onClick={handleFilterByStatus}
+          bgColor="bg-yellow-100"
+          textColor="yellow-500"
+          icon={
+            <svg
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 24 24"
                 fill="currentColor"
@@ -421,13 +411,12 @@ export default function InventoryList() {
                   clipRule="evenodd"
                 />
               </svg>
-            </div>
-          </div>
-          {/* Empty placeholder divs to maintain grid alignment */}
-          <div className="invisible"></div>
-          <div className="invisible"></div>
-        </div>
-
+          }
+        />
+        {/* Empty placeholder divs to maintain grid alignment */}
+        <div className="invisible"></div>
+        <div className="invisible"></div>
+      </div>
         {/* Inventory List Table */}
         <div className="bg-white p-6 rounded-lg shadow-lg mt-6">
           <div className="flex justify-between items-center mb-4">
@@ -627,32 +616,14 @@ export default function InventoryList() {
           
           {/* Pagination */}
           {inventory.length > 0 && (
-            <div className="flex justify-center mt-6">
-              <div className="flex items-center gap-2">
-                <button 
-                  className={`px-4 py-2 rounded-md ${
-                    currentPage === 1 ? 'bg-orange-200 text-gray-700 cursor-not-allowed' : 'bg-orange-500 text-white hover:bg-orange-600'
-                  }`}
-                  onClick={handlePreviousPage}
-                  disabled={currentPage === 1}
-                >
-                  Previous
-                </button>
-                <span className="mx-2 text-gray-600">
-                  Page {currentPage} of {totalPages}
-                </span>
-                <button 
-                  className={`px-4 py-2 rounded-md ${
-                    currentPage === totalPages ? 'bg-orange-200 text-gray-700 cursor-not-allowed' : 'bg-orange-500 text-white hover:bg-orange-600'
-                  }`}
-                  onClick={handleNextPage}
-                  disabled={currentPage === totalPages}
-                >
-                  Next
-                </button>
-              </div>
-            </div>
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPrevious={handlePreviousPage}
+              onNext={handleNextPage}
+            />
           )}
+    
         </div>
       </div>
     </div>

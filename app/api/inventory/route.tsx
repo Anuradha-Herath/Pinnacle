@@ -92,7 +92,7 @@ export async function PUT(request: NextRequest) {
     }
     
     // Create a complete update object with all fields
-    const updatePayload = {
+    const updatePayload: Record<string, any> = {
       stock: body.stock,
       status: newStatus,
     };
