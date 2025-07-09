@@ -51,13 +51,34 @@ export async function DELETE(
   try {
     await connectDB();
     
-    const inventoryItem = await Inventory.findByIdAndDelete(params.id);
+    const { id } = params;
     
-    if (!inventoryItem) {
-      return NextResponse.json({ error: "Inventory item not found" }, { status: 404 });
+    // Check if the ID is for a product (query param) or inventory item (path param)
+    const url = new URL(request.url);
+    const isProductId = url.searchParams.get("productId") === "true";
+    
+    let inventoryItem;
+    
+    if (isProductId) {
+      // Delete by product ID
+      console.log(`Deleting inventory by product ID: ${id}`);
+      inventoryItem = await Inventory.findOneAndDelete({ productId: id });
+    } else {
+      // Delete by inventory ID
+      console.log(`Deleting inventory by ID: ${id}`);
+      inventoryItem = await Inventory.findByIdAndDelete(id);
     }
     
-    return NextResponse.json({ message: "Inventory item deleted successfully" });
+    if (!inventoryItem) {
+      return NextResponse.json({ 
+        error: isProductId ? "No inventory item found for this product" : "Inventory item not found" 
+      }, { status: 404 });
+    }
+    
+    return NextResponse.json({ 
+      message: "Inventory item deleted successfully",
+      deletedItem: inventoryItem
+    });
   } catch (error) {
     console.error("Error deleting inventory item:", error);
     return NextResponse.json({ 

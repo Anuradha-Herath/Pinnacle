@@ -41,10 +41,10 @@ const AdminProductCard = ({ product, onDelete }: {
 
     // Handle product deletion
     const handleDeleteClick = async () => {
-      // Show confirmation dialog
-      if (confirm(`Are you sure you want to delete ${product.name}?`)) {
+      // Show confirmation dialog with improved message
+      if (confirm(`Are you sure you want to delete "${product.name}"?\n\nThis will also remove the product from inventory.`)) {
         try {
-          // Make API call to delete the product
+          // First delete the product
           const response = await fetch(`/api/products/${product.id}`, {
             method: 'DELETE',
           });
@@ -54,7 +54,12 @@ const AdminProductCard = ({ product, onDelete }: {
             throw new Error(errorData.error || 'Failed to delete product');
           }
           
-          alert('Product deleted successfully');
+          // Also explicitly delete from inventory to ensure consistency
+          await fetch(`/api/inventory/${product.id}?productId=true`, {
+            method: 'DELETE',
+          }).catch(err => console.log('Note: Additional inventory cleanup attempt result:', err));
+          
+          alert('Product deleted successfully from catalog and inventory');
           
           // Refresh the product list if onDelete callback is provided
           if (onDelete) {
