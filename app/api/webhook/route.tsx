@@ -44,7 +44,7 @@ export async function POST(request: Request) {
   if (event.type === "checkout.session.completed"){
     console.log("Checkout session completed:");
     const orderpay = await Order.findByIdAndUpdate(session.metadata?.orderId, {
-                    status: "Processing",
+                    status: "Paid",
                     paymentStatus: "paid",
                     stripeSessionId: session.id,
                     updatedAt: new Date(),
