@@ -10,9 +10,11 @@ import {
   ShieldCheckIcon,
 } from "lucide-react";
 import TopBar from "@/app/components/admin/TopBar";
+import { useRouter } from "next/navigation";
 
 // Define the Order type according to your data structure
 interface Order {
+  _id: string;
   orderNumber: string;
   createdAt: string;
   customer: {
@@ -25,6 +27,7 @@ interface Order {
 }
 
 export default function OrdersPage() {
+  const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
 
   // State for filtering orders by status
@@ -223,16 +226,9 @@ export default function OrdersPage() {
               {displayedOrders.length > 0 ? (
                 displayedOrders.map(
                   (
-                    order: {
-                      orderNumber: string;
-                      createdAt: string;
-                      customer: { firstName: string };
-                      amount: { total: string };
-                      status: string;
-                    },
-                    index
+                    order: Order
                   ) => (
-                    <tr key={index} className="border-t">
+                    <tr key={order._id} className="border-t">
                       <td className="p-3">{order.orderNumber || "N/A"}</td>
                       <td className="p-3">
                         {order.createdAt
@@ -271,7 +267,10 @@ export default function OrdersPage() {
                         </span>
                       </td>
                       <td className="p-3">
-                        <button className="p-2 bg-orange-500 text-white rounded-md shadow-md hover:bg-orange-600">
+                        <button className="p-2 bg-orange-500 text-white rounded-md shadow-md hover:bg-orange-600"
+                          onClick={() => {
+                            router.push(`/admin/orderlist/${order._id}`);
+                          }}>
                           <EyeIcon className="h-5 w-5" />
                         </button>
                       </td>

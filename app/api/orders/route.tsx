@@ -3,7 +3,6 @@ import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/db";
 import { authenticateUser } from "@/middleware/auth";
 import { getOrCreateStripeCustomer } from "@/lib/stripeHelpers";
-import mongoose from "mongoose";
 
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
