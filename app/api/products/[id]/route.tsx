@@ -207,17 +207,64 @@ export async function DELETE(
       return NextResponse.json({ error: "Invalid product ID" }, { status: 400 });
     }
     
+    // Delete the product
     const deletedProduct = await Product.findByIdAndDelete(id);
     
     if (!deletedProduct) {
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
     
-    // Here you could also delete product images from Cloudinary 
-    // if you want to free up storage space
+    // CASCADE DELETE: Delete corresponding inventory item
+    try {
+      console.log(`Attempting to delete inventory record for product ${id}`);
+      
+      // Important: Check if inventory model is available, if not, use direct DB connection
+      const Inventory = mongoose.models.Inventory || mongoose.model('Inventory', new mongoose.Schema({}));
+      
+      // First try to find the inventory item to verify it exists
+      const inventoryItem = await Inventory.findOne({ productId: id });
+      console.log("Found inventory item:", inventoryItem ? "Yes" : "No");
+      
+      if (inventoryItem) {
+        // Delete the inventory item using the proper model
+        const deleteResult = await Inventory.deleteOne({ productId: id });
+        console.log("Delete result:", deleteResult);
+        
+        if (deleteResult.deletedCount > 0) {
+          console.log(`Successfully deleted inventory item with ID ${inventoryItem._id}`);
+        } else {
+          console.log(`Failed to delete inventory item despite finding it`);
+        }
+      } else {
+        // Try with string comparison in case ID formats don't match
+        const db = mongoose.connection.db;
+        console.log("Trying direct collection access with string comparison");
+        
+        // Query inventory collection directly
+        if (!db) {
+          console.error("Database connection is undefined.");
+        } else {
+          const items = await db.collection('inventories').find({}).toArray();
+          console.log(`Found ${items.length} inventory items total`);
+          
+          // Look for matching product ID (string comparison)
+          const matchingItem = items.find(item => item.productId && item.productId.toString() === id.toString());
+          
+          if (matchingItem) {
+            console.log(`Found inventory item ${matchingItem._id} by string comparison`);
+            const deleteResult = await db.collection('inventories').deleteOne({ _id: matchingItem._id });
+            console.log("Delete result:", deleteResult);
+          } else {
+            console.log("No matching inventory item found by any method");
+          }
+        }
+      }
+    } catch (inventoryError) {
+      console.error("Error deleting from inventory:", inventoryError);
+    }
     
     return NextResponse.json({
-      message: "Product deleted successfully"
+      message: "Product and related inventory deleted successfully"
     });
   } catch (error) {
     console.error("Error deleting product:", error);
