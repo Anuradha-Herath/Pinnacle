@@ -1,14 +1,12 @@
 "use client";
 import { useState, useEffect } from "react";
 import { FiEdit } from "react-icons/fi";
-import { FaCrown } from "react-icons/fa";
 import { Button, CircularProgress } from "@mui/material";
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
 import ReviewButton from "../../components/ViewDetailsButtonInReivew";
 import { useAuth } from "@/app/context/AuthContext";
 import { useRouter } from "next/navigation";
-import { Link } from "lucide-react";
 
 interface Order {
   _id: string;
@@ -31,7 +29,6 @@ interface UserProfile {
   email: string;
   phone: string;
   address: string;
-  points: number;
 }
 
 export default function ProfilePage() {
@@ -68,37 +65,20 @@ export default function ProfilePage() {
             lastName: profileData.user.lastName,
             email: profileData.user.email,
             phone: profileData.user.phone || '',
-            address: profileData.user.address || '',
-            points: profileData.user.points || 0
+            address: profileData.user.address || ''
           });
         }
 
-        // Fetch user orders
-        const ordersRes = await fetch('/api/profile/orders');
+        // Fetch user orders from the new endpoint
+        const ordersRes = await fetch('/api/profile/user-orders');
         if (!ordersRes.ok) throw new Error('Failed to fetch orders');
         
         const ordersData = await ordersRes.json();
         console.log("Orders data received:", ordersData); // For debugging
         
         if (ordersData.success) {
-          // Transform orders if needed to match the expected format
-          const formattedOrders = ordersData.orders.map((order: any) => ({
-            _id: order._id,
-            orderNumber: order.orderNumber || `ORD-${order._id.substring(0, 8)}`,
-            status: order.status || 'processing',
-            orderItems: Array.isArray(order.orderItems) ? order.orderItems : 
-                       (order.line_items ? order.line_items.map((item: any) => ({
-                         name: item.price_data?.product_data || 'Product',
-                         price: item.price_data?.unit_amount ? item.price_data.unit_amount/100 : 0,
-                         quantity: item.quantity || 1,
-                         image: item.metadata?.imageUrl || '/placeholder.jpg'
-                       })) : []),
-            createdAt: order.createdAt || new Date().toISOString(),
-            totalPrice: order.totalPrice || (order.amount?.total || 0),
-            pointsEarned: order.pointsEarned || 0
-          }));
-          
-          setOrders(formattedOrders);
+          // Orders are already formatted in the API response
+          setOrders(ordersData.orders);
         }
       } catch (err) {
         setError("Failed to load profile data");
@@ -165,7 +145,7 @@ export default function ProfilePage() {
         <div className="flex items-center gap-4 mb-6">
           <div className="w-16 h-16 bg-gray-300 rounded-full"></div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
-            {profile?.firstName} {profile?.lastName} {(profile?.points ?? 0) >= 200 && <FaCrown className="text-yellow-500" title="Premium customer" />}
+            {profile?.firstName} {profile?.lastName}
           </h1>
         </div>
         
@@ -184,7 +164,7 @@ export default function ProfilePage() {
           </div>
 
           <div>
-          <button className="text-orange-500 underline"
+          <button className="text-white bg-orange-500 px-4 py-2 rounded-md mt-4 hover:bg-orange-600" 
             onClick={() => router.push('/profile/edit')}
             > Edit Details
           </button>
