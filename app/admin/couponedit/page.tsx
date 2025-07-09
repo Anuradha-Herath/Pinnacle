@@ -1,14 +1,42 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { BellIcon, Cog6ToothIcon, ClockIcon } from "@heroicons/react/24/solid";
 import Sidebar from "../../components/Sidebar";
 
-export default function CouponEdit() {
+// Loading fallback component
+function CouponEditLoadingFallback() {
+  return (
+    <div className="flex">
+      <Sidebar />
+      <div className="flex-1 min-h-screen bg-gray-50 p-6 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-orange-500 border-r-transparent"></div>
+          <p className="mt-2">Loading coupon editor...</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Component that uses useSearchParams
+function CouponEditContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const couponId = searchParams.get('id');
+  
+  // Safely handle searchParams
+  let couponId: string | null = null;
+  try {
+    const searchParams = useSearchParams();
+    couponId = searchParams.get('id');
+  } catch (err) {
+    console.error("Error accessing search params:", err);
+    // Fall back to client-side URL parsing if needed
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      couponId = urlParams.get('id');
+    }
+  }
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -112,14 +140,31 @@ export default function CouponEdit() {
         ...formData,
         status: statusMap[formData.couponStatus] || formData.couponStatus
       };
-      } catch (err) {
-        if (err instanceof Error) {
-          setError(err instanceof Error ? err.message : 'An unknown error occurred');
-          console.error('Error updating coupon:', err);
-        } else {
-          setError('An unknown error occurred');
-          console.error('Unknown error:', err);
-        }
+      
+      const response = await fetch(`/api/coupons/${couponId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(couponData),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update coupon');
+      }
+      
+      alert('Coupon updated successfully!');
+      router.push('/admin/couponlist');
+      
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+        console.error('Error updating coupon:', err);
+      } else {
+        setError('An unknown error occurred');
+        console.error('Unknown error:', err);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -152,24 +197,43 @@ export default function CouponEdit() {
     }
   };
 
+  // Render loading state
   if (loading) {
     return (
-      <div className="flex min-h-screen bg-gray-100">
-        <Sidebar />
-        <div className="flex-1 flex items-center justify-center">
-          <div>Loading coupon data...</div>
+      <div className="flex-1">
+        <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
+          <div className="text-center">
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-orange-500 border-r-transparent"></div>
+            <p className="mt-2">Loading coupon data...</p>
+          </div>
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="flex min-h-screen bg-gray-100">
-      {/* Sidebar */}
-      <Sidebar />
-      
-      {/* Main Content */}
+  // Render error state
+  if (error) {
+    return (
       <div className="flex-1">
+        <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-red-500">{error}</p>
+            <button 
+              onClick={() => router.push('/admin/couponlist')}
+              className="mt-4 px-4 py-2 bg-orange-500 text-white rounded-md"
+            >
+              Back to Coupon List
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Return the main content
+  return (
+    <div className="flex-1">
+      <div className="min-h-screen bg-gray-50 p-6">
         {/* Top Bar */}
         <div className="flex justify-between items-center p-4">
           <div></div> {/* Empty div to push the items to the right */}
@@ -279,7 +343,7 @@ export default function CouponEdit() {
                   <h2 className="text-md font-medium mb-4">Coupon Information</h2>
                   <hr className="mb-4" />
                   <div className="mb-4 flex items-center gap-4">
-                  <div pl-10>
+                  <div className="pl-10">
                     <label className="block text-sm mb-1 pr-10">Coupon Code</label>
                     <input
                     type="text"
@@ -421,6 +485,18 @@ export default function CouponEdit() {
           </form>
         </div>
       </div>
+    </div>
+  );
+}
+
+// Main wrapper component with Suspense boundary
+export default function CouponEdit() {
+  return (
+    <div className="flex">
+      <Sidebar />
+      <Suspense fallback={<CouponEditLoadingFallback />}>
+        <CouponEditContent />
+      </Suspense>
     </div>
   );
 }

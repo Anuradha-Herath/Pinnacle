@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { BellIcon, Cog6ToothIcon, ClockIcon } from "@heroicons/react/24/solid";
 import Sidebar from "../../components/Sidebar";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -12,7 +12,20 @@ interface ItemDetails {
   price?: number; // Add price field
 }
 
-export default function DiscountView() {
+// Loading fallback component
+function LoadingFallback() {
+  return (
+    <div className="flex-1 min-h-screen bg-gray-50 p-6 flex items-center justify-center">
+      <div className="text-center">
+        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-orange-500 border-r-transparent"></div>
+        <p className="mt-2">Loading discount details...</p>
+      </div>
+    </div>
+  );
+}
+
+// Create a separate component that uses useSearchParams
+function DiscountViewContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const discountId = searchParams?.get("id");
@@ -34,6 +47,7 @@ export default function DiscountView() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // All the same component logic and effects...
   useEffect(() => {
     if (!discountId) {
       setError("No discount ID provided");
@@ -156,203 +170,210 @@ export default function DiscountView() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen bg-gray-100">
-        <Sidebar />
-        <div className="flex-1 flex justify-center items-center">
-          <p className="text-xl">Loading discount details...</p>
+      <div className="flex-1">
+        <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
+          <div className="text-center">
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-orange-500 border-r-transparent"></div>
+            <p className="mt-2">Loading discount details...</p>
+          </div>
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="flex min-h-screen bg-gray-100">
-      {/* Sidebar */}
-      <Sidebar />
-      
-      {/* Main Content */}
+  if (error) {
+    return (
       <div className="flex-1">
-        {/* Top Bar */}
-        <div className="flex justify-between items-center p-4">
-          <div></div>
-          <div className="flex items-center gap-4">
-            <button className="p-2 hover:bg-gray-200 rounded-full">
-              <BellIcon className="h-5 w-5 text-gray-600" />
-            </button>
-            <button className="p-2 hover:bg-gray-200 rounded-full">
-              <Cog6ToothIcon className="h-5 w-5 text-gray-600" />
-            </button>
-            <button className="p-2 hover:bg-gray-200 rounded-full">
-              <ClockIcon className="h-5 w-5 text-gray-600" />
-            </button>
-            <button className="rounded-full">
-              <img src="/p4.webp" alt="Profile" className="h-8 w-8 rounded-full object-cover" />
+        <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-red-500">{error}</p>
+            <button 
+              onClick={() => router.push('/admin/discountlist')}
+              className="mt-4 px-4 py-2 bg-orange-500 text-white rounded-md"
+            >
+              Back to Discount List
             </button>
           </div>
-        </div>
-
-        {/* Content Area */}
-        <div className="p-6">
-          {/* Breadcrumb - removed Back button */}
-          <div className="mb-6">
-            <h1 className="text-xl font-semibold">Discount Details</h1>
-            <p className="text-sm text-gray-500">Home &gt; Discounts &gt; View</p>
-          </div>
-
-          {error ? (
-            <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-              {error}
-            </div>
-          ) : (
-            <div className="grid grid-cols-5 gap-6">
-              {/* Left Column - Status and Date Info */}
-              <div className="col-span-2">
-                {/* Discount Status */}
-                <div className="bg-white p-6 rounded-lg shadow-md mb-6">
-                  <h2 className="text-lg font-medium mb-4">Discount Status</h2>
-                  <hr className="mb-6" />
-                  <div className="flex items-center mb-2">
-                    <span 
-                      className={`inline-block px-4 py-2 rounded-full text-sm font-bold ${
-                        discountDetails.status === "Active" 
-                          ? "bg-green-300 text-green-800" 
-                          : discountDetails.status === "Future Plan"
-                          ? "bg-blue-300 text-blue-800"
-                          : "bg-orange-300 text-orange-800"
-                      }`}
-                    >
-                      {discountDetails.status}
-                    </span>
-                  </div>
-                  <p className="text-gray-500 mt-4">
-                    This discount is currently <span className="font-medium">{discountDetails.status}</span>.
-                  </p>
-                </div>
-
-                {/* Date Information */}
-                <div className="bg-white p-6 rounded-lg shadow-md">
-                  <h2 className="text-lg font-medium mb-4">Date Schedule</h2>
-                  <hr className="mb-6" />
-                  <div className="mb-6">
-                    <p className="text-gray-500 mb-1">Start Date</p>
-                    <p className="text-lg font-medium">{discountDetails.startDate}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-500 mb-1">End Date</p>
-                    <p className="text-lg font-medium">{discountDetails.endDate}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Right Column - Discount Details */}
-              <div className="col-span-3">
-                <div className="bg-white p-6 rounded-lg shadow-md">
-                  <h2 className="text-lg font-medium mb-4">Discount Information</h2>
-                  <hr className="mb-6" />
-                  
-                  <div className="grid grid-cols-2 gap-6 mb-6">
-                    <div>
-                      <p className="text-gray-500 mb-1">Discount ID</p>
-                      <p className="text-lg font-medium">{discountDetails.id}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500 mb-1">Discount Type</p>
-                      <p className="text-lg font-medium">{discountDetails.type}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="mb-6">
-                    <p className="text-gray-500 mb-1">{discountDetails.type} Details</p>
-                    <div className="flex items-center mt-2">
-                      {itemDetails ? (
-                        <>
-                          <div className="h-16 w-16 relative mr-4 overflow-hidden rounded-lg">
-                            <img
-                              src={itemDetails.image}
-                              alt={itemDetails.name}
-                              className="h-full w-full object-cover"
-                            />
-                          </div>
-                          <div>
-                            <p className="text-lg font-medium">{itemDetails.name}</p>
-                            <p className="text-sm text-gray-500">ID: {itemDetails.id}</p>
-                            {itemDetails.price && (
-                              <p className="text-sm font-medium text-gray-700">
-                                Original Price: ${itemDetails.price.toFixed(2)}
-                              </p>
-                            )}
-                          </div>
-                        </>
-                      ) : (
-                        <p className="text-lg font-medium">{discountDetails.product}</p>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <div className="mb-6">
-                    <p className="text-gray-500 mb-1">Discount Percentage</p>
-                    <p className="text-lg font-medium">{discountDetails.percentage}%</p>
-                  </div>
-                  
-                  {/* Display price breakdown for single products */}
-                  {discountDetails.type === 'Product' && priceInfo && (
-                    <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                      <h3 className="font-medium text-blue-800 mb-3">Price Breakdown</h3>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-gray-600">Original Price:</p>
-                          <p className="text-lg font-medium">${priceInfo.originalPrice}</p>
-                        </div>
-                        <div>
-                          <p className="text-gray-600">Discounted Price:</p>
-                          <p className="text-lg font-medium text-green-600">${priceInfo.discountedPrice}</p>
-                        </div>
-                        <div className="col-span-2">
-                          <p className="text-gray-600">Customer Savings:</p>
-                          <p className="text-lg font-medium text-red-600">
-                            ${priceInfo.savedAmount} ({discountDetails.percentage}%)
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  
-                  <div className="mb-6">
-                    <p className="text-gray-500 mb-1">Description</p>
-                    <p className="text-md">
-                      {discountDetails.description || "No description available."}
-                    </p>
-                  </div>
-                  
-                  <hr className="my-6" />
-                  
-                  {/* Action Buttons */}
-                  <div className="flex justify-end gap-3">
-                    <button 
-                      onClick={() => router.push(`/admin/discountedit?id=${discountDetails.id}`)}
-                      className="bg-orange-500 text-white px-6 py-2 rounded hover:bg-orange-600"
-                    >
-                      Edit Discount
-                    </button>
-                    <button 
-                      onClick={handleDelete}
-                      className="bg-red-500 text-white px-6 py-2 rounded hover:bg-red-600"
-                    >
-                      Delete
-                    </button>
-                    <button 
-                      onClick={handleReturn}
-                      className="bg-gray-200 text-gray-700 px-6 py-2 rounded hover:bg-gray-300"
-                    >
-                      Back to List
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
+    );
+  }
+
+  // Return your main content
+  return (
+    <div className="flex-1">
+      <div className="min-h-screen bg-gray-50 p-6">
+        {/* Breadcrumb - removed Back button */}
+        <div className="mb-6">
+          <h1 className="text-xl font-semibold">Discount Details</h1>
+          <p className="text-sm text-gray-500">Home &gt; Discounts &gt; View</p>
+        </div>
+
+        {error ? (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+            {error}
+          </div>
+        ) : (
+          <div className="grid grid-cols-5 gap-6">
+            {/* Left Column - Status and Date Info */}
+            <div className="col-span-2">
+              {/* Discount Status */}
+              <div className="bg-white p-6 rounded-lg shadow-md mb-6">
+                <h2 className="text-lg font-medium mb-4">Discount Status</h2>
+                <hr className="mb-6" />
+                <div className="flex items-center mb-2">
+                  <span 
+                    className={`inline-block px-4 py-2 rounded-full text-sm font-bold ${
+                      discountDetails.status === "Active" 
+                        ? "bg-green-300 text-green-800" 
+                        : discountDetails.status === "Future Plan"
+                        ? "bg-blue-300 text-blue-800"
+                        : "bg-orange-300 text-orange-800"
+                    }`}
+                  >
+                    {discountDetails.status}
+                  </span>
+                </div>
+                <p className="text-gray-500 mt-4">
+                  This discount is currently <span className="font-medium">{discountDetails.status}</span>.
+                </p>
+              </div>
+
+              {/* Date Information */}
+              <div className="bg-white p-6 rounded-lg shadow-md">
+                <h2 className="text-lg font-medium mb-4">Date Schedule</h2>
+                <hr className="mb-6" />
+                <div className="mb-6">
+                  <p className="text-gray-500 mb-1">Start Date</p>
+                  <p className="text-lg font-medium">{discountDetails.startDate}</p>
+                </div>
+                <div>
+                  <p className="text-gray-500 mb-1">End Date</p>
+                  <p className="text-lg font-medium">{discountDetails.endDate}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column - Discount Details */}
+            <div className="col-span-3">
+              <div className="bg-white p-6 rounded-lg shadow-md">
+                <h2 className="text-lg font-medium mb-4">Discount Information</h2>
+                <hr className="mb-6" />
+                
+                <div className="grid grid-cols-2 gap-6 mb-6">
+                  <div>
+                    <p className="text-gray-500 mb-1">Discount ID</p>
+                    <p className="text-lg font-medium">{discountDetails.id}</p>
+                  </div>
+                  <div>
+                    <p className="text-gray-500 mb-1">Discount Type</p>
+                    <p className="text-lg font-medium">{discountDetails.type}</p>
+                  </div>
+                </div>
+                
+                <div className="mb-6">
+                  <p className="text-gray-500 mb-1">{discountDetails.type} Details</p>
+                  <div className="flex items-center mt-2">
+                    {itemDetails ? (
+                      <>
+                        <div className="h-16 w-16 relative mr-4 overflow-hidden rounded-lg">
+                          <img
+                            src={itemDetails.image}
+                            alt={itemDetails.name}
+                            className="h-full w-full object-cover"
+                          />
+                        </div>
+                        <div>
+                          <p className="text-lg font-medium">{itemDetails.name}</p>
+                          <p className="text-sm text-gray-500">ID: {itemDetails.id}</p>
+                          {itemDetails.price && (
+                            <p className="text-sm font-medium text-gray-700">
+                              Original Price: ${itemDetails.price.toFixed(2)}
+                            </p>
+                          )}
+                        </div>
+                      </>
+                    ) : (
+                      <p className="text-lg font-medium">{discountDetails.product}</p>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="mb-6">
+                  <p className="text-gray-500 mb-1">Discount Percentage</p>
+                  <p className="text-lg font-medium">{discountDetails.percentage}%</p>
+                </div>
+                
+                {/* Display price breakdown for single products */}
+                {discountDetails.type === 'Product' && priceInfo && (
+                  <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                    <h3 className="font-medium text-blue-800 mb-3">Price Breakdown</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-gray-600">Original Price:</p>
+                        <p className="text-lg font-medium">${priceInfo.originalPrice}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-600">Discounted Price:</p>
+                        <p className="text-lg font-medium text-green-600">${priceInfo.discountedPrice}</p>
+                      </div>
+                      <div className="col-span-2">
+                        <p className="text-gray-600">Customer Savings:</p>
+                        <p className="text-lg font-medium text-red-600">
+                          ${priceInfo.savedAmount} ({discountDetails.percentage}%)
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="mb-6">
+                  <p className="text-gray-500 mb-1">Description</p>
+                  <p className="text-md">
+                    {discountDetails.description || "No description available."}
+                  </p>
+                </div>
+                
+                <hr className="my-6" />
+                
+                {/* Action Buttons */}
+                <div className="flex justify-end gap-3">
+                  <button 
+                    onClick={() => router.push(`/admin/discountedit?id=${discountDetails.id}`)}
+                    className="bg-orange-500 text-white px-6 py-2 rounded hover:bg-orange-600"
+                  >
+                    Edit Discount
+                  </button>
+                  <button 
+                    onClick={handleDelete}
+                    className="bg-red-500 text-white px-6 py-2 rounded hover:bg-red-600"
+                  >
+                    Delete
+                  </button>
+                  <button 
+                    onClick={handleReturn}
+                    className="bg-gray-200 text-gray-700 px-6 py-2 rounded hover:bg-gray-300"
+                  >
+                    Back to List
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Main page component that wraps the form in Suspense
+export default function DiscountView() {
+  return (
+    <div className="flex">
+      <Sidebar />
+      <Suspense fallback={<LoadingFallback />}>
+        <DiscountViewContent />
+      </Suspense>
     </div>
   );
 }

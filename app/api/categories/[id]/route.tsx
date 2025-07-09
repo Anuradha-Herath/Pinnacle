@@ -37,13 +37,12 @@ const uploadToCloudinary = async (imageData: string) => {
 // GET a single category by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
     await connectDB();
     
-    // Properly await the params object before accessing id
-    const { id } = await params;
+    const id = context.params.id;
     
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json({ error: "Invalid category ID" }, { status: 400 });
@@ -67,13 +66,12 @@ export async function GET(
 // UPDATE a category
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
     await connectDB();
     
-    // Properly await the params object before accessing id
-    const { id } = await params;
+    const id = context.params.id;
     
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json({ error: "Invalid category ID" }, { status: 400 });
@@ -138,13 +136,12 @@ export async function PUT(
 // DELETE a category
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
 ) {
   try {
     await connectDB();
     
-    // Properly await the params object before accessing id
-    const { id } = await params;
+    const id = context.params.id;
     
     if (!mongoose.Types.ObjectId.isValid(id)) {
       return NextResponse.json({ error: "Invalid category ID" }, { status: 400 });

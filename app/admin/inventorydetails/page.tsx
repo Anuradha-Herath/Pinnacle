@@ -3,8 +3,9 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import Sidebar from "../../components/Sidebar";
 import { BellIcon, Cog6ToothIcon, ClockIcon } from "@heroicons/react/24/solid";
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Image from "next/image";
+import SuspenseWrapper from "../../components/SuspenseWrapper";
 
 interface Color {
   name: string;
@@ -24,10 +25,34 @@ interface InventoryItem {
   colorSizeStock?: { [color: string]: { [size: string]: number } };
 }
 
-export default function InventoryDetailsPage() {
+// Loading fallback component
+function LoadingFallback() {
+  return (
+    <div className="flex-1 min-h-screen bg-gray-50 p-6 flex items-center justify-center">
+      <div className="text-center">
+        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-orange-500 border-r-transparent"></div>
+        <p className="mt-2">Loading inventory details...</p>
+      </div>
+    </div>
+  );
+}
+
+// Component that safely uses useSearchParams with proper error handling
+function InventoryDetailsContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const inventoryId = searchParams?.get("id");
+  // Safely handle searchParams - this pattern helps with Next.js 15 CSR bailout issues
+  let inventoryId: string | null = null;
+  try {
+    const searchParams = useSearchParams();
+    inventoryId = searchParams?.get("id");
+  } catch (err) {
+    console.error("Error accessing search params:", err);
+    // Fall back to client-side URL parsing if needed
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      inventoryId = urlParams.get("id");
+    }
+  }
 
   // State for the inventory item
   const [inventory, setInventory] = useState<InventoryItem | null>(null);
@@ -170,29 +195,27 @@ export default function InventoryDetailsPage() {
     return inventory.stock;
   };
 
-  // Loading state
+  // Render loading state
   if (loading) {
     return (
-      <div className="flex">
-        <Sidebar />
-        <div className="min-h-screen bg-gray-50 p-6 flex-1 flex items-center justify-center">
+      <div className="flex-1">
+        <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
           <div className="text-center">
             <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-orange-500 border-r-transparent"></div>
-            <p className="mt-2">Loading inventory data...</p>
+            <p className="mt-2">Loading inventory details...</p>
           </div>
         </div>
       </div>
     );
   }
 
-  // Error state
+  // Render error state
   if (error || !inventory) {
     return (
-      <div className="flex">
-        <Sidebar />
-        <div className="min-h-screen bg-gray-50 p-6 flex-1 flex items-center justify-center">
+      <div className="flex-1">
+        <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
           <div className="text-center">
-            <p className="text-red-500">{error || "Inventory not found"}</p>
+            <p className="text-red-500">{error || "Inventory item not found"}</p>
             <button 
               onClick={() => router.push('/admin/inventorylist')}
               className="mt-4 px-4 py-2 bg-orange-500 text-white rounded-md"
@@ -205,10 +228,10 @@ export default function InventoryDetailsPage() {
     );
   }
 
+  // Return the original UI with all content
   return (
-    <div className="flex">
-      <Sidebar />
-      <div className="min-h-screen bg-gray-50 p-6 flex-1">
+    <div className="flex-1">
+      <div className="min-h-screen bg-gray-50 p-6">
         {/* Top Bar */}
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-semibold">Inventory Details</h1>
@@ -439,6 +462,18 @@ export default function InventoryDetailsPage() {
         </div>
     
       </div>
+    </div>
+  );
+}
+
+// Main wrapper component with Suspense boundary
+export default function InventoryDetailsPage() {
+  return (
+    <div className="flex">
+      <Sidebar />
+      <Suspense fallback={<LoadingFallback />}>
+        <InventoryDetailsContent />
+      </Suspense>
     </div>
   );
 }

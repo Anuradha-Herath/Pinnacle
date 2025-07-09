@@ -3,7 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import Sidebar from "../../components/Sidebar";
 import { BellIcon, Cog6ToothIcon, ClockIcon } from "@heroicons/react/24/solid";
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Image from 'next/image';
 
 interface ColorItem {
@@ -24,7 +24,8 @@ interface InventoryItem {
   colors?: ColorItem[];
 }
 
-export default function InventoryEditPage() {
+// Create a separate component that uses useSearchParams
+function InventoryEditForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const inventoryId = searchParams?.get("id");
@@ -408,11 +409,11 @@ export default function InventoryEditPage() {
     return inventory.stock;
   };
 
+  // Return the same UI components
   if (loading) {
     return (
-      <div className="flex">
-        <Sidebar />
-        <div className="min-h-screen bg-gray-50 p-6 flex-1 flex items-center justify-center">
+      <div className="flex-1">
+        <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
           <div className="text-center">
             <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-orange-500 border-r-transparent"></div>
             <p className="mt-2">Loading inventory data...</p>
@@ -424,9 +425,8 @@ export default function InventoryEditPage() {
 
   if (error || !inventory) {
     return (
-      <div className="flex">
-        <Sidebar />
-        <div className="min-h-screen bg-gray-50 p-6 flex-1 flex items-center justify-center">
+      <div className="flex-1">
+        <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
           <div className="text-center">
             <p className="text-red-500">{error || "Inventory not found"}</p>
             <button 
@@ -441,14 +441,14 @@ export default function InventoryEditPage() {
     );
   }
 
+  // Return the main content
   return (
-    <div className="flex">
-      <Sidebar />
-      <div className="min-h-screen bg-gray-50 p-6 flex-1">
+    <div className="flex-1">
+      <div className="min-h-screen bg-gray-50 p-6">
         {/* Top Bar */}
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-semibold">Inventory Edit</h1>
-          {/* ...existing code for right side icons... */}
+          {/* Right side icons */}
         </div>
 
         {/* Breadcrumb */}
@@ -781,6 +781,44 @@ export default function InventoryEditPage() {
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+// Loading fallback component
+function LoadingFallback() {
+  return (
+    <div className="flex-1 min-h-screen bg-gray-50 p-6 flex items-center justify-center">
+      <div className="text-center">
+        <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-orange-500 border-r-transparent"></div>
+        <p className="mt-2">Loading...</p>
+      </div>
+    </div>
+  );
+}
+
+// Error fallback component
+function ErrorFallback() {
+  return (
+    <div className="flex-1 min-h-screen bg-gray-50 p-6 flex items-center justify-center">
+      <div className="text-center">
+        <p className="text-red-500">Something went wrong loading this page</p>
+        <a href="/admin/inventorylist" className="mt-4 px-4 py-2 bg-orange-500 text-white rounded-md inline-block">
+          Back to Inventory List
+        </a>
+      </div>
+    </div>
+  );
+}
+
+// Main page component that wraps the form in Suspense
+export default function InventoryEditPage() {
+  return (
+    <div className="flex">
+      <Sidebar />
+      <Suspense fallback={<LoadingFallback />}>
+        <InventoryEditForm />
+      </Suspense>
     </div>
   );
 }

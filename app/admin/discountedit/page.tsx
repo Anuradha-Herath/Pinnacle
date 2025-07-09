@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { BellIcon, Cog6ToothIcon, ClockIcon, MagnifyingGlassIcon } from "@heroicons/react/24/solid";
 import Sidebar from "../../components/Sidebar";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -18,10 +18,38 @@ interface Category {
   thumbnailImage?: string;
 }
 
-export default function DiscountEdit() {
+// Loading fallback component
+function DiscountEditLoadingFallback() {
+  return (
+    <div className="flex">
+      <Sidebar />
+      <div className="flex-1 min-h-screen bg-gray-50 p-6 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-orange-500 border-r-transparent"></div>
+          <p className="mt-2">Loading discount editor...</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Component that uses useSearchParams
+function DiscountEditContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const discountId = searchParams?.get("id");
+  
+  // Safely handle searchParams
+  let discountId: string | null = null;
+  try {
+    const searchParams = useSearchParams();
+    discountId = searchParams?.get("id");
+  } catch (err) {
+    console.error("Error accessing search params:", err);
+    // Fall back to client-side URL parsing if needed
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      discountId = urlParams.get('id');
+    }
+  }
 
   const [formData, setFormData] = useState({
     startDate: "",
@@ -254,19 +282,20 @@ export default function DiscountEdit() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen bg-gray-100">
-        <Sidebar />
-        <div className="flex-1 flex justify-center items-center">
-          <p className="text-xl">Loading discount details...</p>
+      <div className="flex-1">
+        <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
+          <div className="text-center">
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-orange-500 border-r-transparent"></div>
+            <p className="mt-2">Loading discount details...</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
-      <Sidebar />
-      
+    <div className="flex-1">
+      {/* Main Content */}
       <div className="flex-1">
         {/* Top Bar */}
         <div className="flex justify-between items-center p-4">
@@ -555,6 +584,18 @@ export default function DiscountEdit() {
           </form>
         </div>
       </div>
+    </div>
+  );
+}
+
+// Main wrapper component with Suspense boundary
+export default function DiscountEdit() {
+  return (
+    <div className="flex">
+      <Sidebar />
+      <Suspense fallback={<DiscountEditLoadingFallback />}>
+        <DiscountEditContent />
+      </Suspense>
     </div>
   );
 }

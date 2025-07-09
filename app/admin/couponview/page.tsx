@@ -1,14 +1,42 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { BellIcon, Cog6ToothIcon, ClockIcon } from "@heroicons/react/24/solid";
 import Sidebar from "../../components/Sidebar";
 
-export default function CouponView() {
+// Loading fallback component
+function CouponViewLoadingFallback() {
+  return (
+    <div className="flex">
+      <Sidebar />
+      <div className="flex-1 min-h-screen bg-gray-50 p-6 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-orange-500 border-r-transparent"></div>
+          <p className="mt-2">Loading coupon details...</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Component that uses useSearchParams
+function CouponViewContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const couponId = searchParams.get('id');
+  
+  // Safely handle searchParams
+  let couponId: string | null = null;
+  try {
+    const searchParams = useSearchParams();
+    couponId = searchParams.get('id');
+  } catch (err) {
+    console.error("Error accessing search params:", err);
+    // Fall back to client-side URL parsing if needed
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      couponId = urlParams.get('id');
+    }
+  }
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -64,20 +92,38 @@ export default function CouponView() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen bg-gray-100">
-        <Sidebar />
-        <div className="flex-1 flex items-center justify-center">
-          <div>Loading coupon data...</div>
+      <div className="flex-1">
+        <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
+          <div className="text-center">
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-orange-500 border-r-transparent"></div>
+            <p className="mt-2">Loading coupon data...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Render error state
+  if (error) {
+    return (
+      <div className="flex-1">
+        <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
+          <div className="text-center">
+            <p className="text-red-500">{error}</p>
+            <button 
+              onClick={() => router.push('/admin/couponlist')}
+              className="mt-4 px-4 py-2 bg-orange-500 text-white rounded-md"
+            >
+              Back to Coupon List
+            </button>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-100">
-      {/* Sidebar */}
-      <Sidebar />
-      
+    <div className="flex-1">
       {/* Main Content */}
       <div className="flex-1">
         {/* Top Bar */}
@@ -254,6 +300,18 @@ export default function CouponView() {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// Main wrapper component with Suspense boundary
+export default function CouponView() {
+  return (
+    <div className="flex">
+      <Sidebar />
+      <Suspense fallback={<CouponViewLoadingFallback />}>
+        <CouponViewContent />
+      </Suspense>
     </div>
   );
 }

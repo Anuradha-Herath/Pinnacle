@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
+    "build:force": "node build-ignore-errors.js",
     "start": "next start",
     "lint": "next lint"
   },
