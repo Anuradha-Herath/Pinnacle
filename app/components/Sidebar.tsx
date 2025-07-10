@@ -41,7 +41,7 @@ const Sidebar: React.FC = () => {
         await logout();
         // Use notification service instead of direct toast call
         authNotifications.logoutSuccess();
-        router.push('/adminlogin');
+        router.push('/admin/adminlogin');
     };
 
     // Helper function for Link or collapsed icon-only button

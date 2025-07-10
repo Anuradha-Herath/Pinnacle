@@ -41,9 +41,25 @@ export async function GET(req: NextRequest) {
     
     console.log(`Found ${orders.length} orders for this user`);
     
+    // Format orders for consistent display in the profile page
+    const formattedOrders = orders.map(order => ({
+      _id: order._id,
+      orderNumber: order.orderNumber || `ORD-${order._id.toString().substring(0, 8)}`,
+      status: order.status || 'processing',
+      orderItems: Array.isArray(order.orderItems) ? order.orderItems : 
+                 (order.line_items ? order.line_items.map((item: any) => ({
+                   name: item.price_data?.product_data || 'Product',
+                   price: item.price_data?.unit_amount ? item.price_data.unit_amount/100 : 0,
+                   quantity: item.quantity || 1,
+                   image: item.metadata?.imageUrl || '/placeholder.jpg'
+                 })) : []),
+      createdAt: order.createdAt || new Date().toISOString(),
+      totalPrice: order.totalPrice || (order.amount?.total || 0),
+    }));
+    
     return NextResponse.json({
       success: true,
-      orders,
+      orders: formattedOrders,
     });
   } catch (error) {
     console.error('Orders fetch error:', error);

@@ -86,7 +86,7 @@ const AdminLoginPage: React.FC = () => {
                 placeholder="Email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full p-2 border rounded-md focus:outline-none focus:ring focus:border-blue-300"
+                className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                 disabled={isLoading}
                 required
               />
@@ -97,7 +97,7 @@ const AdminLoginPage: React.FC = () => {
                 placeholder="Password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full p-2 border rounded-md focus:outline-none focus:ring focus:border-blue-300"
+                className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                 disabled={isLoading}
                 required
               />
