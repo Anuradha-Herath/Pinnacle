@@ -125,7 +125,19 @@ export default function CouponCreate() {
 
   // Handle date changes
   const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, startDate: e.target.value });
+    const newStartDate = e.target.value;
+    const currentEndDate = formData.endDate;
+    
+    // If there's an end date and it's before the new start date, clear it
+    if (currentEndDate && newStartDate && currentEndDate < newStartDate) {
+      setFormData({ 
+        ...formData, 
+        startDate: newStartDate, 
+        endDate: "" 
+      });
+    } else {
+      setFormData({ ...formData, startDate: newStartDate });
+    }
   };
 
   const handleEndDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -156,6 +168,9 @@ export default function CouponCreate() {
         endDate: formData.endDate,
         status: statusMap[formData.couponStatus] || formData.couponStatus,
         couponType: formData.couponType,
+        // Required fields for backward compatibility
+        product: "General", // Default product name
+        price: "0", // Default price
       };
 
       // Add type-specific fields
@@ -163,6 +178,8 @@ export default function CouponCreate() {
         case "percentage":
           couponData.discount = formData.discount;
           couponData.discountType = "percentage";
+          couponData.product = "Percentage Discount Coupon";
+          couponData.price = formData.minOrderValue || "0";
           if (formData.minOrderValue) {
             couponData.minOrderValue = formData.minOrderValue;
           }
@@ -170,6 +187,8 @@ export default function CouponCreate() {
         case "fixed_amount":
           couponData.fixedAmount = formData.fixedAmount;
           couponData.discountType = "fixed_amount";
+          couponData.product = "Fixed Amount Discount Coupon";
+          couponData.price = formData.minOrderValue || "0";
           if (formData.minOrderValue) {
             couponData.minOrderValue = formData.minOrderValue;
           }
@@ -178,11 +197,17 @@ export default function CouponCreate() {
           couponData.productId = formData.productId;
           couponData.discount = formData.discount;
           couponData.discountType = "product_based";
+          // Find selected product name for the product field
+          const selectedProduct = products.find(p => p._id === formData.productId);
+          couponData.product = selectedProduct ? selectedProduct.productName : "Product-Based Coupon";
+          couponData.price = selectedProduct ? (selectedProduct.regularPrice || "0") : "0";
           break;
         case "first_time_buyer":
           couponData.discount = formData.discount;
           couponData.discountType = "first_time_buyer";
           couponData.customerEligibility = "new user";
+          couponData.product = "First Time Buyer Coupon";
+          couponData.price = formData.minOrderValue || "0";
           if (formData.minOrderValue) {
             couponData.minOrderValue = formData.minOrderValue;
           }
@@ -195,6 +220,8 @@ export default function CouponCreate() {
           delete couponData[key];
         }
       });
+      
+      console.log('Submitting coupon data:', couponData); // Debug log
       
       const response = await fetch('/api/coupons', {
         method: 'POST',
@@ -338,8 +365,12 @@ export default function CouponCreate() {
                     className="block w-full border border-gray-300 p-2 rounded-xl" 
                     value={formData.startDate}
                     onChange={handleStartDateChange}
+                    min={new Date().toISOString().split('T')[0]}
                     required
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Start date cannot be in the past
+                  </p>
                   </div>
                   <div>
                   <label className="block text-sm mb-1">End Date</label>
@@ -348,8 +379,14 @@ export default function CouponCreate() {
                     className="block w-full border border-gray-300 p-2 rounded-xl" 
                     value={formData.endDate}
                     onChange={handleEndDateChange}
+                    min={formData.startDate || undefined}
                     required
                   />
+                  {formData.startDate && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      End date cannot be earlier than {new Date(formData.startDate).toLocaleDateString()}
+                    </p>
+                  )}
                   </div>
                 </div>
                 
