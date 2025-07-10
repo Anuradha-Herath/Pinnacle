@@ -16,6 +16,22 @@ const connectDB = async () => {
   }
 };
 
+// Add CORS headers helper
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Max-Age': '86400',
+};
+
+// Handle OPTIONS request for CORS
+export async function OPTIONS() {
+  return new Response(null, {
+    status: 200,
+    headers: corsHeaders,
+  });
+}
+
 // GET method to fetch trending products (newly created + recently stocked) that are in stock
 export async function GET(request: Request) {
   try {
@@ -38,7 +54,9 @@ export async function GET(request: Request) {
     const inStockProductIds = inStockInventory.map(item => item.productId);
     
     if (inStockProductIds.length === 0) {
-      return NextResponse.json({ products: [] });
+      return NextResponse.json({ products: [] }, {
+        headers: corsHeaders,
+      });
     }
     
     // Find all products that are in stock
@@ -104,17 +122,22 @@ export async function GET(request: Request) {
         price: product.regularPrice,
         image: product.gallery && product.gallery.length > 0 ? 
           product.gallery[0].src : '/placeholder.png',
-        colors: product.gallery?.map(item => item.src) || [],
+        colors: product.gallery?.map((item: any) => item.src) || [],
         sizes: product.sizes || [],
         tag: isNewAndStocked ? "NEW" : null,
       };
     });
     
-    return NextResponse.json({ products: customerProducts });
+    return NextResponse.json({ products: customerProducts }, {
+      headers: corsHeaders,
+    });
   } catch (error) {
     console.error("Error fetching trending products:", error);
     return NextResponse.json({ 
       error: error instanceof Error ? error.message : "Failed to fetch trending products" 
-    }, { status: 500 });
+    }, { 
+      status: 500,
+      headers: corsHeaders,
+    });
   }
 }

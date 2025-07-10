@@ -3,6 +3,22 @@ import mongoose from 'mongoose';
 import User from '@/models/User';
 import { authenticateUser } from '@/middleware/auth';
 
+// Add CORS headers helper
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Max-Age': '86400',
+};
+
+// Handle OPTIONS request for CORS
+export async function OPTIONS() {
+  return new Response(null, {
+    status: 200,
+    headers: corsHeaders,
+  });
+}
+
 // Connect to MongoDB
 const connectDB = async () => {
   try {
@@ -24,7 +40,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ 
         success: false, 
         error: authResult.error || 'Authentication required' 
-      }, { status: 401 });
+      }, { 
+        status: 401,
+        headers: corsHeaders,
+      });
     }
     
     // Connect to database
@@ -37,7 +56,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ 
         success: false, 
         error: 'User not found' 
-      }, { status: 404 });
+      }, { 
+        status: 404,
+        headers: corsHeaders,
+      });
     }
     
     // Return user data
@@ -52,6 +74,8 @@ export async function GET(request: NextRequest) {
         createdAt: user.createdAt,
         updatedAt: user.updatedAt
       }
+    }, {
+      headers: corsHeaders,
     });
     
   } catch (error) {
@@ -59,6 +83,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ 
       success: false, 
       error: error instanceof Error ? error.message : 'Failed to fetch user profile' 
-    }, { status: 500 });
+    }, { 
+      status: 500,
+      headers: corsHeaders,
+    });
   }
 }

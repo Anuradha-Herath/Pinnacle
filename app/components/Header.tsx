@@ -224,10 +224,23 @@ const Header = () => {
     const fetchCategories = async () => {
       try {
         setCategoriesLoading(true);
-        const response = await fetch("/api/categories");
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        
+        const response = await fetch("/api/categories", {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache',
+          },
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
-          throw new Error("Failed to fetch categories");
+          throw new Error(`Failed to fetch categories: ${response.status} ${response.statusText}`);
         }
 
         const data = await response.json();
@@ -242,6 +255,9 @@ const Header = () => {
         setAccessoriesCategories(accessories);
       } catch (error) {
         console.error("Error fetching categories:", error);
+        if (error instanceof Error && error.name === 'AbortError') {
+          console.error('Categories request timed out');
+        }
       } finally {
         setCategoriesLoading(false);
       }
@@ -319,13 +335,30 @@ const Header = () => {
     const fetchCategories = async () => {
       try {
         setLoading(true);
-        const response = await fetch('/api/categories');
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        
+        const response = await fetch('/api/categories', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache',
+          },
+          signal: controller.signal,
+        });
+        
+        clearTimeout(timeoutId);
+        
         if (response.ok) {
           const data = await response.json();
           setCategories(data.categories || []);
         }
       } catch (error) {
         console.error("Error fetching categories:", error);
+        if (error instanceof Error && error.name === 'AbortError') {
+          console.error('Categories request timed out (second fetch)');
+        }
       } finally {
         setLoading(false);
       }
