@@ -71,10 +71,21 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
         
+        // Add a product ID check to prevent unnecessary API calls
+        if (!product.id) {
+          console.warn("Product ID is missing, cannot fetch discount");
+          clearTimeout(timeoutId);
+          return;
+        }
+        
         const response = await fetch(`/api/discounts/product/${product.id}`, {
           signal: controller.signal,
+          // Add cache control to avoid repeated fetches
+          cache: 'force-cache',
         }).catch(error => {
-          console.warn("Discount fetch failed:", error.message);
+          if (error.name !== 'AbortError') {
+            console.warn("Discount fetch failed:", error.message);
+          }
           return null; // Return null on network errors
         });
         
@@ -100,7 +111,10 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
       }
     };
     
-    checkForDiscounts();
+    // Only check for discounts if the product has a valid ID and price
+    if (product.id && product.price) {
+      checkForDiscounts();
+    }
   }, [product.id, product.price, product.discountedPrice, product.discount]);
 
   // Ensure we have valid data with defaults
