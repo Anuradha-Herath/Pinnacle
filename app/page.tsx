@@ -6,6 +6,7 @@ import ProductCarousel from "./components/ProductCarousel";
 import Footer from "./components/Footer";
 import Link from "next/link";
 import HeaderPlaceholder from "./components/HeaderPlaceholder";
+import { getBrowserInfo, logBrowserInfo } from "@/lib/browserUtils";
 
 const HomePage = () => {
   const [products, setProducts] = useState([]);
@@ -15,6 +16,8 @@ const HomePage = () => {
   const [accessoriesLoading, setAccessoriesLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedGender, setSelectedGender] = useState<'men' | 'women'>('women');
+  const [retryCount, setRetryCount] = useState(0);
+  const maxRetries = 3;
   
   // Categories we want to display - use lowercase consistently
   const categories = ["mens", "womens", "accessories"];
@@ -24,16 +27,56 @@ const HomePage = () => {
     accessories: []
   });
 
-  // Function to fetch all products and categorize them
-  const fetchProducts = async () => {
+  // Enhanced fetch function for Edge browser compatibility
+  const edgeCompatibleFetch = async (url: string, options: RequestInit = {}) => {
+    const browserInfo = getBrowserInfo();
+    
+    const defaultHeaders = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'Cache-Control': 'no-cache',
+      'Pragma': 'no-cache',
+    };
+    
+    const enhancedOptions: RequestInit = {
+      method: 'GET',
+      mode: 'cors',
+      credentials: 'same-origin',
+      cache: 'no-cache',
+      headers: {
+        ...defaultHeaders,
+        ...options.headers,
+      },
+      ...options,
+    };
+    
+    // For Edge browser, add additional safeguards
+    if (typeof browserInfo === 'object' && browserInfo.isEdge) {
+      console.log('Using Edge-optimized fetch for:', url);
+      enhancedOptions.referrerPolicy = 'strict-origin-when-cross-origin';
+    }
+    
+    return fetch(url, enhancedOptions);
+  };
+
+  // Function to fetch all products and categorize them with retry logic
+  const fetchProducts = async (attempt = 1) => {
     try {
       setLoading(true);
+      setError(null);
       
-      // Fetch all products
-      const response = await fetch('/api/customer/products');
+      // Fetch all products with timeout and proper error handling for Edge
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // Increased timeout for Edge
+      
+      const response = await edgeCompatibleFetch('/api/customer/products', {
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
       
       if (!response.ok) {
-        throw new Error('Failed to fetch products');
+        throw new Error(`Failed to fetch products: ${response.status} ${response.statusText}`);
       }
       
       const data = await response.json();
@@ -72,16 +115,46 @@ const HomePage = () => {
       }
       
       // Fetch trending products (newly created + recently stocked)
-      const trendingResponse = await fetch('/api/customer/trending');
+      const trendingController = new AbortController();
+      const trendingTimeoutId = setTimeout(() => trendingController.abort(), 15000);
+      
+      const trendingResponse = await edgeCompatibleFetch('/api/customer/trending', {
+        signal: trendingController.signal,
+      });
+      
+      clearTimeout(trendingTimeoutId);
       
       if (trendingResponse.ok) {
         const trendingData = await trendingResponse.json();
         setTrendingProducts(trendingData.products || []);
       }
       
+      setRetryCount(0); // Reset retry count on success
+      
     } catch (err) {
       console.error('Error fetching products:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load products');
+      
+      if (err instanceof Error) {
+        if (err.name === 'AbortError') {
+          if (attempt < maxRetries) {
+            console.log(`Request timed out, retrying... (${attempt}/${maxRetries})`);
+            setTimeout(() => fetchProducts(attempt + 1), 2000); // Retry after 2 seconds
+            return;
+          } else {
+            setError('Request timed out after multiple attempts. Please refresh the page.');
+          }
+        } else {
+          if (attempt < maxRetries) {
+            console.log(`Request failed, retrying... (${attempt}/${maxRetries})`);
+            setTimeout(() => fetchProducts(attempt + 1), 2000);
+            return;
+          } else {
+            setError(err.message);
+          }
+        }
+      } else {
+        setError('Failed to load products');
+      }
     } finally {
       setLoading(false);
     }
@@ -95,11 +168,18 @@ const HomePage = () => {
       // Convert 'men'/'women' to match API parameter ('Men'/'Women')
       const apiCategory = category === 'men' ? 'Men' : 'Women';
       
-      // Fetch products filtered by category
-      const response = await fetch(`/api/customer/products?category=${apiCategory}`);
+      // Fetch products filtered by category with timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      
+      const response = await edgeCompatibleFetch(`/api/customer/products?category=${apiCategory}`, {
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
       
       if (!response.ok) {
-        throw new Error(`Failed to fetch ${apiCategory} products`);
+        throw new Error(`Failed to fetch ${apiCategory} products: ${response.status} ${response.statusText}`);
       }
       
       const data = await response.json();
@@ -115,6 +195,9 @@ const HomePage = () => {
       
     } catch (err) {
       console.error(`Error fetching ${category} products:`, err);
+      if (err instanceof Error && err.name === 'AbortError') {
+        console.error('Request timed out for category:', category);
+      }
     } finally {
       setGenderLoading(false);
     }
@@ -128,10 +211,17 @@ const HomePage = () => {
       // Ensure consistent casing by using "Accessories" exactly
       console.log('Fetching accessories products...');
       
-      const response = await fetch(`/api/customer/products?category=Accessories`);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      
+      const response = await edgeCompatibleFetch(`/api/customer/products?category=Accessories`, {
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
       
       if (!response.ok) {
-        throw new Error(`Failed to fetch accessories products: ${response.status}`);
+        throw new Error(`Failed to fetch accessories products: ${response.status} ${response.statusText}`);
       }
       
       const data = await response.json();
@@ -153,6 +243,9 @@ const HomePage = () => {
       
     } catch (err) {
       console.error(`Error fetching accessories products:`, err);
+      if (err instanceof Error && err.name === 'AbortError') {
+        console.error('Accessories request timed out');
+      }
       // On error, ensure we don't leave the carousel in a loading state
       setCategoryProducts(prev => ({
         ...prev,
@@ -165,6 +258,9 @@ const HomePage = () => {
 
   // Initial product fetch
   useEffect(() => {
+    // Log browser info for debugging
+    logBrowserInfo();
+    
     const loadAllData = async () => {
       // First fetch all products
       await fetchProducts();
@@ -198,6 +294,24 @@ const HomePage = () => {
 
       {/* Main Content */}
       <div className="flex-grow">
+        {/* Error Message */}
+        {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mx-4 md:mx-8 my-4">
+            <div className="flex items-center justify-between">
+              <span>{error}</span>
+              <button 
+                onClick={() => {
+                  setError(null);
+                  fetchProducts();
+                }}
+                className="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Trending Products - Newly Created + Recently Stocked */}
         <ProductCarousel
           title="Trending Products"

@@ -112,7 +112,20 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(true);
       setError(null);
       
-      const response = await fetch('/api/auth/me');
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      
+      const response = await fetch('/api/auth/me', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+        },
+        credentials: 'same-origin',
+        signal: controller.signal,
+      });
+      
+      clearTimeout(timeoutId);
       
       if (response.ok) {
         const data = await response.json();
@@ -131,6 +144,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     } catch (err) {
       console.error('Authentication check error:', err);
+      if (err instanceof Error && err.name === 'AbortError') {
+        console.error('Auth request timed out');
+        setError('Authentication request timed out');
+      } else {
+        setError(err instanceof Error ? err.message : 'Authentication failed');
+      }
       setUser(null);
       return false;
     } finally {

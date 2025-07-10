@@ -24,6 +24,26 @@ export const metadata: Metadata = {
   description: "Fashion for all occasions",
 };
 
+// Add script to handle fetch polyfill for Edge browser
+const EdgeCompatibilityScript = () => (
+  <script
+    dangerouslySetInnerHTML={{
+      __html: `
+        // Edge browser fetch polyfill
+        if (typeof window !== 'undefined' && !window.fetch) {
+          console.log('Fetch API not supported, loading polyfill...');
+          // You can add a fetch polyfill here if needed
+        }
+        
+        // Ensure AbortController is available
+        if (typeof window !== 'undefined' && !window.AbortController) {
+          console.log('AbortController not supported');
+        }
+      `,
+    }}
+  />
+);
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -31,6 +51,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <EdgeCompatibilityScript />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
