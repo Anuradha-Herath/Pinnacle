@@ -165,10 +165,15 @@ const Chatbot: React.FC = () => {
         if (data.productCount && data.cacheAge) {
           console.log(`Chatbot knows about ${data.productCount} products. Cache age: ${data.cacheAge} seconds`);
         }
+        if (data.fallback) {
+          console.log("Response generated using fallback system");
+        }
       } else {
+        // Handle failed API responses with fallback text
+        const fallbackText = data.fallbackResponse || "Sorry, I encountered an error. Please try again later.";
         setChatHistory(prev => [...prev, {
           isUser: false,
-          text: data.fallbackResponse || "Sorry, I encountered an error. Please try again later.",
+          text: fallbackText,
           timestamp: new Date()
         }]);
         console.error("Chatbot error:", data.error);

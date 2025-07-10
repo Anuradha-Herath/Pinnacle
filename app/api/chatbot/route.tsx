@@ -663,7 +663,7 @@ const makeResponseConcise = (text: string): string => {
   
   let conciseText = text;
   
-  conciseText = conciseText.replace(/\d+\.\s+\*\*([^:]+):\*\*\s+(.*?)(?=\d+\.|$)/gs, '• $1: $2\n');
+  conciseText = conciseText.replace(/\d+\.\s+\*\*([^:]+):\*\*\s+(.*?)(?=\d+\.|$)/g, '• $1: $2\n');
   conciseText = conciseText.replace(/\n{3,}/g, '\n\n');
   
   const formalities = [
@@ -691,11 +691,214 @@ const makeResponseConcise = (text: string): string => {
   return conciseText.trim();
 };
 
+// Fallback response system for when AI models are unavailable
+const generateFallbackResponse = (query: string, productContext: ProductContextItem[], userContext?: any): { response: string, includeProducts: boolean } => {
+  const queryLower = query.toLowerCase();
+  
+  // FAQ responses
+  if (queryLower.includes('shipping') || queryLower.includes('delivery')) {
+    return {
+      response: "We offer free shipping on orders over $50. Standard delivery takes 3-5 business days, and express delivery takes 1-2 business days.",
+      includeProducts: false
+    };
+  }
+  
+  if (queryLower.includes('return') || queryLower.includes('exchange')) {
+    return {
+      response: "We offer a 30-day return policy for all items in original condition. Returns are free, and exchanges are available for different sizes or colors.",
+      includeProducts: false
+    };
+  }
+  
+  if (queryLower.includes('payment') || queryLower.includes('pay')) {
+    return {
+      response: "We accept all major credit cards, PayPal, and buy-now-pay-later options. All payments are secured with SSL encryption.",
+      includeProducts: false
+    };
+  }
+  
+  if (queryLower.includes('size') || queryLower.includes('sizing')) {
+    return {
+      response: "You can find our size guide on each product page. We offer sizes from XS to XXL, and our customer service team can help with specific fit questions.",
+      includeProducts: false
+    };
+  }
+  
+  if (queryLower.includes('contact') || queryLower.includes('help') || queryLower.includes('support')) {
+    return {
+      response: "You can reach our customer service team at support@pinnacle.com or through our live chat. We're available 24/7 to help!",
+      includeProducts: false
+    };
+  }
+  
+  if (queryLower.includes('track') || queryLower.includes('order status')) {
+    return {
+      response: "You can track your order by logging into your account and visiting the 'My Orders' section. You'll also receive tracking information via email.",
+      includeProducts: false
+    };
+  }
+  
+  // Product-related queries
+  if (queryLower.includes('new') && (queryLower.includes('product') || queryLower.includes('arrival'))) {
+    const newestProducts = [...productContext]
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 3);
+    
+    if (newestProducts.length > 0) {
+      return {
+        response: `Here are our latest arrivals: ${newestProducts.map(p => `${p.name} ($${p.price})`).join(', ')}. Check them out!`,
+        includeProducts: true
+      };
+    }
+  }
+  
+  // Category-based product queries
+  const categoryKeywords = ['hoodie', 'hoodies', 't-shirt', 'tshirt', 'shirt', 'jacket', 'pants', 'jeans', 'dress', 'shoes'];
+  const mentionedCategory = categoryKeywords.find(cat => queryLower.includes(cat));
+  
+  if (mentionedCategory) {
+    const categoryProducts = productContext.filter(product => {
+      const productKeywords = product.keywords.toLowerCase();
+      const productCategory = product.category?.toLowerCase() || '';
+      const productSubCategory = product.subCategory?.toLowerCase() || '';
+      
+      return productKeywords.includes(mentionedCategory) || 
+             productCategory.includes(mentionedCategory) ||
+             productSubCategory.includes(mentionedCategory);
+    }).slice(0, 3);
+    
+    if (categoryProducts.length > 0) {
+      return {
+        response: `I found these ${mentionedCategory}s for you: ${categoryProducts.map(p => `${p.name} ($${p.price})`).join(', ')}.`,
+        includeProducts: true
+      };
+    }
+  }
+  
+  // Color-based queries
+  const colorRegex = /\b(red|blue|green|black|white|yellow|purple|pink|orange|brown|grey|gray)\b/i;
+  const colorMatch = query.match(colorRegex);
+  
+  if (colorMatch) {
+    const color = colorMatch[1].toLowerCase();
+    const colorProducts = productContext.filter(product => 
+      product.colors.some(c => c.toLowerCase().includes(color))
+    ).slice(0, 3);
+    
+    if (colorProducts.length > 0) {
+      return {
+        response: `Here are some ${color} items: ${colorProducts.map(p => `${p.name} ($${p.price})`).join(', ')}.`,
+        includeProducts: true
+      };
+    }
+  }
+  
+  // User preference-based recommendations
+  if ((queryLower.includes('recommend') || queryLower.includes('suggest')) && userContext) {
+    const preferredProducts = productContext.filter(product => {
+      if (userContext.topCategories && userContext.topCategories.includes(product.category?.toLowerCase())) {
+        return true;
+      }
+      if (userContext.topColors && product.colors.some(color => 
+        userContext.topColors.some((prefColor: string) => color.toLowerCase().includes(prefColor.toLowerCase()))
+      )) {
+        return true;
+      }
+      return false;
+    }).slice(0, 3);
+    
+    if (preferredProducts.length > 0) {
+      return {
+        response: `Based on your preferences, I recommend: ${preferredProducts.map(p => `${p.name} ($${p.price})`).join(', ')}.`,
+        includeProducts: true
+      };
+    }
+  }
+  
+  // Generic product query
+  if (queryLower.includes('do you have') || queryLower.includes('do you sell') || queryLower.includes('looking for')) {
+    const randomProducts = productContext.slice(0, 3);
+    if (randomProducts.length > 0) {
+      return {
+        response: `We have a wide selection of fashion items. Here are some popular choices: ${randomProducts.map(p => `${p.name} ($${p.price})`).join(', ')}.`,
+        includeProducts: true
+      };
+    }
+  }
+  
+  // Default response
+  return {
+    response: "I'm currently experiencing technical difficulties, but I'm here to help! Please try rephrasing your question, or contact our customer service team for immediate assistance.",
+    includeProducts: false
+  };
+};
+
+// Rate limiting to prevent quota exhaustion
+const REQUEST_CACHE = new Map<string, { count: number, resetTime: number }>();
+const MAX_REQUESTS_PER_HOUR = 50; // Adjust based on your quota
+const CACHE_CLEANUP_INTERVAL = 60 * 60 * 1000; // 1 hour
+
+const checkRateLimit = (identifier: string): { allowed: boolean, resetTime?: number } => {
+  const now = Date.now();
+  const hourStart = Math.floor(now / CACHE_CLEANUP_INTERVAL) * CACHE_CLEANUP_INTERVAL;
+  
+  const userCache = REQUEST_CACHE.get(identifier);
+  
+  if (!userCache || userCache.resetTime !== hourStart) {
+    REQUEST_CACHE.set(identifier, { count: 1, resetTime: hourStart });
+    return { allowed: true };
+  }
+  
+  if (userCache.count >= MAX_REQUESTS_PER_HOUR) {
+    return { allowed: false, resetTime: hourStart + CACHE_CLEANUP_INTERVAL };
+  }
+  
+  userCache.count++;
+  return { allowed: true };
+};
+
+// Cleanup old entries periodically
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, value] of REQUEST_CACHE.entries()) {
+    if (now - value.resetTime > CACHE_CLEANUP_INTERVAL) {
+      REQUEST_CACHE.delete(key);
+    }
+  }
+}, CACHE_CLEANUP_INTERVAL);
+
 export async function POST(request: NextRequest) {
+  let message = "";
+  let userContext: any = null;
+  
   try {
     await connectDB();
 
-    const { message, chatHistory, userContext } = await request.json();
+    const requestData = await request.json();
+    message = requestData.message;
+    const chatHistory = requestData.chatHistory;
+    userContext = requestData.userContext;
+
+    // Check rate limiting to prevent quota exhaustion
+    const clientIP = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
+    const rateLimitCheck = checkRateLimit(clientIP);
+    
+    if (!rateLimitCheck.allowed) {
+      console.log(`Rate limit exceeded for ${clientIP}`);
+      // Use fallback system when rate limited
+      const products = await fetchFreshProductData(false);
+      const productContext = prepareProductContext(products);
+      const fallbackResult = generateFallbackResponse(message, productContext, userContext);
+      
+      return NextResponse.json({
+        success: true,
+        response: `${fallbackResult.response}\n\n*Note: I'm currently in simplified mode to manage server load. Full AI features will be available again shortly.*`,
+        model: "rate-limited-fallback",
+        productCount: productContext.length,
+        fallback: true,
+        rateLimited: true
+      });
+    }
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
@@ -835,18 +1038,55 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ 
-      success: false, 
-      error: `All models failed. Last error: ${lastError instanceof Error ? lastError.message : "Unknown error"}`,
-      fallbackResponse: "I'm having trouble connecting to my knowledge base right now. Please try again in a moment, or contact our customer service team for immediate assistance."
+    // Use fallback response system when AI models fail
+    console.log("All AI models failed, using fallback response system");
+    const fallbackResult = generateFallbackResponse(message, productContext, userContext);
+    
+    let finalResponse = fallbackResult.response;
+    
+    // Add product recommendations if appropriate
+    if (fallbackResult.includeProducts) {
+      finalResponse = await processResponseWithProductCards(
+        fallbackResult.response,
+        productContext,
+        message,
+        userContext
+      );
+    }
+    
+    return NextResponse.json({
+      success: true,
+      response: finalResponse,
+      model: "fallback-system",
+      productCount: productContext.length,
+      cacheAge: Math.floor((Date.now() - lastCacheUpdate) / 1000),
+      fallback: true
     });
     
   } catch (error) {
     console.error("Error processing chatbot request:", error);
-    return NextResponse.json({ 
-      success: false, 
-      error: error instanceof Error ? error.message : "Failed to process request",
-      fallbackResponse: "I'm sorry, but I'm experiencing technical difficulties at the moment. Please try again later or contact our customer support team for assistance."
-    }, { status: 500 });
+    
+    // Try to provide a helpful fallback even in critical errors
+    try {
+      await connectDB();
+      const products = await fetchFreshProductData(false);
+      const productContext = prepareProductContext(products);
+      const fallbackResult = generateFallbackResponse(message || "help", productContext, userContext);
+      
+      return NextResponse.json({ 
+        success: true, 
+        response: fallbackResult.response,
+        model: "emergency-fallback",
+        productCount: productContext.length,
+        fallback: true
+      });
+    } catch (fallbackError) {
+      console.error("Fallback system also failed:", fallbackError);
+      return NextResponse.json({ 
+        success: false, 
+        error: error instanceof Error ? error.message : "Failed to process request",
+        fallbackResponse: "I'm sorry, but I'm experiencing technical difficulties at the moment. Please try again later or contact our customer support team for assistance."
+      }, { status: 500 });
+    }
   }
 }
