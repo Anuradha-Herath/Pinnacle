@@ -14,24 +14,25 @@ const ReviewButton: React.FC<ReviewButtonProps> = ({ status }) => {
   }
   
   return (
-    <div className="mt-4 text-right">
+    <div className="mt-4 text-right ">
       <Button 
-        onClick={() => router.push('/toreveiwpage')}
+        onClick={() => router.push('/productReview')}
         variant="contained"
         disableElevation
         sx={{ 
-          backgroundColor: 'black !important', 
+          backgroundColor: 'black ', 
           color: 'white',
           '&:hover': { 
             backgroundColor: '#333 !important' // Slightly lighter black on hover for better UX
           },
-          fontWeight: 'medium',
-          padding: '8px 16px',
+          fontWeight: 'large',
+          padding: '6px 10px',
           boxShadow: 'none',
-          textTransform: 'none'
+          textTransform: 'none',
+          borderRadius: '10px', // Adding rounded corners to the button
         }}
       >
-        Review this item
+        Review
       </Button>
     </div>
   );
