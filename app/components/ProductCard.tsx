@@ -48,9 +48,39 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
   // Check for discounts when component mounts
   useEffect(() => {
     const checkForDiscounts = async () => {
+      // First check if product already has discountedPrice directly in its data
+      if (product.discountedPrice !== undefined && product.price > product.discountedPrice) {
+        // Calculate percentage based on the provided discountedPrice
+        const percentage = Math.round(((product.price - product.discountedPrice) / product.price) * 100);
+        setHasDiscount(true);
+        setDiscountedPrice(product.discountedPrice);
+        setDiscountPercentage(percentage);
+        return; // Skip API call if we already have the discount info
+      }
+      
+      // If there's a discount property on the product, use it directly
+      if (product.discount && product.discount.percentage > 0) {
+        setHasDiscount(true);
+        setDiscountedPrice(product.discount.discountedPrice);
+        setDiscountPercentage(product.discount.percentage);
+        return; // Skip API call if we already have the discount info
+      }
+
+      // Otherwise try to fetch from API with proper error handling
       try {
-        const response = await fetch(`/api/discounts/product/${product.id}`);
-        if (response.ok) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+        
+        const response = await fetch(`/api/discounts/product/${product.id}`, {
+          signal: controller.signal,
+        }).catch(error => {
+          console.warn("Discount fetch failed:", error.message);
+          return null; // Return null on network errors
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (response && response.ok) {
           const data = await response.json();
           if (data.discount && data.discount.active) {
             // Calculate the discounted price
@@ -64,12 +94,14 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
           }
         }
       } catch (error) {
+        // Handle fetch or JSON parsing errors
         console.error("Error checking discounts:", error);
+        // Continue with standard pricing without discount
       }
     };
     
     checkForDiscounts();
-  }, [product.id, product.price]);
+  }, [product.id, product.price, product.discountedPrice, product.discount]);
 
   // Ensure we have valid data with defaults
   const productWithDefaults = {
