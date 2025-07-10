@@ -48,12 +48,27 @@ export async function PUT(
 ) {
   try {
     await connectDB();
-    
-    const id = params.id;
+      const id = params.id;
     const body = await request.json();
     console.log(`Updating coupon with ID: ${id}`);
     
-    const updatedCoupon = await Coupon.findByIdAndUpdate(id, body, { new: true });
+    // Extract specific fields with validation
+    const updatedCoupon = await Coupon.findByIdAndUpdate(
+      id, 
+      {
+        product: body.product,
+        price: body.price,
+        discount: body.discount,
+        code: body.code,
+        startDate: body.startDate,
+        endDate: body.endDate,
+        status: body.status,
+        description: body.description || '',
+        customerEligibility: body.customerEligibility,
+        limit: body.limit,
+        oneTimeUse: body.oneTimeUse
+      }, 
+      { new: true, runValidators: true });
     if (!updatedCoupon) {
       return NextResponse.json({ error: "Coupon not found" }, { status: 404 });
     }

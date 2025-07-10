@@ -66,7 +66,11 @@ export default function CouponEdit() {
         });
         
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'An unknown error occurred');
+        if (err instanceof Error) {
+          setError(err.message);
+        } else {
+          setError('An unknown error occurred');
+        }
         console.error('Error fetching coupon:', err);
       } finally {
         setLoading(false);
@@ -75,6 +79,55 @@ export default function CouponEdit() {
 
     fetchCouponData();
   }, [couponId]);
+
+  // Auto-update coupon status based on dates
+  useEffect(() => {
+    if (formData.startDate && formData.endDate) {
+      const currentDate = new Date();
+      const startDate = new Date(formData.startDate);
+      const endDate = new Date(formData.endDate);
+      
+      // Reset time to compare only dates
+      currentDate.setHours(0, 0, 0, 0);
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(0, 0, 0, 0);
+      
+      let newStatus: "active" | "inactive" | "future plan";
+      
+      if (currentDate < startDate) {
+        newStatus = "future plan";
+      } else if (currentDate > endDate) {
+        newStatus = "inactive";
+      } else {
+        newStatus = "active";
+      }
+      
+      if (formData.couponStatus !== newStatus) {
+        setFormData(prev => ({ ...prev, couponStatus: newStatus }));
+      }
+    }
+  }, [formData.startDate, formData.endDate]);
+
+  // Handle date changes
+  const handleStartDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newStartDate = e.target.value;
+    const currentEndDate = formData.endDate;
+    
+    // If there's an end date and it's before the new start date, clear it
+    if (currentEndDate && newStartDate && currentEndDate < newStartDate) {
+      setFormData({ 
+        ...formData, 
+        startDate: newStartDate, 
+        endDate: "" 
+      });
+    } else {
+      setFormData({ ...formData, startDate: newStartDate });
+    }
+  };
+
+  const handleEndDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData({ ...formData, endDate: e.target.value });
+  };
 
   // Handle form submission
   interface FormData {
@@ -94,7 +147,6 @@ export default function CouponEdit() {
   interface StatusMap {
     [key: string]: string;
   }
-
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setSubmitting(true);
@@ -112,9 +164,25 @@ export default function CouponEdit() {
         ...formData,
         status: statusMap[formData.couponStatus] || formData.couponStatus
       };
-      } catch (err) {
+      
+      // Send the data to the API
+      const response = await fetch(`/api/coupons/${couponId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(couponData),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to update coupon');
+      }
+      
+      alert('Coupon updated successfully!');
+      router.push('/admin/couponlist');    } catch (err) {
         if (err instanceof Error) {
-          setError(err instanceof Error ? err.message : 'An unknown error occurred');
+          setError(err.message);
           console.error('Error updating coupon:', err);
         } else {
           setError('An unknown error occurred');
@@ -143,10 +211,14 @@ export default function CouponEdit() {
       }
       
       alert('Coupon deleted successfully!');
-      router.push('/admin/couponlist');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An unknown error occurred');
-      console.error('Error deleting coupon:', err);
+      router.push('/admin/couponlist');    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+        console.error('Error deleting coupon:', err);
+      } else {
+        setError('An unknown error occurred');
+        console.error('Unknown error:', err);
+      }
     } finally {
       setSubmitting(false);
     }
@@ -210,6 +282,14 @@ export default function CouponEdit() {
                 {/* Coupon Status */}
                 <div className="bg-white p-4 rounded-lg shadow-md mb-6">
                   <h2 className="text-md font-medium mb-4">Coupon Status</h2>
+                  <p className="text-sm text-gray-500 mb-2">
+                    The coupon status will be automatically determined based on the selected dates:
+                  </p>
+                  <ul className="list-disc list-inside mb-4 text-sm text-gray-500">
+                    <li>Active: Current date is between start and end date</li>
+                    <li>Future Plan: Current date is before start date</li>
+                    <li>Inactive: Current date is after end date</li>
+                  </ul>
                   <hr className="mb-4" />
                   <div className="flex gap-8">
                     <label className="flex items-center gap-2">
@@ -220,7 +300,9 @@ export default function CouponEdit() {
                     onChange={() => setFormData({ ...formData, couponStatus: "active" })}
                     className="w-3 h-3"
                     />
-                    <span>Active</span>
+                    <span className={formData.couponStatus === "active" ? "text-green-600 font-medium" : ""}>
+                      Active
+                    </span>
                     </label>
                   <label className="flex items-center gap-2">
                     <input
@@ -230,7 +312,9 @@ export default function CouponEdit() {
                     onChange={() => setFormData({ ...formData, couponStatus: "inactive" })}
                     className="w-4 h-4"
                     />
-                    <span>In Active</span>
+                    <span className={formData.couponStatus === "inactive" ? "text-red-600 font-medium" : ""}>
+                      Inactive
+                    </span>
                   </label>
                   <label className="flex items-center gap-2">
                     <input
@@ -240,9 +324,18 @@ export default function CouponEdit() {
                     onChange={() => setFormData({ ...formData, couponStatus: "future plan" })}
                     className="w-4 h-4"
                     />
-                    <span>Future Plan</span>
+                    <span className={formData.couponStatus === "future plan" ? "text-blue-600 font-medium" : ""}>
+                      Future Plan
+                    </span>
                   </label>
                   </div>
+                  {formData.startDate && formData.endDate && (
+                    <div className="mt-3 p-2 bg-blue-50 rounded-md">
+                      <p className="text-xs text-blue-700">
+                        Status automatically updated based on selected dates
+                      </p>
+                    </div>
+                  )}
                 </div>
                 {/* Spacer for gap */}
                 <div className="mb-20"></div>
@@ -256,8 +349,12 @@ export default function CouponEdit() {
                     type="date" 
                     className="block w-full border border-gray-300 p-2 rounded-xl" 
                     value={formData.startDate}
-                    onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                    onChange={handleStartDateChange}
+                    min={new Date().toISOString().split('T')[0]}
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Start date cannot be in the past
+                  </p>
                   </div>
                   <div>
                   <label className="block text-sm mb-1">End Date</label>
@@ -265,8 +362,14 @@ export default function CouponEdit() {
                     type="date" 
                     className="block w-full border border-gray-300 p-2 rounded-xl" 
                     value={formData.endDate}
-                    onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                    onChange={handleEndDateChange}
+                    min={formData.startDate || undefined}
                   />
+                  {formData.startDate && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      End date cannot be earlier than {new Date(formData.startDate).toLocaleDateString()}
+                    </p>
+                  )}
                   </div>
                 </div>
                 </div>
@@ -277,9 +380,8 @@ export default function CouponEdit() {
                 {/* Coupon Information and Customer Eligibility */}
                 <div className="bg-white p-4 rounded-lg shadow-md mb-6 max-w-2xl mx-auto">
                   <h2 className="text-md font-medium mb-4">Coupon Information</h2>
-                  <hr className="mb-4" />
-                  <div className="mb-4 flex items-center gap-4">
-                  <div pl-10>
+                  <hr className="mb-4" />                  <div className="mb-4 flex items-center gap-4">
+                  <div className="pl-10">
                     <label className="block text-sm mb-1 pr-10">Coupon Code</label>
                     <input
                     type="text"
