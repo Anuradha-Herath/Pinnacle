@@ -291,7 +291,7 @@ export default function OrderPage() {
                 </h3>
                 <p className="text-2xl font-bold text-orange-600">
                   {/* ${formatAmount(order.amount.total)} */}
-                  {order.amount.total}
+                  {order.amount.total.toFixed(2)}
                 </p>
                 <p className="text-sm text-gray-500">
                   Payment: {order.paymentStatus}
@@ -378,7 +378,7 @@ export default function OrderPage() {
               <div className="space-y-2">
                 <div className="flex justify-between">
                   <span>Subtotal:</span>
-                  <span>${order.amount.subtotal}</span>
+                  <span>${order.amount.subtotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Shipping Cost:</span>
@@ -387,7 +387,7 @@ export default function OrderPage() {
                 <div className="flex justify-between font-bold text-lg border-t pt-2">
                   <span>Total:</span>
                   <span className="text-orange-600">
-                    ${order.amount.total}
+                    ${order.amount.total.toFixed(2)}
                   </span>
                 </div>
               </div>
