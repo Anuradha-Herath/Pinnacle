@@ -4,7 +4,6 @@ import { FiEdit } from "react-icons/fi";
 import { Button, CircularProgress } from "@mui/material";
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
-import ReviewButton from "../../components/ViewDetailsButtonInReivew";
 import { useAuth } from "@/app/context/AuthContext";
 import { useRouter } from "next/navigation";
 
@@ -237,8 +236,8 @@ export default function ProfilePage() {
 
                 
 
-                {/* Review button - conditionally show based on status */}
-                <ReviewButton status={order.status} />
+                {/* Remove the ReviewButton component - customers will go directly to review page */}
+                
               </div>
             ))}
             
