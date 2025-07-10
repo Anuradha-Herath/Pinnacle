@@ -38,7 +38,7 @@ export async function POST(request: Request) {
   }
 
   const session = event.data.object as Stripe.Checkout.Session;
-  console.log("Session", session);
+  //console.log("Session", session);
   // Handle the event based on its type
 
   if (event.type === "checkout.session.completed"){

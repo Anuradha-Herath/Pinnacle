@@ -111,6 +111,22 @@ const OrderSchema = new Schema({
     default: "pending",
   },
 
+  // Coupon code
+  coupon: {
+    code: {
+      type: String,
+      default: null,
+    },
+    discount: {
+      type: Number,
+      default: 0,
+    },
+    description: {
+      type: String,
+      default: null,
+    },
+  },
+
   // Stripe customer ID
   metadata: {
     customerId: {
