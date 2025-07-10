@@ -21,7 +21,7 @@ interface Order {
     firstName: string;
   };
   amount: {
-    total: string;
+    total: number;
   };
   status: string;
 }
@@ -232,7 +232,7 @@ export default function OrdersPage() {
                       <td className="p-3">{order.orderNumber || "N/A"}</td>
                       <td className="p-3">
                         {order.createdAt
-                          ? order.createdAt.replace("T", " ").substring(0, 19)
+                          ? new Date(order.createdAt).toLocaleString()
                           : "N/A"}
                       </td>
                       <td className="p-3">
@@ -240,7 +240,7 @@ export default function OrdersPage() {
                       </td>
                       <td className="p-3">
                         <span className="text-orange-500">$</span>
-                        {order.amount?.total || "N/A"}
+                        {order.amount?.total.toFixed(2) || "N/A"}
                       </td>
                       {/* <td className="p-3">{order.deliveryNumber}</td> */}
                       <td className="p-3">
