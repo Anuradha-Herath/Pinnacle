@@ -79,46 +79,107 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const simpleLineItems = requestBody.cart.map((item: any) => {
-      const productName = item.name;
-      const productDetails = [];
+    let simpleLineItems;
+    const subtotal = requestBody.cart.reduce(
+      (sum: number, item: any) => sum + item.price * item.quantity,
+      0
+    );
 
-      if (item.color) {
-        let colorName = item.color;
-        if (colorName.startsWith("http") || colorName.includes("/")) {
-          const parts = colorName.split("/");
-          const fileName = parts[parts.length - 1];
-          colorName = fileName.split(".")[0];
+    if (
+      requestBody.coupon?.code &&
+      requestBody.coupon?.discount > 0
+    ) {
+      // apply only if coupon code and discount > 0 
+      const totalDiscount = subtotal * (requestBody.coupon.discount / 100);
+
+      simpleLineItems = requestBody.cart.map((item: any) => {
+        const itemTotal = item.price * item.quantity;
+        const itemShare = itemTotal / subtotal;
+        const itemDiscountTotal = totalDiscount * itemShare;
+        const discountedItemTotal = itemTotal - itemDiscountTotal;
+        const discountedUnitAmount = Math.round(
+          (discountedItemTotal / item.quantity) * 100
+        );
+
+        const productDetails = [];
+        if (item.color) {
+          let colorName = item.color;
+          if (colorName.startsWith("http") || colorName.includes("/")) {
+            const parts = colorName.split("/");
+            const fileName = parts[parts.length - 1];
+            colorName = fileName.split(".")[0];
+          }
+          productDetails.push(`Color: ${colorName}`);
         }
-        productDetails.push(`Color: ${colorName}`);
-      }
+        if (item.size) {
+          productDetails.push(`Size: ${item.size}`);
+        }
+        const fullProductName =
+          productDetails.length > 0
+            ? `${item.name} (${productDetails.join(", ")})`
+            : item.name;
 
-      if (item.size) {
-        productDetails.push(`Size: ${item.size}`);
-      }
+        const imageUrl = item.image || "";
 
-      const fullProductName =
-        productDetails.length > 0
-          ? `${productName} (${productDetails.join(", ")})`
-          : productName;
+        return {
+          quantity: item.quantity,
+          price_data: {
+            currency: "USD",
+            product_data: fullProductName, 
+            unit_amount: discountedUnitAmount,
+          },
+          metadata: {
+            productId: item.id,
+            color: item.color || "N/A",
+            size: item.size || "N/A",
+            imageUrl: imageUrl,
+          },
+        };
+      });
+    } else {
+      // No coupon or discount, use original prices
+      simpleLineItems = requestBody.cart.map((item: any) => {
+        const productName = item.name;
+        const productDetails = [];
 
-      const imageUrl = item.image || "";
+        if (item.color) {
+          let colorName = item.color;
+          if (colorName.startsWith("http") || colorName.includes("/")) {
+            const parts = colorName.split("/");
+            const fileName = parts[parts.length - 1];
+            colorName = fileName.split(".")[0];
+          }
+          productDetails.push(`Color: ${colorName}`);
+        }
 
-      return {
-        quantity: item.quantity,
-        price_data: {
-          currency: "USD",
-          product_data: fullProductName,
-          unit_amount: Math.round(item.price * 100),
-        },
-        metadata: {
-          productId: item.id,
-          color: item.color || "N/A",
-          size: item.size || "N/A",
-          imageUrl: imageUrl,
-        },
-      };
-    });
+        if (item.size) {
+          productDetails.push(`Size: ${item.size}`);
+        }
+
+        const fullProductName =
+          productDetails.length > 0
+            ? `${productName} (${productDetails.join(", ")})`
+            : productName;
+
+        const imageUrl = item.image || "";
+
+        return {
+          quantity: item.quantity,
+          price_data: {
+            currency: "USD",
+            product_data: fullProductName, 
+            unit_amount: Math.round(item.price * 100),
+          },
+          metadata: {
+            productId: item.id,
+            color: item.color || "N/A",
+            size: item.size || "N/A",
+            imageUrl: imageUrl,
+          },
+        };
+      });
+    }
+    // --- END OF CHANGED PART ---
 
     const stripeCustomerId = await getOrCreateStripeCustomer(
       authResult.user?.email || requestBody.email,
@@ -127,7 +188,7 @@ export async function POST(request: NextRequest) {
     );
 
     console.log("userid from authResult:", authResult.user?.id);
-// cus_SMPYF4aROqisDP
+    // cus_SMPYF4aROqisDP
     const orderData = {
       userId: authResult.user?.id,
       customer: {
@@ -157,6 +218,11 @@ export async function POST(request: NextRequest) {
       },
       status: "pending",
       paymentStatus: "pending",
+      coupon: {
+        code: requestBody.coupon?.code || null,
+        discount: requestBody.coupon?.discount || 0,
+        description: requestBody.coupon?.description || null,
+      },
       metadata: {
         customerId: stripeCustomerId,
       },
@@ -169,7 +235,10 @@ export async function POST(request: NextRequest) {
     await newOrder.save();
 
     console.log("Order created with userId:", newOrder.userId);
-    console.log("Order created with stripeCustomerId:", newOrder.metadata.customerId);
+    console.log(
+      "Order created with stripeCustomerId:",
+      newOrder.metadata.customerId
+    );
 
     // Creating Stripe checkout session if Stripe is available
     let redirectUrl = "/payment";
