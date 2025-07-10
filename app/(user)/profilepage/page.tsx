@@ -4,7 +4,6 @@ import { FiEdit } from "react-icons/fi";
 import { Button, CircularProgress } from "@mui/material";
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
-import ReviewButton from "../../components/ViewDetailsButtonInReivew";
 import { useAuth } from "@/app/context/AuthContext";
 import { useRouter } from "next/navigation";
 
@@ -149,7 +148,7 @@ export default function ProfilePage() {
           </h1>
         </div>
         
-        <div className=" p-4 rounded-lg mt-6 shadow-md">
+        <div className=" p-4 rounded-lg mt-6 shadow-md bg-gray-100">
           <div>
           <h2 className="font-semibold text-2xl mb-2">Customer Details</h2>
           <p>
@@ -195,15 +194,25 @@ export default function ProfilePage() {
                 className="bg-gray-100 p-4 rounded-lg shadow-md mb-4"
               >
                 <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-semibold">
-                    Order #{order.orderNumber || order._id.substring(0, 8)}
-                  </h3>
+                  <div>
+                    <h3 className="text-lg font-semibold">
+                      Order #{order.orderNumber || order._id.substring(0, 8)}
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      Placed on: {new Date(order.createdAt).toLocaleDateString('en-US', {
+                        year: 'numeric', month: 'long', day: 'numeric'
+                      })}
+                    </p>
+                  </div>
                   <span className={`px-3 py-1 rounded-lg text-white ${
-                    order.status === 'completed' ? 'bg-green-600' :
-                    order.status === 'shipped' ? 'bg-blue-600' :
-                    order.status === 'processing' ? 'bg-orange-500' : 'bg-gray-600'
+                    order.status?.toLowerCase() === 'paid' ? 'bg-green-500' :
+                    order.status?.toLowerCase() === 'shipped' ? 'bg-blue-500' :
+                    order.status?.toLowerCase() === 'delivered' ? 'bg-orange-500' :
+                    order.status?.toLowerCase() === 'refunded' ? 'bg-red-300' :
+                    order.status?.toLowerCase() === 'processing' ? 'bg-yellow-500 text-gray-300' : 
+                    'bg-gray-600'
                   }`}>
-                    {order.status || 'Processing'}
+                    {order.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1).toLowerCase() : 'Processing'}
                   </span>
                 </div>
 
@@ -227,8 +236,8 @@ export default function ProfilePage() {
 
                 
 
-                {/* Review button - conditionally show based on status */}
-                <ReviewButton status={order.status} />
+                {/* Remove the ReviewButton component - customers will go directly to review page */}
+                
               </div>
             ))}
             
