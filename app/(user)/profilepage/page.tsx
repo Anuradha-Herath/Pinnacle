@@ -149,7 +149,7 @@ export default function ProfilePage() {
           </h1>
         </div>
         
-        <div className=" p-4 rounded-lg mt-6 shadow-md">
+        <div className=" p-4 rounded-lg mt-6 shadow-md bg-gray-100">
           <div>
           <h2 className="font-semibold text-2xl mb-2">Customer Details</h2>
           <p>
@@ -199,11 +199,14 @@ export default function ProfilePage() {
                     Order #{order.orderNumber || order._id.substring(0, 8)}
                   </h3>
                   <span className={`px-3 py-1 rounded-lg text-white ${
-                    order.status === 'completed' ? 'bg-green-600' :
-                    order.status === 'shipped' ? 'bg-blue-600' :
-                    order.status === 'processing' ? 'bg-orange-500' : 'bg-gray-600'
+                    order.status?.toLowerCase() === 'paid' ? 'bg-green-500' :
+                    order.status?.toLowerCase() === 'shipped' ? 'bg-blue-500' :
+                    order.status?.toLowerCase() === 'delivered' ? 'bg-orange-500' :
+                    order.status?.toLowerCase() === 'refunded' ? 'bg-red-300' :
+                    order.status?.toLowerCase() === 'processing' ? 'bg-yellow-500 text-gray-300' : 
+                    'bg-gray-600'
                   }`}>
-                    {order.status || 'Processing'}
+                    {order.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1).toLowerCase() : 'Processing'}
                   </span>
                 </div>
 
