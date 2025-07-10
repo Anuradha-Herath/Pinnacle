@@ -56,7 +56,12 @@ export async function GET(
       discount: {
         id: discount._id,
         percentage: discount.percentage,
-        active: true
+        active: true,
+        // Include additional information for debugging
+        productId: discount.product,
+        type: discount.type,
+        startDate: discount.startDate,
+        endDate: discount.endDate
       } 
     });
   } catch (error) {

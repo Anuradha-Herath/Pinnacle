@@ -48,10 +48,24 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
   // Check for discounts when component mounts
   useEffect(() => {
     const checkForDiscounts = async () => {
+      // Debug the incoming product data to understand what discount info we have
+      console.log("Product discount data:", {
+        id: product.id,
+        hasDiscountedPrice: product.discountedPrice !== undefined,
+        hasDiscountObj: product.discount !== undefined,
+        price: product.price
+      });
+
       // First check if product already has discountedPrice directly in its data
       if (product.discountedPrice !== undefined && product.price > product.discountedPrice) {
         // Calculate percentage based on the provided discountedPrice
         const percentage = Math.round(((product.price - product.discountedPrice) / product.price) * 100);
+        console.log("Using direct discountedPrice:", {
+          originalPrice: product.price,
+          discountedPrice: product.discountedPrice,
+          calculatedPercentage: percentage
+        });
+        
         setHasDiscount(true);
         setDiscountedPrice(product.discountedPrice);
         setDiscountPercentage(percentage);
@@ -60,6 +74,11 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
       
       // If there's a discount property on the product, use it directly
       if (product.discount && product.discount.percentage > 0) {
+        console.log("Using discount object:", {
+          percentage: product.discount.percentage,
+          discountedPrice: product.discount.discountedPrice
+        });
+        
         setHasDiscount(true);
         setDiscountedPrice(product.discount.discountedPrice);
         setDiscountPercentage(product.discount.percentage);
@@ -68,6 +87,8 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
 
       // Otherwise try to fetch from API with proper error handling
       try {
+        console.log("Fetching discount from API for product:", product.id);
+        
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
         
@@ -80,8 +101,9 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
         
         const response = await fetch(`/api/discounts/product/${product.id}`, {
           signal: controller.signal,
-          // Add cache control to avoid repeated fetches
-          cache: 'force-cache',
+          // Change cache strategy to always get fresh discount data
+          cache: 'no-store',
+          next: { revalidate: 60 } // Revalidate every minute
         }).catch(error => {
           if (error.name !== 'AbortError') {
             console.warn("Discount fetch failed:", error.message);
@@ -93,16 +115,28 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
         
         if (response && response.ok) {
           const data = await response.json();
-          if (data.discount && data.discount.active) {
+          console.log("Discount API response:", data);
+          
+          if (data.discount && data.discount.percentage > 0) {
             // Calculate the discounted price
             const percentage = data.discount.percentage;
             const discountAmount = (product.price * percentage) / 100;
             const discounted = product.price - discountAmount;
             
+            console.log("Applied API discount:", {
+              percentage,
+              originalPrice: product.price,
+              calculatedDiscount: discounted
+            });
+            
             setHasDiscount(true);
             setDiscountedPrice(discounted);
             setDiscountPercentage(percentage);
+          } else {
+            console.log("No active discount returned from API");
           }
+        } else {
+          console.log("Discount API response was not OK or null");
         }
       } catch (error) {
         // Handle fetch or JSON parsing errors
@@ -114,6 +148,11 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
     // Only check for discounts if the product has a valid ID and price
     if (product.id && product.price) {
       checkForDiscounts();
+    } else {
+      console.warn("Missing required product data for discount check:", { 
+        hasId: !!product.id, 
+        hasPrice: !!product.price 
+      });
     }
   }, [product.id, product.price, product.discountedPrice, product.discount]);
 
@@ -269,9 +308,9 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
       )}
 
       {/* Discount Badge - Moved to top right below wishlist heart */}
-      {hasDiscount && discountPercentage && (
-        <div className="absolute top-12 right-3 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full z-10">
-          -{discountPercentage}%
+      {hasDiscount && discountPercentage !== null && (
+        <div className="absolute top-12 right-3 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full z-10 animate-fadeIn">
+          -{Math.round(discountPercentage)}%
         </div>
       )}
 
@@ -294,14 +333,14 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
         {hasDiscount && discountedPrice !== null ? (
           <>
             <p className="text-red-600 font-semibold">
-              ${discountedPrice.toFixed(2)}
+              ${(discountedPrice || 0).toFixed(2)}
             </p>
             <p className="text-gray-500 text-sm line-through ml-2">
-              ${product.price.toFixed(2)}
+              ${(product.price || 0).toFixed(2)}
             </p>
           </>
         ) : (
-          <p className="text-gray-600">${product.price.toFixed(2)}</p>
+          <p className="text-gray-600">${(product.price || 0).toFixed(2)}</p>
         )}
       </div>
 
