@@ -2,19 +2,18 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button, CircularProgress, Alert } from "@mui/material";
-import Header from "../../../components/Header";
-import Footer from "../../../components/Footer";
+import Sidebar from "../../../components/Sidebar";
 import { useAuth } from "@/app/context/AuthContext";
 
-interface UserProfile {
+interface AdminProfile {
   firstName: string;
   lastName: string;
   email: string;
   phone: string;
 }
 
-export default function EditProfile() {
-  const [profile, setProfile] = useState<UserProfile>({
+export default function AdminProfileEdit() {
+  const [profile, setProfile] = useState<AdminProfile>({
     firstName: "",
     lastName: "",
     email: "",
@@ -34,6 +33,11 @@ export default function EditProfile() {
     const fetchProfile = async () => {
       if (!user) {
         router.push('/login');
+        return;
+      }
+
+      if (user.role !== 'admin') {
+        router.push('/');
         return;
       }
 
@@ -96,7 +100,7 @@ export default function EditProfile() {
         setSuccess("Profile updated successfully");
         // Wait a bit to show success message before redirecting
         setTimeout(() => {
-          router.push('/profilepage');
+          router.push('/admin/adminprofile');
         }, 2000);
       } else {
         setError(data.error || "Failed to update profile");
@@ -111,45 +115,44 @@ export default function EditProfile() {
 
   if (loading) {
     return (
-      <>
-        <Header />
-        <div className="flex justify-center items-center h-[60vh]">
+      <div className="flex">
+        <Sidebar />
+        <div className="min-h-screen bg-gray-50 p-6 flex-1 flex justify-center items-center">
           <CircularProgress />
         </div>
-        <Footer />
-      </>
+      </div>
     );
   }
 
   return (
-    <>
-      <Header />
-      <div className="max-w-4xl mx-auto p-6">
-        <h1 className="text-2xl font-bold mb-6">Edit Profile</h1>
+    <div className="flex">
+      <Sidebar />
+      <div className="min-h-screen bg-gray-50 p-6 flex-1">
+        <h1 className="text-2xl font-semibold text-gray-700 mb-6">Edit Admin Profile</h1>
         
         {error && <Alert severity="error" className="mb-4">{error}</Alert>}
         {success && <Alert severity="success" className="mb-4">{success}</Alert>}
         
-        <form onSubmit={handleSubmit} className="bg-gray-100 p-6 rounded-lg shadow-md">
+        <form onSubmit={handleSubmit} className="bg-white p-8 rounded-lg shadow-md max-w-3xl mx-auto space-y-10">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-            <div>
-              <label htmlFor="firstName" className="block text-sm font-medium text-gray-800 mb-2">
+            <div >
+              <label htmlFor="firstName" className="block text-sm font-medium text-gray-800 mb-5">
                 First Name
               </label>
               <input
                 type="text"
-                id="firstName "
+                id="firstName"
                 name="firstName"
                 value={profile.firstName}
                 onChange={handleChange}
-                className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-black"
+                className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 "
                 required
                 disabled={updating}
               />
             </div>
             
             <div>
-              <label htmlFor="lastName" className="block text-sm font-medium text-gray-800 mb-2">
+              <label htmlFor="lastName" className="block text-sm font-medium text-gray-800 mb-5">
                 Last Name
               </label>
               <input
@@ -158,7 +161,7 @@ export default function EditProfile() {
                 name="lastName"
                 value={profile.lastName}
                 onChange={handleChange}
-                className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-black"
+                className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
                 required
                 disabled={updating}
               />
@@ -166,7 +169,7 @@ export default function EditProfile() {
           </div>
           
           <div className="mb-8">
-            <label htmlFor="email" className="block text-sm font-medium text-gray-800 mb-2">
+            <label htmlFor="email" className="block text-sm font-medium text-gray-800 mb-5">
               Email
             </label>
             <input
@@ -180,7 +183,7 @@ export default function EditProfile() {
           </div>
           
           <div className="mb-8">
-            <label htmlFor="phone" className="block text-sm font-medium text-gray-800 mb-2">
+            <label htmlFor="phone" className="block text-sm font-medium text-gray-800 mb-5">
               Phone Number
             </label>
             <input
@@ -189,45 +192,31 @@ export default function EditProfile() {
               name="phone"
               value={profile.phone}
               onChange={handleChange}
-              className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-black"
+              className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
               disabled={updating}
             />
           </div>
           
-          <div className="flex justify-end gap-4 mt-8 ">
+          <div className="flex justify-end gap-4 mt-12">
             <Button 
               variant="outlined" 
               onClick={() => router.back()}
               disabled={updating}
-              sx={{ 
-                borderColor: 'black', 
-                color: 'black',
-                '&:hover': { 
-                  borderColor: 'black', 
-                  backgroundColor: 'rgba(0, 0, 0, 0.04)' 
-                }
-              }}
+              color="warning"
             >
               Cancel
             </Button>
             <Button 
               type="submit" 
               variant="contained"
+              color="warning"
               disabled={updating}
-              sx={{ 
-                backgroundColor: 'black', 
-                color: 'white',
-                '&:hover': { 
-                  backgroundColor: '#333333' 
-                }
-              }}
             >
               {updating ? <CircularProgress size={24} /> : "Save Changes"}
             </Button>
           </div>
         </form>
       </div>
-      <Footer />
-    </>
+    </div>
   );
 }
