@@ -1,72 +1,71 @@
-import { NextRequest, NextResponse } from 'next/server';
-import mongoose from 'mongoose';
-import { authenticateUser } from '@/middleware/auth';
-import Order from '@/models/Order';
+import Order from "@/models/Order";
+import { NextResponse } from "next/server";
+import connectDB from "@/lib/db";
 
-// Connect to MongoDB
-const connectDB = async () => {
-  try {
-    if (mongoose.connection.readyState === 0) {
-      await mongoose.connect(process.env.MONGODB_URI!);
-    }
-  } catch (error) {
-    console.error('MongoDB connection error:', error);
-    throw new Error('Failed to connect to database');
+export const GET = async (request: Request, context: { params: { id: string }}) => {
+  const { id } = await context.params;
+  try{
+    await connectDB();
+    const order = await Order.findById(id);
+    if (!order) {
+      return NextResponse.json(
+        { error: "Order not found" },
+        { status: 404 }
+      );
+    }    
+
+    return new NextResponse(
+      JSON.stringify(order),
+      { 
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      }
+    )
+    
+  }catch (error) {
+    console.error("Database error:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch order" },
+      { status: 500 }
+    );
   }
-};
+}
 
-// GET - Get order details
-export async function GET(
-  req: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export const PUT = async (request: Request, context: { params: { id: string }}) => {
+  const { id } = await context.params;
   try {
     await connectDB();
-
-    const orderId = params.id;
-    if (!orderId) {
-      return NextResponse.json({
-        success: false,
-        error: 'Order ID is required',
-      }, { status: 400 });
-    }
-
-    // Authenticate user
-    const authResult = await authenticateUser(req);
-    if (!authResult.authenticated) {
-      return NextResponse.json({
-        success: false,
-        error: authResult.error || 'Authentication required',
-      }, { status: 401 });
-    }
-
-    // Find order by ID
-    const order = await Order.findById(orderId);
+    const { status } = await request.json();
     
-    if (!order) {
-      return NextResponse.json({
-        success: false,
-        error: 'Order not found',
-      }, { status: 404 });
+    const updatedOrder = await Order.findByIdAndUpdate(
+      id,
+      { status, updatedAt: new Date() },
+      { new: true }
+    );
+    
+    if (!updatedOrder) {
+      return NextResponse.json(
+        { error: "Order not found" },
+        { status: 404 }
+      );
     }
-
-    // Check if the order belongs to the authenticated user or if user is admin
-    if (order.user.toString() !== authResult.user?.id && authResult.user?.role !== 'admin') {
-      return NextResponse.json({
-        success: false,
-        error: 'Not authorized to access this order',
-      }, { status: 403 });
-    }
-
-    return NextResponse.json({
-      success: true,
-      order,
-    });
+    
+    return new NextResponse(
+      JSON.stringify(updatedOrder),
+      { 
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+        }
+      }
+    );
   } catch (error) {
-    console.error('Order fetch error:', error);
-    return NextResponse.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to fetch order',
-    }, { status: 500 });
+    console.error("Database error:", error);
+    return NextResponse.json(
+      { error: "Failed to update order" },
+      { status: 500 }
+    );
   }
 }

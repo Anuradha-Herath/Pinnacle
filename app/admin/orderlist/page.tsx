@@ -3,12 +3,49 @@
 import { useEffect, useState } from "react";
 import { CubeIcon, EyeIcon } from "@heroicons/react/24/solid";
 import Sidebar from "../../components/Sidebar";
-import { ShoppingCartIcon, CheckCircleIcon, TruckIcon, ShieldCheckIcon } from "lucide-react";
+import {
+  ShoppingCartIcon,
+  CheckCircleIcon,
+  TruckIcon,
+  ShieldCheckIcon,
+} from "lucide-react";
 import TopBar from "@/app/components/admin/TopBar";
+import { useRouter } from "next/navigation";
+
+// Define the Order type according to your data structure
+interface Order {
+  _id: string;
+  orderNumber: string;
+  createdAt: string;
+  customer: {
+    firstName: string;
+  };
+  amount: {
+    total: string;
+  };
+  status: string;
+}
 
 export default function OrdersPage() {
-  
-  const [orders, setOrders] = useState([]);
+  const router = useRouter();
+  const [orders, setOrders] = useState<Order[]>([]);
+
+  // State for filtering orders by status
+  const [filterStatus, setFilterStatus] = useState("");
+
+  // Add search state
+  const [searchQuery, setSearchQuery] = useState("");
+
+  // Add pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10); // Show 10 orders per page
+  const [totalPages, setTotalPages] = useState(1);
+  const [displayedOrders, setDisplayedOrders] = useState<Order[]>([]);
+
+  // Function to get count of orders by status
+  const getOrderCountByStatus = (status: string) => {
+    return orders.filter((order) => order.status === status).length;
+  };
 
   useEffect(() => {
     // Fetch orders from the API
@@ -28,12 +65,51 @@ export default function OrdersPage() {
     fetchOrders();
   }, []);
 
+  // Filter orders based on selected status and search query, then apply pagination
+  useEffect(() => {
+    let filteredOrders = orders;
+
+    // Filter by status
+    if (filterStatus) {
+      filteredOrders = filteredOrders.filter(
+        (order) => order.status === filterStatus
+      );
+    }
+
+    // Filter by search query (order number)
+    if (searchQuery) {
+      filteredOrders = filteredOrders.filter((order) =>
+        order.orderNumber?.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    // Calculate total pages
+    const total = Math.ceil(filteredOrders.length / itemsPerPage);
+    setTotalPages(total > 0 ? total : 1);
+
+    // Apply pagination
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    setDisplayedOrders(filteredOrders.slice(startIndex, endIndex));
+  }, [orders, filterStatus, searchQuery, currentPage, itemsPerPage]);
+
+  // Handle pagination navigation
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
 
   return (
     <div className="flex">
       <Sidebar />
       <div className="min-h-screen bg-gray-50 p-6 flex-1">
-
         <TopBar heading="Order List" />
 
         {/* Orders Summary Cards */}
@@ -43,8 +119,21 @@ export default function OrdersPage() {
               <CheckCircleIcon className="h-8 w-8 text-orange-500" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold">Confirmed Orders</h2>
-              <p className="text-2xl font-bold">200</p>
+              <h2 className="text-lg font-semibold">Orders Paid</h2>
+              <p className="text-2xl font-bold">
+                {getOrderCountByStatus("Paid")}
+              </p>
+            </div>
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow-md flex items-center gap-4">
+            <div className="p-3 bg-orange-100 rounded-lg">
+              <ShoppingCartIcon className="h-8 w-8 text-orange-500" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold">Orders Processing</h2>
+              <p className="text-2xl font-bold">
+                {getOrderCountByStatus("Processing")}
+              </p>
             </div>
           </div>
           <div className="bg-white p-4 rounded-lg shadow-md flex items-center gap-4">
@@ -52,17 +141,10 @@ export default function OrdersPage() {
               <TruckIcon className="h-8 w-8 text-orange-500" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold">Order Shipped</h2>
-              <p className="text-2xl font-bold">200</p>
-            </div>
-          </div>
-          <div className="bg-white p-4 rounded-lg shadow-md flex items-center gap-4">
-            <div className="p-3 bg-orange-100 rounded-lg">
-              <CubeIcon className="h-8 w-8 text-orange-500" />
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold">Out For Delivery</h2>
-              <p className="text-2xl font-bold">200</p>
+              <h2 className="text-lg font-semibold">Orders Shipped</h2>
+              <p className="text-2xl font-bold">
+                {getOrderCountByStatus("Shipped")}
+              </p>
             </div>
           </div>
         </div>
@@ -71,11 +153,13 @@ export default function OrdersPage() {
         <div className="grid grid-cols-3 gap-6 mb-8">
           <div className="bg-white p-4 rounded-lg shadow-md flex items-center gap-4">
             <div className="p-3 bg-orange-100 rounded-lg">
-              <ShoppingCartIcon className="h-8 w-8 text-orange-500" />
+              <CubeIcon className="h-8 w-8 text-orange-500" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold">Order Processing</h2>
-              <p className="text-2xl font-bold">200</p>
+              <h2 className="text-lg font-semibold">Orders Delivered</h2>
+              <p className="text-2xl font-bold">
+                {getOrderCountByStatus("Delivered")}
+              </p>
             </div>
           </div>
           <div className="bg-white p-4 rounded-lg shadow-md flex items-center gap-4">
@@ -83,19 +167,10 @@ export default function OrdersPage() {
               <TruckIcon className="h-8 w-8 text-orange-500" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold">Delivered</h2>
-              <p className="text-2xl font-bold">200</p>
-            </div>
-          </div>
-          <div className="bg-white p-4 rounded-lg shadow-md flex items-center gap-4">
-            <div className="p-3 bg-orange-100 rounded-lg">
-              <ShieldCheckIcon className="h-8 w-8 text-orange-500" />
-            </div>
-            <div>
-              <h2 className="text-lg font-semibold">
-                Order Confirm & Processing
-              </h2>
-              <p className="text-2xl font-bold">656</p>
+              <h2 className="text-lg font-semibold">Refunded</h2>
+              <p className="text-2xl font-bold">
+                {getOrderCountByStatus("Refunded")}
+              </p>
             </div>
           </div>
         </div>
@@ -108,19 +183,29 @@ export default function OrdersPage() {
               {/* Search Bar */}
               <input
                 type="text"
-                placeholder="🔍 Search"
+                placeholder="🔍 Search by Order ID"
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1); // Reset to page 1 when search changes
+                }}
                 className="border px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
               />
               {/* Order Status Filter Dropdown */}
               <select
+                value={filterStatus}
+                onChange={(e) => {
+                  setFilterStatus(e.target.value);
+                  setCurrentPage(1); // Reset to page 1 when filter changes
+                }}
                 className="border px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
               >
                 <option value="">All Statuses</option>
-                <option value="Order Confirmed">Order Confirmed</option>
-                <option value="Order Completed">Order Completed</option>
-                <option value="Out For Delivery">Out For Delivery</option>
-                <option value="Shipping">Shipping</option>
+                <option value="Paid">Paid</option>
                 <option value="Processing">Processing</option>
+                <option value="Shipped">Shipped</option>
+                <option value="Delivered">Delivered</option>
+                <option value="Refunded">Refunded</option>
               </select>
             </div>
           </div>
@@ -138,49 +223,58 @@ export default function OrdersPage() {
               </tr>
             </thead>
             <tbody>
-              {orders.length > 0 ? (
-                orders.map((order: { orderNumber: string; createdAt: string; customer: { firstName: string; }; amount: { total: string; }; status: string; }, index) => (
-                  <tr key={index} className="border-t">
-                    <td className="p-3">{order.orderNumber || "N/A"}</td>
-                    <td className="p-3">
-                      {order.createdAt
-                        ? order.createdAt.replace("T", " ").substring(0, 19)
-                        : "N/A"}
-                    </td>
-                    <td className="p-3">
-                      {order.customer?.firstName || "N/A"}
-                    </td>
-                    <td className="p-3">
-                      <span className="text-orange-500">$</span>
-                      {order.amount?.total || "N/A"}
-                    </td>
-                    {/* <td className="p-3">{order.deliveryNumber}</td> */}
-                    <td className="p-3">
-                      <span
-                        className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${
-                          order.status === "Order Completed"
-                            ? "bg-green-300 text-green-800"
-                            : order.status === "Out For Delivery"
-                            ? "bg-orange-300 text-orange-800"
-                            : order.status === "Shipping"
-                            ? "bg-cyan-300 text-cyan-800"
-                            : order.status === "Processing" 
-                            ?"bg-yellow-300 text-yellow-800"
-                            : order.status === "pending"
-                            ? "bg-gray-200 text-black-800"
-                            : "bg-gray-100 text-gray-800"
-                        }`}
-                      >
-                        {order.status || "pending"}
-                      </span>
-                    </td>
-                    <td className="p-3">
-                      <button className="p-2 bg-orange-500 text-white rounded-md shadow-md hover:bg-orange-600">
-                        <EyeIcon className="h-5 w-5" />
-                      </button>
-                    </td>
-                  </tr>
-                ))
+              {displayedOrders.length > 0 ? (
+                displayedOrders.map(
+                  (
+                    order: Order
+                  ) => (
+                    <tr key={order._id} className="border-t">
+                      <td className="p-3">{order.orderNumber || "N/A"}</td>
+                      <td className="p-3">
+                        {order.createdAt
+                          ? order.createdAt.replace("T", " ").substring(0, 19)
+                          : "N/A"}
+                      </td>
+                      <td className="p-3">
+                        {order.customer?.firstName || "N/A"}
+                      </td>
+                      <td className="p-3">
+                        <span className="text-orange-500">$</span>
+                        {order.amount?.total || "N/A"}
+                      </td>
+                      {/* <td className="p-3">{order.deliveryNumber}</td> */}
+                      <td className="p-3">
+                        <span
+                          className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${
+                            order.status === "Refunded"
+                              ? "bg-red-300 text-red-800"
+                              : order.status === "Delivered"
+                              ? "bg-orange-300 text-orange-800"
+                              : order.status === "Shipped"
+                              ? "bg-cyan-300 text-cyan-800"
+                              : order.status === "Processing"
+                              ? "bg-yellow-300 text-yellow-800"
+                              : order.status === "Paid"
+                              ? "bg-green-300 text-green-800"
+                              : order.status === "pending"
+                              ? "bg-gray-200 text-black-800"
+                              : "bg-gray-100 text-gray-800"
+                          }`}
+                        >
+                          {order.status || "pending"}
+                        </span>
+                      </td>
+                      <td className="p-3">
+                        <button className="p-2 bg-orange-500 text-white rounded-md shadow-md hover:bg-orange-600"
+                          onClick={() => {
+                            router.push(`/admin/orderlist/${order._id}`);
+                          }}>
+                          <EyeIcon className="h-5 w-5" />
+                        </button>
+                      </td>
+                    </tr>
+                  )
+                )
               ) : (
                 <tr>
                   <td colSpan={6} className="p-3 text-center text-gray-500">
@@ -190,6 +284,39 @@ export default function OrdersPage() {
               )}
             </tbody>
           </table>
+
+          {/* Pagination - Updated */}
+          {totalPages > 1 && (
+            <div className="flex justify-center mt-6">
+              <div className="flex items-center gap-2">
+                <button
+                  className={`px-4 py-2 rounded-md ${
+                    currentPage === 1
+                      ? "bg-orange-200 text-gray-700 cursor-not-allowed"
+                      : "bg-orange-500 text-white hover:bg-orange-600"
+                  }`}
+                  onClick={handlePreviousPage}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </button>
+                <span className="mx-2 text-gray-600">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  className={`px-4 py-2 rounded-md ${
+                    currentPage === totalPages
+                      ? "bg-orange-200 text-gray-700 cursor-not-allowed"
+                      : "bg-orange-500 text-white hover:bg-orange-600"
+                  }`}
+                  onClick={handleNextPage}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
