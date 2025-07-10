@@ -142,7 +142,7 @@ export default function EditProfile() {
                 name="firstName"
                 value={profile.firstName}
                 onChange={handleChange}
-                className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-black"
                 required
                 disabled={updating}
               />
@@ -158,7 +158,7 @@ export default function EditProfile() {
                 name="lastName"
                 value={profile.lastName}
                 onChange={handleChange}
-                className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-black"
                 required
                 disabled={updating}
               />
@@ -189,7 +189,7 @@ export default function EditProfile() {
               name="phone"
               value={profile.phone}
               onChange={handleChange}
-              className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+              className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-black"
               disabled={updating}
             />
           </div>
@@ -199,15 +199,28 @@ export default function EditProfile() {
               variant="outlined" 
               onClick={() => router.back()}
               disabled={updating}
-              color="warning" // Changed from default blue to orange
+              sx={{ 
+                borderColor: 'black', 
+                color: 'black',
+                '&:hover': { 
+                  borderColor: 'black', 
+                  backgroundColor: 'rgba(0, 0, 0, 0.04)' 
+                }
+              }}
             >
               Cancel
             </Button>
             <Button 
               type="submit" 
               variant="contained"
-              color="warning" // Changed from primary (blue) to warning (orange)
               disabled={updating}
+              sx={{ 
+                backgroundColor: 'black', 
+                color: 'white',
+                '&:hover': { 
+                  backgroundColor: '#333333' 
+                }
+              }}
             >
               {updating ? <CircularProgress size={24} /> : "Save Changes"}
             </Button>

@@ -164,7 +164,7 @@ export default function ProfilePage() {
           </div>
 
           <div>
-          <button className="text-white bg-orange-500 px-4 py-2 rounded-md mt-4 hover:bg-orange-600" 
+          <button className="text-white bg-black px-4 py-2 rounded-md mt-4 hover:bg-gray-800" 
             onClick={() => router.push('/profile/edit')}
             > Edit Details
           </button>
@@ -239,6 +239,14 @@ export default function ProfilePage() {
                   variant="outlined"
                   disabled={currentPage === 1}
                   onClick={() => handlePageChange(currentPage - 1)}
+                  sx={{ 
+                    borderColor: 'black', 
+                    color: 'black',
+                    '&:hover': { 
+                      borderColor: 'black', 
+                      backgroundColor: 'rgba(0, 0, 0, 0.04)' 
+                    }
+                  }}
                 >
                   Previous
                 </Button>
@@ -248,6 +256,22 @@ export default function ProfilePage() {
                     key={number}
                     variant={currentPage === number ? "contained" : "outlined"}
                     onClick={() => handlePageChange(number)}
+                    sx={
+                      currentPage === number 
+                        ? { 
+                            backgroundColor: 'black', 
+                            color: 'white',
+                            '&:hover': { backgroundColor: '#333333' }
+                          } 
+                        : { 
+                            borderColor: 'black', 
+                            color: 'black',
+                            '&:hover': { 
+                              borderColor: 'black', 
+                              backgroundColor: 'rgba(8, 8, 8, 0.04)' 
+                            }
+                          }
+                    }
                   >
                     {number}
                   </Button>
@@ -257,6 +281,14 @@ export default function ProfilePage() {
                   variant="outlined"
                   disabled={currentPage === totalPages}
                   onClick={() => handlePageChange(currentPage + 1)}
+                  sx={{ 
+                    borderColor: 'black', 
+                    color: 'black',
+                    '&:hover': { 
+                      borderColor: 'black', 
+                      backgroundColor: 'rgba(0, 0, 0, 0.04)' 
+                    }
+                  }}
                 >
                   Next
                 </Button>
