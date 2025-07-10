@@ -315,6 +315,7 @@ const Header = () => {
   const [showDropdown, setShowDropdown] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
+  const dropdownTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Category background images
   const categoryBackgrounds = {
@@ -360,7 +361,7 @@ const Header = () => {
     fetchCategories();
   }, []);
 
-  // Handle click outside to close dropdown
+  // Handle click outside and scroll to close dropdown
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -368,17 +369,50 @@ const Header = () => {
         setActiveCategory(null);
       }
     };
+    
+    const handleScroll = () => {
+      if (showDropdown) {
+        setShowDropdown(false);
+        setActiveCategory(null);
+      }
+    };
 
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, [showDropdown]);
 
   // Handle hover on main category
   const handleMainCategoryHover = (category: string) => {
+    if (dropdownTimeoutRef.current) {
+      clearTimeout(dropdownTimeoutRef.current);
+      dropdownTimeoutRef.current = null;
+    }
     setActiveCategory(category);
     setShowDropdown(true);
     setBackgroundImage(categoryBackgrounds[category as keyof typeof categoryBackgrounds] || null);
   };
+  
+  // Handle mouse leave for category items
+  const handleCategoryMouseLeave = () => {
+    dropdownTimeoutRef.current = setTimeout(() => {
+      setShowDropdown(false);
+      setActiveCategory(null);
+    }, 300); // Short delay to allow moving to the dropdown
+  };
+
+  // Effect for cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (dropdownTimeoutRef.current) {
+        clearTimeout(dropdownTimeoutRef.current);
+      }
+    };
+  }, []);
 
   return (
     <header
@@ -637,7 +671,7 @@ const Header = () => {
             <li
               className="relative"
               onMouseEnter={() => handleMainCategoryHover("Men")}
-              onMouseLeave={handleMouseLeave}
+              onMouseLeave={handleCategoryMouseLeave}
             >
               <Link href="/category/Men" className="flex items-center hover:text-gray-300">
                 Men
@@ -648,8 +682,13 @@ const Header = () => {
                 <div
                   ref={dropdownRef}
                   className="fixed left-1/2 -translate-x-1/2 mt-2 bg-white text-black shadow-lg rounded-lg p-4 max-w-5xl min-w-[1500px] max-h-[70vh] overflow-y-auto grid grid-cols-2 z-50"
-                  onMouseEnter={() => clearTimeout(timeout)}
-                  onMouseLeave={handleMouseLeave}
+                  onMouseEnter={() => {
+                    if (dropdownTimeoutRef.current) {
+                      clearTimeout(dropdownTimeoutRef.current);
+                      dropdownTimeoutRef.current = null;
+                    }
+                  }}
+                  onMouseLeave={handleCategoryMouseLeave}
                 >
                   <div className="grid grid-cols-3 gap-x-4">
                     {categoriesLoading ? (
@@ -719,7 +758,7 @@ const Header = () => {
             <li
               className="relative"
               onMouseEnter={() => handleMainCategoryHover("Women")}
-              onMouseLeave={handleMouseLeave}
+              onMouseLeave={handleCategoryMouseLeave}
             >
               <Link href="/category/Women" className="flex items-center hover:text-gray-300">
                 Womens
@@ -730,8 +769,13 @@ const Header = () => {
                 <div
                   ref={dropdownRef}
                   className="fixed left-1/2 -translate-x-1/2 mt-2 bg-white text-black shadow-lg rounded-lg p-4 max-w-5xl min-w-[1500px] max-h-[70vh] overflow-y-auto grid grid-cols-2 z-50"
-                  onMouseEnter={() => clearTimeout(timeout)}
-                  onMouseLeave={handleMouseLeave}
+                  onMouseEnter={() => {
+                    if (dropdownTimeoutRef.current) {
+                      clearTimeout(dropdownTimeoutRef.current);
+                      dropdownTimeoutRef.current = null;
+                    }
+                  }}
+                  onMouseLeave={handleCategoryMouseLeave}
                 >
                   <div className="grid grid-cols-3 gap-x-4">
                     {categoriesLoading ? (
@@ -801,7 +845,7 @@ const Header = () => {
             <li
               className="relative"
               onMouseEnter={() => handleMainCategoryHover("Accessories")}
-              onMouseLeave={handleMouseLeave}
+              onMouseLeave={handleCategoryMouseLeave}
             >
               <Link href="/category/Accessories" className="flex items-center hover:text-gray-300">
                 Accessories
@@ -812,8 +856,13 @@ const Header = () => {
                 <div
                   ref={dropdownRef}
                   className="fixed left-1/2 -translate-x-1/2 mt-2 bg-white text-black shadow-lg rounded-lg p-4 max-w-5xl min-w-[1500px] max-h-[70vh] overflow-y-auto grid grid-cols-2 z-50"
-                  onMouseEnter={() => clearTimeout(timeout)}
-                  onMouseLeave={handleMouseLeave}
+                  onMouseEnter={() => {
+                    if (dropdownTimeoutRef.current) {
+                      clearTimeout(dropdownTimeoutRef.current);
+                      dropdownTimeoutRef.current = null;
+                    }
+                  }}
+                  onMouseLeave={handleCategoryMouseLeave}
                 >
                   <div className="grid grid-cols-3 gap-x-4">
                     {categoriesLoading ? (
