@@ -195,9 +195,16 @@ export default function ProfilePage() {
                 className="bg-gray-100 p-4 rounded-lg shadow-md mb-4"
               >
                 <div className="flex justify-between items-center">
-                  <h3 className="text-lg font-semibold">
-                    Order #{order.orderNumber || order._id.substring(0, 8)}
-                  </h3>
+                  <div>
+                    <h3 className="text-lg font-semibold">
+                      Order #{order.orderNumber || order._id.substring(0, 8)}
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      Placed on: {new Date(order.createdAt).toLocaleDateString('en-US', {
+                        year: 'numeric', month: 'long', day: 'numeric'
+                      })}
+                    </p>
+                  </div>
                   <span className={`px-3 py-1 rounded-lg text-white ${
                     order.status?.toLowerCase() === 'paid' ? 'bg-green-500' :
                     order.status?.toLowerCase() === 'shipped' ? 'bg-blue-500' :
