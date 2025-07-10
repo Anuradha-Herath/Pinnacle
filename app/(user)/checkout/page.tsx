@@ -31,17 +31,6 @@ function Checkout() {
     phone: "",
   });
 
-  // Coupon state
-  const [couponCode, setCouponCode] = useState("");
-  const [appliedCoupon, setAppliedCoupon] = useState<{
-    code: string;
-    discount: string;
-    discountAmount: number;
-    description: string;
-  } | null>(null);
-  const [couponLoading, setCouponLoading] = useState(false);
-  const [couponError, setCouponError] = useState("");
-
   // Handle cart clearing only once
   useEffect(() => {
     if (isClient && !cartClearedRef.current) {
@@ -94,61 +83,6 @@ function Checkout() {
     }));
   };
 
-  // Coupon validation function
-  const handleApplyCoupon = async () => {
-    if (!couponCode.trim()) {
-      setCouponError("Please enter a coupon code");
-      return;
-    }
-
-    setCouponLoading(true);
-    setCouponError("");
-
-    try {
-      const response = await fetch("/api/coupons/validate", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          code: couponCode,
-          subtotal: getCartTotal(),
-        }),
-      });
-
-      const data = await response.json();
-
-      if (response.ok && data.success) {
-        setAppliedCoupon(data.coupon);
-        setCouponCode("");
-        setCouponError("");
-      } else {
-        setCouponError(data.error || "Invalid coupon code");
-        setAppliedCoupon(null);
-      }
-    } catch (error) {
-      console.error("Error applying coupon:", error);
-      setCouponError("Failed to apply coupon. Please try again.");
-      setAppliedCoupon(null);
-    } finally {
-      setCouponLoading(false);
-    }
-  };
-
-  const removeCoupon = () => {
-    setAppliedCoupon(null);
-    setCouponCode("");
-    setCouponError("");
-  };
-
-  // Calculate total with coupon discount
-  const getDiscountedTotal = () => {
-    const subtotal = getCartTotal();
-    const discountAmount = appliedCoupon ? appliedCoupon.discountAmount : 0;
-    const shippingCost = shipping === "ship" ? 650 : 0;
-    return subtotal - discountAmount + shippingCost;
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -157,10 +91,8 @@ function Checkout() {
       ...formData,
       cart: cart,
       subtotal: getCartTotal(),
-      coupon: appliedCoupon,
-      discountAmount: appliedCoupon ? appliedCoupon.discountAmount : 0,
       shippingCost: shipping === "ship" ? 650 : 0,
-      total: getDiscountedTotal(),
+      total: shipping === "ship" ? getCartTotal() + 650 : getCartTotal(),
     };
 
     console.log("Submitting checkout data:", checkoutData);
@@ -352,51 +284,16 @@ function Checkout() {
               )}
 
               <div className="mt-4 mb-6">
-                {!appliedCoupon ? (
-                  <div className="space-y-2">
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        placeholder="Enter coupon code"
-                        value={couponCode}
-                        onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                        className="flex-1 p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-black focus:outline-none"
-                        disabled={couponLoading}
-                      />
-                      <button
-                        type="button"
-                        onClick={handleApplyCoupon}
-                        disabled={couponLoading || !couponCode.trim()}
-                        className="px-4 py-3 bg-gray-200 hover:bg-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed text-gray-800 font-medium rounded-md transition"
-                      >
-                        {couponLoading ? "Applying..." : "Apply"}
-                      </button>
-                    </div>
-                    {couponError && (
-                      <p className="text-sm text-red-600">{couponError}</p>
-                    )}
-                  </div>
-                ) : (
-                  <div className="p-3 bg-green-50 border border-green-200 rounded-md">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-green-800">
-                          Coupon Applied: {appliedCoupon.code}
-                        </p>
-                        <p className="text-xs text-green-600">
-                          {appliedCoupon.description}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={removeCoupon}
-                        className="text-sm text-red-600 hover:text-red-800 underline"
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  </div>
-                )}
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Discount code"
+                    className="flex-1 p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-black focus:outline-none"
+                  />
+                  <button className="px-4 py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium rounded-md transition">
+                    Apply
+                  </button>
+                </div>
               </div>
 
               <div className="space-y-3 text-sm">
@@ -406,16 +303,6 @@ function Checkout() {
                     ${getCartTotal().toFixed(2)}
                   </span>
                 </div>
-                {appliedCoupon && (
-                  <div className="flex justify-between py-1">
-                    <span className="text-green-600">
-                      Discount ({appliedCoupon.discount}% off)
-                    </span>
-                    <span className="font-medium text-green-600">
-                      -${appliedCoupon.discountAmount.toFixed(2)}
-                    </span>
-                  </div>
-                )}
                 {shipping === "ship" ? (
                   <>
                     <div className="flex justify-between py-1">
@@ -424,14 +311,14 @@ function Checkout() {
                     </div>
                     <div className="flex justify-between py-3 text-lg font-semibold border-t border-gray-200 mt-2">
                       <span>Total</span>
-                      <span>${getDiscountedTotal().toFixed(2)}</span>
+                      <span>${(getCartTotal() + 650).toFixed(2)}</span>
                     </div>
                   </>
                 ) : (
                   <>
                     <div className="flex justify-between py-3 text-lg font-semibold border-t border-gray-200 mt-2">
                       <span>Total</span>
-                      <span>${getDiscountedTotal().toFixed(2)}</span>
+                      <span>${getCartTotal().toFixed(2)}</span>
                     </div>
                   </>
                 )}
@@ -812,18 +699,11 @@ function Checkout() {
                 />
                 <input
                   type="hidden"
-                  name="couponCode"
-                  value={appliedCoupon?.code || ""}
-                />
-                <input
-                  type="hidden"
-                  name="discountAmount"
-                  value={appliedCoupon?.discountAmount.toString() || "0"}
-                />
-                <input
-                  type="hidden"
                   name="total"
-                  value={getDiscountedTotal().toString()}
+                  value={(shipping === "ship"
+                    ? getCartTotal() + 650
+                    : getCartTotal()
+                  ).toString()}
                 />
 
                 <button
