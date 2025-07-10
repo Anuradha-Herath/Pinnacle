@@ -1,6 +1,6 @@
 "use client";
 import { useParams, useRouter } from "next/navigation";
-import { Key, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import Sidebar from "../../../components/Sidebar";
 import TopBar from "@/app/components/admin/TopBar";
 import {
@@ -85,7 +85,6 @@ export default function OrderPage() {
 
         if (!response.ok) {
           const errorText = await response.text();
-          console.error("API Error Response:", errorText);
           throw new Error(
             `Failed to fetch order: ${response.status} - ${errorText}`
           );
@@ -97,15 +96,12 @@ export default function OrderPage() {
         }
 
         const data = await response.json();
-        console.log("Fetched order data:", data);
-
         if (!data || !data._id) {
           throw new Error("Invalid order data received");
         }
 
         setOrder(data);
       } catch (error) {
-        console.error("Error fetching order:", error);
         setError(
           error instanceof Error
             ? error.message
@@ -144,7 +140,6 @@ export default function OrderPage() {
       const updatedOrder = await response.json();
       setOrder(updatedOrder);
     } catch (error) {
-      console.error("Error updating order status:", error);
       setError(
         error instanceof Error ? error.message : "Failed to update order status"
       );
@@ -174,10 +169,10 @@ export default function OrderPage() {
     return (
       <div className="flex">
         <Sidebar />
-        <div className="min-h-screen bg-gray-50 p-6 flex-1">
+        <div className="min-h-screen bg-gray-50 p-4 md:p-6 flex-1">
           <TopBar heading="Order Details" />
           <div className="flex justify-center items-center h-64">
-            <div className="text-lg text-gray-600">
+            <div className="text-base md:text-lg text-gray-600">
               Loading order details...
             </div>
           </div>
@@ -190,10 +185,10 @@ export default function OrderPage() {
     return (
       <div className="flex">
         <Sidebar />
-        <div className="min-h-screen bg-gray-50 p-6 flex-1">
+        <div className="min-h-screen bg-gray-50 p-4 md:p-6 flex-1">
           <TopBar heading="Order Details" />
           <div className="flex justify-center items-center h-64">
-            <div className="text-lg text-red-600">
+            <div className="text-base md:text-lg text-red-600">
               {error || "Order not found"}
             </div>
           </div>
@@ -205,36 +200,36 @@ export default function OrderPage() {
   return (
     <div className="flex">
       <Sidebar />
-      <div className="min-h-screen bg-gray-50 p-6 flex-1">
+      <div className="min-h-screen bg-gray-50 p-4 md:p-6 flex-1">
         <TopBar heading="Order Details" />
 
         {/* Back Button */}
         <button
           onClick={() => router.back()}
-          className="flex items-center gap-2 mb-6 text-orange-600 hover:text-orange-700"
+          className="flex items-center gap-2 mb-6 text-orange-600 hover:text-orange-700 text-base md:text-lg"
         >
           <ArrowLeftIcon className="h-5 w-5" />
           Back to Orders
         </button>
 
         {/* Order Header */}
-        <div className="bg-white p-6 rounded-lg shadow-lg mb-6">
-          <div className="flex justify-between items-start">
+        <div className="bg-white p-4 md:p-6 rounded-lg shadow-lg mb-6">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2">
             <div>
-              <h1 className="text-2xl font-bold text-gray-800 mb-2">
+              <h1 className="text-xl md:text-2xl font-bold text-gray-800 mb-2">
                 Order #{order.orderNumber || order._id?.slice(-8) || "Unknown"}
               </h1>
-              <p className="text-gray-600">
+              <p className="text-gray-600 text-sm md:text-base">
                 Created: {new Date(order.createdAt).toLocaleDateString()} at{" "}
                 {new Date(order.createdAt).toLocaleTimeString()}
               </p>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-xs md:text-sm text-gray-500 mt-1">
                 User ID: {order.userId}
               </p>
             </div>
             <div className="text-right">
               <div
-                className={`inline-block px-4 py-2 rounded-full border font-semibold ${getStatusColor(
+                className={`inline-block px-4 py-2 rounded-full border font-semibold text-sm md:text-base ${getStatusColor(
                   order.status
                 )}`}
               >
@@ -245,10 +240,10 @@ export default function OrderPage() {
                   value={order.status}
                   onChange={(e) => handleStatusUpdate(e.target.value)}
                   disabled={updatingStatus}
-                  className="border px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  className="border px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm md:text-base"
                 >
                   <option value="pending">pending</option>
-                  <option value="Paid">Paid</option>  
+                  <option value="Paid">Paid</option>
                   <option value="Processing">Processing</option>
                   <option value="Shipped">Shipped</option>
                   <option value="Delivered">Delivered</option>
@@ -261,56 +256,65 @@ export default function OrderPage() {
 
         {/* Order Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-          <div className="bg-white p-6 rounded-lg shadow-md">
+          <div className="bg-white p-4 md:p-6 rounded-lg shadow-md">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-orange-100 rounded-lg">
+              <div className="p-3 bg-orange-100 rounded-lg flex-shrink-0">
                 <UserIcon className="h-8 w-8 text-orange-500" />
               </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-800">
+              <div className="min-w-0">
+                <h3 className="text-base md:text-lg font-semibold text-gray-800 break-words max-w-xs md:max-w-sm">
                   Customer
                 </h3>
-                <p className="text-gray-600">
+                <p
+                  className="text-gray-600 text-sm md:text-base break-words max-w-xs md:max-w-sm"
+                  title={`${order.customer.firstName} ${order.customer.lastName}`}
+                >
                   {order.customer.firstName} {order.customer.lastName}
                 </p>
-                <p className="text-sm text-gray-500">
+                <p
+                  className="text-xs md:text-sm text-gray-500 break-all max-w-xs md:max-w-sm"
+                  title={order.customer.email}
+                >
                   {order.customer.email}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-md">
+          <div className="bg-white p-4 md:p-6 rounded-lg shadow-md">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-orange-100 rounded-lg">
                 <CreditCardIcon className="h-8 w-8 text-orange-500" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-gray-800">
+                <h3 className="text-base md:text-lg font-semibold text-gray-800">
                   Total Amount
                 </h3>
-                <p className="text-2xl font-bold text-orange-600">
-                  {/* ${formatAmount(order.amount.total)} */}
+                <p className="text-xl md:text-2xl font-bold text-orange-600">
                   {order.amount.total.toFixed(2)}
                 </p>
-                <p className="text-sm text-gray-500">
+                <p className="text-xs md:text-sm text-gray-500">
                   Payment: {order.paymentStatus}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-lg shadow-md">
+          <div className="bg-white p-4 md:p-6 rounded-lg shadow-md">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-orange-100 rounded-lg">
                 <TruckIcon className="h-8 w-8 text-orange-500" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-gray-800">Items</h3>
-                <p className="text-2xl font-bold text-gray-800">
+                <h3 className="text-base md:text-lg font-semibold text-gray-800">
+                  Items
+                </h3>
+                <p className="text-xl md:text-2xl font-bold text-gray-800">
                   {order.line_items.length}
                 </p>
-                <p className="text-sm text-gray-500">Products ordered</p>
+                <p className="text-xs md:text-sm text-gray-500">
+                  Products ordered
+                </p>
               </div>
             </div>
           </div>
@@ -318,8 +322,8 @@ export default function OrderPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Order Items */}
-          <div className="bg-white p-6 rounded-lg shadow-lg">
-            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
+          <div className="bg-white p-4 md:p-6 rounded-lg shadow-lg">
+            <h2 className="text-lg md:text-xl font-semibold mb-4 flex items-center gap-2">
               <ShoppingCartIcon className="h-6 w-6 text-orange-500" />
               Order Items
             </h2>
@@ -334,57 +338,71 @@ export default function OrderPage() {
                       <img
                         src={item.metadata.imageUrl}
                         alt={item.price_data.product_data}
-                        className="w-16 h-16 object-cover rounded-lg"
+                        className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
                         onError={(e) => {
                           e.currentTarget.style.display = "none";
-                          const nextDiv = e.currentTarget.nextElementSibling as HTMLElement;
+                          const nextDiv = e.currentTarget
+                            .nextElementSibling as HTMLElement;
                           if (nextDiv) nextDiv.style.display = "flex";
                         }}
                       />
                     ) : null}
                     <div
-                      className={`w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center ${
+                      className={`w-16 h-16 bg-gray-200 rounded-lg flex items-center justify-center flex-shrink-0 ${
                         item.metadata?.imageUrl ? "hidden" : ""
                       }`}
                     >
-                      <span className="text-gray-500 text-xs">No Image</span>
+                      <span className="text-gray-500 text-xs md:text-sm">
+                        No Image
+                      </span>
                     </div>
-                    <div className="flex-1">
-                      <h4 className="font-semibold">
+                    <div className="flex-1 min-w-0">
+                      <h4
+                        className="font-semibold text-base md:text-lg break-words max-w-xs md:max-w-sm"
+                        title={item.price_data.product_data}
+                      >
                         {item.price_data.product_data}
                       </h4>
-                      <p className="text-gray-600">
+                      <p className="text-gray-600 text-sm md:text-base break-words max-w-xs md:max-w-sm">
                         Quantity: {item.quantity}
                       </p>
-                      <p className="text-gray-600">
-                        Color: {item.metadata?.color || "N/A"} | Size: {item.metadata?.size || "N/A"}
+                      <p className="text-gray-600 text-sm md:text-base break-words max-w-xs md:max-w-sm">
+                        Color: {item.metadata?.color || "N/A"} | Size:{" "}
+                        {item.metadata?.size || "N/A"}
                       </p>
-                      <p className="text-orange-600 font-semibold">
-                        ${((item.price_data.unit_amount / 100) * item.quantity).toFixed(2)}
+                      <p className="text-orange-600 font-semibold text-sm md:text-base">
+                        $
+                        {(
+                          (item.price_data.unit_amount / 100) *
+                          item.quantity
+                        ).toFixed(2)}
                       </p>
-                      <p className="text-xs text-gray-400">
-                        Product ID: {item.metadata?.productId || item.productId || "N/A"}
+                      <p className="text-xs md:text-sm text-gray-400 break-all max-w-xs md:max-w-sm">
+                        Product ID:{" "}
+                        {item.metadata?.productId || item.productId || "N/A"}
                       </p>
                     </div>
                   </div>
                 ))
               ) : (
-                <p className="text-gray-500">No items found</p>
+                <p className="text-gray-500 text-sm md:text-base">
+                  No items found
+                </p>
               )}
             </div>
 
             {/* Order Summary */}
             <div className="mt-6 pt-4 border-t">
               <div className="space-y-2">
-                <div className="flex justify-between">
+                <div className="flex justify-between text-sm md:text-base">
                   <span>Subtotal:</span>
                   <span>${order.amount.subtotal.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between">
+                <div className="flex justify-between text-sm md:text-base">
                   <span>Shipping Cost:</span>
                   <span>${order.amount.shippingCost}</span>
                 </div>
-                <div className="flex justify-between font-bold text-lg border-t pt-2">
+                <div className="flex justify-between font-bold text-base md:text-lg border-t pt-2">
                   <span>Total:</span>
                   <span className="text-orange-600">
                     ${order.amount.total.toFixed(2)}
@@ -395,32 +413,50 @@ export default function OrderPage() {
           </div>
 
           {/* Shipping & Customer Information */}
-          <div className="bg-white p-6 rounded-lg shadow-lg">
-            <h2 className="text-xl font-semibold mb-4">Shipping Information</h2>
-            <div className="space-y-2">
-              <p><strong>Delivery Method:</strong> {order.shipping.deliveryMethod}</p>
+          <div className="bg-white p-4 md:p-6 rounded-lg shadow-lg">
+            <h2 className="text-lg md:text-xl font-semibold mb-4">
+              Shipping Information
+            </h2>
+            <div className="space-y-2 text-sm md:text-base">
+              <p>
+                <strong>Delivery Method:</strong>{" "}
+                {order.shipping.deliveryMethod}
+              </p>
               {order.shipping.address ? (
                 <>
-                  <p><strong>Shipping Address:</strong></p>
-                  <p>{order.shipping.address.address}<br/>
-                     {order.shipping.address.city}, {order.shipping.address.postalCode}<br/>
-                     {order.shipping.address.country}</p>
+                  <p>
+                    <strong>Shipping Address:</strong>
+                  </p>
+                  <p>
+                    {order.shipping.address.address}
+                    <br />
+                    {order.shipping.address.city},{" "}
+                    {order.shipping.address.postalCode}
+                    <br />
+                    {order.shipping.address.country}
+                  </p>
                 </>
               ) : (
                 <p className="text-gray-500">picking-up order</p>
               )}
-              <p><strong>Phone:</strong> {order.customer.phone}</p>
+              <p>
+                <strong>Phone:</strong> {order.customer.phone}
+              </p>
             </div>
 
             {/* Order Timeline */}
             <div className="mt-8">
-              <h3 className="text-lg font-semibold mb-4">Order Timeline</h3>
+              <h3 className="text-base md:text-lg font-semibold mb-4">
+                Order Timeline
+              </h3>
               <div className="space-y-3">
                 <div className="flex items-center gap-3">
                   <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                   <div>
-                    <p className="font-medium">Order Created</p>
-                    <p className="text-sm text-gray-500">
+                    <p className="font-medium text-sm md:text-base">
+                      Order Created
+                    </p>
+                    <p className="text-xs md:text-sm text-gray-500">
                       {new Date(order.createdAt).toLocaleString()}
                     </p>
                   </div>
@@ -429,8 +465,10 @@ export default function OrderPage() {
                   <div className="flex items-center gap-3">
                     <div className="w-3 h-3 bg-orange-500 rounded-full"></div>
                     <div>
-                      <p className="font-medium">Last Updated</p>
-                      <p className="text-sm text-gray-500">
+                      <p className="font-medium text-sm md:text-base">
+                        Last Updated
+                      </p>
+                      <p className="text-xs md:text-sm text-gray-500">
                         {new Date(order.updatedAt).toLocaleString()}
                       </p>
                     </div>
@@ -444,4 +482,3 @@ export default function OrderPage() {
     </div>
   );
 }
-
