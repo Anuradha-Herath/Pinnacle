@@ -21,16 +21,19 @@ export async function GET(
   { params }: { params: { productId: string } }
 ) {
   try {
+    // Validate productId parameter
+    const { productId } = params;
+    
+    if (!productId || productId === 'undefined' || productId === 'null') {
+      return NextResponse.json({ 
+        message: "Invalid product ID", 
+        error: "ProductId is missing or invalid" 
+      }, { status: 400 });
+    }
+
     await connectDB();
     
-    // Properly await the params object before accessing productId
-    const { productId } = await params;
-    
     // Find any active discounts for this specific product
-    // Also get category-based discounts that apply to this product's category
-    // For this we would need to know the product's category
-    
-    // For now, let's just check direct product discounts
     const today = new Date().toISOString().split('T')[0]; // Get current date in YYYY-MM-DD format
     
     const discount = await Discount.findOne({
@@ -42,20 +45,30 @@ export async function GET(
     }).sort({ percentage: -1 }); // Get the highest discount if multiple exist
     
     if (!discount) {
-      return NextResponse.json({ message: "No active discount found for this product" });
+      // Return a success response with no discount, rather than an error
+      return NextResponse.json({ 
+        message: "No active discount found for this product",
+        discount: null
+      });
     }
     
     return NextResponse.json({ 
       discount: {
         id: discount._id,
         percentage: discount.percentage,
-        active: true
+        active: true,
+        // Include additional information for debugging
+        productId: discount.product,
+        type: discount.type,
+        startDate: discount.startDate,
+        endDate: discount.endDate
       } 
     });
   } catch (error) {
     console.error("Error fetching product discount:", error);
     return NextResponse.json({ 
-      error: error instanceof Error ? error.message : "Failed to fetch discount information" 
+      error: error instanceof Error ? error.message : "Failed to fetch discount information",
+      stack: process.env.NODE_ENV === 'development' ? (error instanceof Error ? error.stack : undefined) : undefined
     }, { status: 500 });
   }
 }
