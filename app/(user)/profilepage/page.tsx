@@ -208,7 +208,7 @@ export default function ProfilePage() {
                     order.status?.toLowerCase() === 'paid' ? 'bg-green-500' :
                     order.status?.toLowerCase() === 'shipped' ? 'bg-blue-500' :
                     order.status?.toLowerCase() === 'delivered' ? 'bg-orange-500' :
-                    order.status?.toLowerCase() === 'refunded' ? 'bg-red-300' :
+                    order.status?.toLowerCase() === 'refunded' ? 'bg-red-500' :
                     order.status?.toLowerCase() === 'processing' ? 'bg-yellow-500 text-gray-300' : 
                     'bg-gray-600'
                   }`}>
