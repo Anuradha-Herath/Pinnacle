@@ -51,7 +51,7 @@ export async function GET(request: Request) {
       price: product.regularPrice,
       image: product.gallery && product.gallery.length > 0 ? 
         product.gallery[0].src : '/placeholder.png',
-      colors: product.gallery.map(item => item.src),
+      colors: product.gallery.map((item: { src: string }) => item.src),
       sizes: product.sizes || [],
     }));
     
