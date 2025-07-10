@@ -90,7 +90,7 @@ const isGeneralInfoOrFAQ = (query: string, responseText: string): boolean => {
   return containsFAQKeyword || containsPolicyInfo;
 };
 
-const MODEL_PRIORITY = ["gemini-1.5-flash", "gemini-pro", "gemini-1.0-pro"];
+const MODEL_PRIORITY = ["gemini-1.5-flash", "gemini-1.5-pro"];
 
 const timeoutPromise = (ms: number) => {
   return new Promise((_, reject) => {
