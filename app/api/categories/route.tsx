@@ -36,18 +36,39 @@ const uploadToCloudinary = async (imageData: string) => {
   }
 };
 
+// Add CORS headers helper
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Max-Age': '86400',
+};
+
+// Handle OPTIONS request for CORS
+export async function OPTIONS() {
+  return new Response(null, {
+    status: 200,
+    headers: corsHeaders,
+  });
+}
+
 // GET all categories
 export async function GET() {
   try {
     await connectDB();
     const categories = await Category.find().sort({ createdAt: -1 });
     
-    return NextResponse.json({ categories });
+    return NextResponse.json({ categories }, {
+      headers: corsHeaders,
+    });
   } catch (error) {
     console.error("Error fetching categories:", error);
     return NextResponse.json({ 
       error: error instanceof Error ? error.message : "Failed to fetch categories" 
-    }, { status: 500 });
+    }, { 
+      status: 500,
+      headers: corsHeaders,
+    });
   }
 }
 

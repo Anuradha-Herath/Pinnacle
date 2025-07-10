@@ -27,6 +27,22 @@ interface ProductItem {
   // Add other properties as needed
 }
 
+// Add CORS headers helper
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Max-Age': '86400',
+};
+
+// Handle OPTIONS request for CORS
+export async function OPTIONS() {
+  return new Response(null, {
+    status: 200,
+    headers: corsHeaders,
+  });
+}
+
 // GET method to fetch products for customers
 export async function GET(request: Request) {
   try {
@@ -45,7 +61,9 @@ export async function GET(request: Request) {
     const inStockProductIds = inStockInventory.map(item => item.productId);
     
     if (inStockProductIds.length === 0) {
-      return NextResponse.json({ products: [] });
+      return NextResponse.json({ products: [] }, {
+        headers: corsHeaders,
+      });
     }
     
     // Build query to find products that are in stock
@@ -80,11 +98,16 @@ export async function GET(request: Request) {
       sizes: item.sizes || [],
     }));
     
-    return NextResponse.json({ products: customerProducts });
+    return NextResponse.json({ products: customerProducts }, {
+      headers: corsHeaders,
+    });
   } catch (error) {
     console.error("Error fetching products:", error);
     return NextResponse.json({ 
       error: error instanceof Error ? error.message : "Failed to fetch products" 
-    }, { status: 500 });
+    }, { 
+      status: 500,
+      headers: corsHeaders,
+    });
   }
 }
