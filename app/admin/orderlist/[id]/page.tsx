@@ -367,7 +367,7 @@ export default function OrderPage() {
                         Quantity: {item.quantity}
                       </p>
                       <p className="text-gray-600 text-sm md:text-base break-words max-w-xs md:max-w-sm">
-                        Color: {item.metadata?.color || "N/A"} | Size:{" "}
+                        Color: {item.metadata?.color ? item.metadata.color.split('/').pop()?.split('.')[0] : "N/A"} | Size:{" "}
                         {item.metadata?.size || "N/A"}
                       </p>
                       <p className="text-orange-600 font-semibold text-sm md:text-base">
