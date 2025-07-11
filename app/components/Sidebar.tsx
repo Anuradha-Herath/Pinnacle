@@ -15,6 +15,7 @@ import { BiCategoryAlt } from "react-icons/bi";
 import { RiCoupon3Line } from "react-icons/ri";
 import { CgProfile } from "react-icons/cg";
 import { TbDiscount } from "react-icons/tb";
+import { BarChartIcon } from "lucide-react";
 
 const Sidebar: React.FC = () => {
     // Use useState with an explicit boolean type to avoid hydration issues
@@ -59,6 +60,59 @@ const Sidebar: React.FC = () => {
         </Link>
     );
 
+    const menuItems = [
+        {
+            title: "Dashboard",
+            icon: <MdDashboard className="text-xl w-6 flex-shrink-0" />,
+            path: "/admin/dashboard",
+        },
+        {
+            title: "Products",
+            icon: <FaBoxOpen className="text-xl w-6 flex-shrink-0" />,
+            path: "/admin/productlist",
+        },
+        {
+            title: "Categories",
+            icon: <BiCategoryAlt className="text-xl w-6 flex-shrink-0" />,
+            path: "/admin/categorylist",
+        },
+        {
+            title: "Inventory",
+            icon: <MdInventory className="text-xl w-6 flex-shrink-0" />,
+            path: "/admin/inventorylist",
+        },
+        {
+            title: "Orders",
+            icon: <FaShoppingBag className="text-xl w-6 flex-shrink-0" />,
+            path: "/admin/orderlist",
+        },
+        {
+            title: "Customers",
+            icon: <FaUsers className="text-xl w-6 flex-shrink-0" />,
+            path: "/admin/customerlist",
+        },
+        {
+            title: "Coupons",
+            icon: <RiCoupon3Line className="text-xl w-6 flex-shrink-0" />,
+            path: "/admin/couponlist",
+        },
+        {
+            title: "Discounts",
+            icon: <TbDiscount className="text-xl w-6 flex-shrink-0" />,
+            path: "/admin/discountlist",
+        },
+        {
+            title: "Profile",
+            icon: <CgProfile className="text-xl w-6 flex-shrink-0" />,
+            path: "/admin/adminprofile",
+        },
+        {
+            title: "Sales Report",
+            icon: <BarChartIcon className="w-5 h-5" />,
+            path: "/admin/sales-report",
+        },
+    ];
+
     return (
         <aside
             className={`transition-all duration-300 ${
@@ -77,60 +131,14 @@ const Sidebar: React.FC = () => {
             </div>
             <nav>
                 <ul className="space-y-2">
-                    <li>
-                        <NavLink href="/admin/dashboard">
-                            <MdDashboard className="text-xl w-6 flex-shrink-0" />
-                            {!collapsed && <span className="ml-2">Dashboard</span>}
-                        </NavLink>
-                    </li>
-                    <li>
-                        <NavLink href="/admin/productlist">
-                            <FaBoxOpen className="text-xl w-6 flex-shrink-0" />
-                            {!collapsed && <span className="ml-2">Products</span>}
-                        </NavLink>
-                    </li>
-                    <li>
-                        <NavLink href="/admin/categorylist">
-                            <BiCategoryAlt className="text-xl w-6 flex-shrink-0" />
-                            {!collapsed && <span className="ml-2">Categories</span>}
-                        </NavLink>
-                    </li>
-                    <li>
-                        <NavLink href="/admin/inventorylist">
-                            <MdInventory className="text-xl w-6 flex-shrink-0" />
-                            {!collapsed && <span className="ml-2">Inventory</span>}
-                        </NavLink>
-                    </li>
-                    <li>
-                        <NavLink href="/admin/orderlist">
-                            <FaShoppingBag className="text-xl w-6 flex-shrink-0" />
-                            {!collapsed && <span className="ml-2">Orders</span>}
-                        </NavLink>
-                    </li>
-                    <li>
-                        <NavLink href="/admin/customerlist">
-                            <FaUsers className="text-xl w-6 flex-shrink-0" />
-                            {!collapsed && <span className="ml-2">Customers</span>}
-                        </NavLink>
-                    </li>
-                    <li>
-                        <NavLink href="/admin/couponlist">
-                            <RiCoupon3Line className="text-xl w-6 flex-shrink-0" />
-                            {!collapsed && <span className="ml-2">Coupons</span>}
-                        </NavLink>
-                    </li>
-                    <li>
-                        <NavLink href="/admin/discountlist">
-                            <TbDiscount className="text-xl w-6 flex-shrink-0" />
-                            {!collapsed && <span className="ml-2">Discounts</span>}
-                        </NavLink>
-                    </li>
-                    <li>
-                        <NavLink href="/admin/adminprofile">
-                            <CgProfile className="text-xl w-6 flex-shrink-0" />
-                            {!collapsed && <span className="ml-2">Profile</span>}
-                        </NavLink>
-                    </li>
+                    {menuItems.map((item) => (
+                        <li key={item.title}>
+                            <NavLink href={item.path}>
+                                {item.icon}
+                                {!collapsed && <span className="ml-2">{item.title}</span>}
+                            </NavLink>
+                        </li>
+                    ))}
                     <li>
                         <button
                             onClick={handleLogout}
