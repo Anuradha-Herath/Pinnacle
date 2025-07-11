@@ -82,3 +82,195 @@ export const getBrowserInfo = () => {
     connection: (navigator as any).connection || null
   };
 };
+
+// Enhanced performance monitoring and request optimization utilities
+import { deduplicateRequest, fetchCategories, fetchAuthUser, fetchUserCart, requestCache, CACHE_TIMEOUT, type PendingRequest } from './apiUtils';
+
+interface RequestMetrics {
+  url: string;
+  duration: number;
+  timestamp: number;
+  cacheHit: boolean;
+  errorCount: number;
+}
+
+// Performance monitoring
+const performanceMetrics = new Map<string, RequestMetrics[]>();
+
+
+/**
+ * Enhanced request deduplication with performance monitoring
+ */
+export const monitoredRequest = async <T>(
+  url: string,
+  fetchOptions?: RequestInit
+): Promise<T> => {
+  const startTime = performance.now();
+  const cacheKey = `${url}:${JSON.stringify(fetchOptions || {})}`;
+  
+  try {
+    // Check for existing request
+    const cached = requestCache.get(cacheKey);
+    const isCacheHit = !!cached && (Date.now() - cached.timestamp < CACHE_TIMEOUT);
+    
+    let result: T;
+    
+    if (isCacheHit) {
+      result = await cached!.promise;
+    } else {
+      // Make new request with enhanced error handling
+      const promise = fetch(url, {
+        ...fetchOptions,
+        headers: {
+          'Cache-Control': 'max-age=300',
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+          ...fetchOptions?.headers,
+        },
+      }).then(async (response) => {
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: 'Network error' }));
+          throw new Error(errorData.error || `HTTP ${response.status}: Request failed`);
+        }
+        return response.json();
+      });
+      
+      // Cache the new request
+      requestCache.set(cacheKey, {
+        promise,
+        timestamp: Date.now(),
+      });
+      
+      result = await promise;
+    }
+    
+    // Record performance metrics
+    const duration = performance.now() - startTime;
+    recordMetrics(url, duration, isCacheHit, false);
+    
+    return result;
+  } catch (error) {
+    const duration = performance.now() - startTime;
+    recordMetrics(url, duration, false, true);
+    throw error;
+  }
+};
+
+/**
+ * Record performance metrics for analysis
+ */
+const recordMetrics = (
+  url: string,
+  duration: number,
+  cacheHit: boolean,
+  isError: boolean
+) => {
+  const baseUrl = url.split('?')[0]; // Group by endpoint
+  const existing = performanceMetrics.get(baseUrl) || [];
+  
+  existing.push({
+    url: baseUrl,
+    duration,
+    timestamp: Date.now(),
+    cacheHit,
+    errorCount: isError ? 1 : 0,
+  });
+  
+  // Keep only last 100 entries per endpoint
+  if (existing.length > 100) {
+    existing.splice(0, existing.length - 100);
+  }
+  
+  performanceMetrics.set(baseUrl, existing);
+};
+
+/**
+ * Get performance report for debugging
+ */
+export const getPerformanceReport = () => {
+  const report: Record<string, {
+    totalRequests: number;
+    avgDuration: number;
+    cacheHitRate: number;
+    errorRate: number;
+    lastUsed: number;
+  }> = {};
+  
+  performanceMetrics.forEach((metrics, url) => {
+    const totalRequests = metrics.length;
+    const avgDuration = metrics.reduce((sum, m) => sum + m.duration, 0) / totalRequests;
+    const cacheHits = metrics.filter(m => m.cacheHit).length;
+    const errors = metrics.reduce((sum, m) => sum + m.errorCount, 0);
+    const lastUsed = Math.max(...metrics.map(m => m.timestamp));
+    
+    report[url] = {
+      totalRequests,
+      avgDuration: Math.round(avgDuration * 100) / 100,
+      cacheHitRate: Math.round((cacheHits / totalRequests) * 100),
+      errorRate: Math.round((errors / totalRequests) * 100),
+      lastUsed,
+    };
+  });
+  
+  return report;
+};
+
+/**
+ * Preload critical resources
+ */
+export const preloadCriticalData = async () => {
+  try {
+    console.log('Preloading critical data...');
+    
+    // Preload categories (most commonly used)
+    fetchCategories().catch(err => console.warn('Failed to preload categories:', err));
+    
+    // Preload user data if available
+    if (typeof window !== 'undefined' && localStorage.getItem('auth-token')) {
+      fetchAuthUser().catch(err => console.warn('Failed to preload user data:', err));
+      fetchUserCart().catch(err => console.warn('Failed to preload cart:', err));
+    }
+    
+  } catch (error) {
+    console.warn('Preload failed:', error);
+  }
+};
+
+/**
+ * Smart cache warming for frequently accessed data
+ */
+export const warmCache = async (endpoints: string[]) => {
+  console.log('Warming cache for endpoints:', endpoints);
+  
+  const promises = endpoints.map(endpoint => 
+    deduplicateRequest(endpoint).catch(err => 
+      console.warn(`Failed to warm cache for ${endpoint}:`, err)
+    )
+  );
+  
+  await Promise.allSettled(promises);
+};
+
+/**
+ * Clean up expired cache entries
+ */
+export const cleanupCache = () => {
+  const now = Date.now();
+  let cleaned = 0;
+  
+  requestCache.forEach((cached: PendingRequest, key: string) => {
+    if (now - cached.timestamp > CACHE_TIMEOUT) {
+      requestCache.delete(key);
+      cleaned++;
+    }
+  });
+  
+  if (cleaned > 0) {
+    console.log(`Cleaned up ${cleaned} expired cache entries`);
+  }
+};
+
+// Auto cleanup every 5 minutes
+if (typeof window !== 'undefined') {
+  setInterval(cleanupCache, 5 * 60 * 1000);
+}

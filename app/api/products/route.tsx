@@ -17,6 +17,11 @@ const connectDB = async () => {
   }
 };
 
+// Helper function to escape regex special characters
+const escapeRegex = (string: string) => {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+};
+
 // Helper function to upload image to Cloudinary
 const uploadToCloudinary = async (imageData: string) => {
   try {
@@ -37,18 +42,43 @@ const uploadToCloudinary = async (imageData: string) => {
   }
 };
 
+// Add CORS headers helper with cache control
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Max-Age': '86400',
+};
+
+// Add cache headers for products
+const cacheHeaders = {
+  'Cache-Control': 'public, max-age=180, stale-while-revalidate=60', // 3 minutes cache, 1 minute stale
+  'CDN-Cache-Control': 'public, max-age=300', // 5 minutes for CDN
+  'Vary': 'Accept-Encoding',
+};
+
+// Handle OPTIONS request for CORS
+export async function OPTIONS() {
+  return new Response(null, {
+    status: 200,
+    headers: corsHeaders,
+  });
+}
+
 export async function GET(request: NextRequest) {
   try {
     await connectDB();
 
-    // Parse query parameters
+    // Parse query parameters with proper URL decoding
     const searchParams = request.nextUrl.searchParams;
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
     const searchQuery = searchParams.get('q');
-    const category = searchParams.get('category');
-    const subCategory = searchParams.get('subCategory');
+    const category = searchParams.get('category') ? decodeURIComponent(searchParams.get('category')!) : null;
+    const subCategory = searchParams.get('subCategory') ? decodeURIComponent(searchParams.get('subCategory')!) : null;
     const productId = searchParams.get('id'); // For fetching a single product
+
+    console.log(`API: Fetching products with filters:`, { category, subCategory, searchQuery, page, limit });
 
     // Get active discounts
     const activeDiscounts = await Discount.find({
@@ -99,6 +129,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         success: true,
         product: productWithDiscount
+      }, {
+        headers: {
+          ...corsHeaders,
+          ...cacheHeaders,
+        },
       });
     }
 
@@ -118,17 +153,23 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    // Add category filter if provided - use case-insensitive regex matching
+    // Add category filter if provided - use exact case-insensitive matching
     if (category) {
-      query.category = { $regex: new RegExp(`^${category}$`, 'i') };
-      console.log(`Filtering products by category: ${category}`);
+      // Trim whitespace and use exact matching with case insensitivity
+      const trimmedCategory = category.trim();
+      query.category = { $regex: new RegExp(`^${escapeRegex(trimmedCategory)}$`, 'i') };
+      console.log(`API: Filtering products by category: "${trimmedCategory}"`);
     }
 
-    // Add subCategory filter if provided - use case-insensitive regex matching
+    // Add subCategory filter if provided - use exact case-insensitive matching
     if (subCategory) {
-      query.subCategory = { $regex: new RegExp(`^${subCategory}$`, 'i') };
-      console.log(`Filtering products by subCategory: ${subCategory}`);
+      // Trim whitespace and use exact matching with case insensitivity
+      const trimmedSubCategory = subCategory.trim();
+      query.subCategory = { $regex: new RegExp(`^${escapeRegex(trimmedSubCategory)}$`, 'i') };
+      console.log(`API: Filtering products by subCategory: "${trimmedSubCategory}"`);
     }
+
+    console.log(`API: Final query:`, JSON.stringify(query, null, 2));
 
     // Count total products matching the query for pagination
     const totalProducts = await Product.countDocuments(query);
@@ -172,6 +213,11 @@ export async function GET(request: NextRequest) {
         page,
         limit
       }
+    }, {
+      headers: {
+        ...corsHeaders,
+        ...cacheHeaders,
+      },
     });
 
   } catch (error) {
@@ -179,7 +225,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ 
       success: false, 
       error: 'Failed to fetch products' 
-    }, { status: 500 });
+    }, { 
+      status: 500,
+      headers: corsHeaders,
+    });
   }
 }
 
