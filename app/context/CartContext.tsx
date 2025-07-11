@@ -118,16 +118,17 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     loadCart();
   }, [user, isClearing]);
 
-  // Save cart to localStorage and API when it changes
+  // Save cart to localStorage and API when it changes - DEBOUNCED
   useEffect(() => {
     if (!initialized) return;
     
     // Always save to localStorage (for guest users and as backup)
     localStorage.setItem('cart', JSON.stringify(cart));
     
-    // If user is logged in, also save to API
+    // If user is logged in, also save to API with debouncing
     if (user) {
-      const saveCartToAPI = async () => {
+      // Debounce API calls to prevent excessive requests
+      const timeoutId = setTimeout(async () => {
         try {
           // Ensure all required fields are included when sending to API
           const apiCart = cart.map(item => ({
@@ -140,6 +141,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
             quantity: item.quantity,
           }));
 
+          console.log(`Saving cart to API (debounced): ${apiCart.length} items`);
           await fetch('/api/user/cart', {
             method: 'PUT',
             headers: {
@@ -150,9 +152,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         } catch (error) {
           console.error('Error saving cart to API:', error);
         }
-      };
-      
-      saveCartToAPI();
+      }, 500); // 500ms debounce delay
+
+      return () => clearTimeout(timeoutId);
     }
   }, [cart, user, initialized]);
 

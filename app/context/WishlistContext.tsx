@@ -71,17 +71,19 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     loadWishlist();
   }, [user]);
 
-  // Save wishlist to localStorage and API when it changes
+  // Save wishlist to localStorage and API when it changes - DEBOUNCED
   useEffect(() => {
     if (!initialized) return;
     
     // Always save to localStorage (for guest users and as backup)
     localStorage.setItem('wishlist', JSON.stringify(wishlist));
     
-    // If user is logged in, also save to API
+    // If user is logged in, also save to API with debouncing
     if (user) {
-      const saveWishlistToAPI = async () => {
+      // Debounce API calls to prevent excessive requests
+      const timeoutId = setTimeout(async () => {
         try {
+          console.log(`Saving wishlist to API (debounced): ${wishlist.length} items`);
           await fetch('/api/user/wishlist', {
             method: 'PUT',
             headers: {
@@ -92,9 +94,9 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         } catch (error) {
           console.error('Error saving wishlist to API:', error);
         }
-      };
-      
-      saveWishlistToAPI();
+      }, 500); // 500ms debounce delay
+
+      return () => clearTimeout(timeoutId);
     }
   }, [wishlist, user, initialized]);
 

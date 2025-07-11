@@ -48,14 +48,6 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
   // Check for discounts when component mounts - OPTIMIZED VERSION
   useEffect(() => {
     const checkForDiscounts = () => {
-      // Debug the incoming product data to understand what discount info we have
-      console.log("Product discount data:", {
-        id: product.id,
-        hasDiscountedPrice: product.discountedPrice !== undefined,
-        hasDiscountObj: product.discount !== undefined,
-        price: product.price
-      });
-
       // Reset discount state first
       setHasDiscount(false);
       setDiscountedPrice(null);
@@ -70,12 +62,6 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
         
         // Only apply discount if percentage is valid and positive
         if (percentage > 0 && percentage <= 100) {
-          console.log("Using direct discountedPrice:", {
-            originalPrice: product.price,
-            discountedPrice: product.discountedPrice,
-            calculatedPercentage: percentage
-          });
-          
           setHasDiscount(true);
           setDiscountedPrice(product.discountedPrice);
           setDiscountPercentage(percentage);
@@ -88,10 +74,6 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
           product.discount.percentage > 0 && 
           product.discount.discountedPrice && 
           product.discount.discountedPrice > 0) {
-        console.log("Using discount object:", {
-          percentage: product.discount.percentage,
-          discountedPrice: product.discount.discountedPrice
-        });
         
         // Validate the discount percentage
         if (product.discount.percentage > 0 && product.discount.percentage <= 100) {
@@ -103,17 +85,12 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
       }
 
       // If we reach here, there's no valid discount - state is already reset above
-      console.log("No valid discount found for product:", product.id);
     };
     
     // Only check for discounts if the product has a valid ID and price
     if (product.id && product.price) {
       checkForDiscounts();
     } else {
-      console.warn("Missing required product data for discount check:", { 
-        hasId: !!product.id, 
-        hasPrice: !!product.price 
-      });
       // Reset discount state for invalid products
       setHasDiscount(false);
       setDiscountedPrice(null);
@@ -164,12 +141,6 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
     const finalDiscountedPrice = product.discountedPrice !== undefined 
       ? product.discountedPrice 
       : (hasDiscount && discountedPrice !== null ? discountedPrice : undefined);
-    
-    console.log("Adding product to cart with prices:", {
-      regular: product.price,
-      discounted: finalDiscountedPrice,
-      hasDiscount: hasDiscount
-    });
     
     // Important: Pass false to prevent duplicate notifications
     addToCart({
