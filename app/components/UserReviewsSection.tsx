@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { apiHelpers } from '../../lib/simpleRequestHelper';
 import { StarIcon } from "@heroicons/react/24/solid";
 import { StarIcon as StarOutline } from "@heroicons/react/24/outline";
 import { useRouter } from "next/navigation";
@@ -55,13 +56,9 @@ const UserReviewsSection: React.FC<Props> = ({
       const fetchReviews = async () => {
         try {
           setLoading(true);
-          const response = await fetch(`/api/reviews?productId=${productId}`);
+          // Use deduplicated API helper instead of direct fetch
+          const data = await apiHelpers.getProductReviews(productId);
           
-          if (!response.ok) {
-            throw new Error('Failed to fetch reviews');
-          }
-          
-          const data = await response.json();
           if (data.success && data.reviews) {
             setReviews(data.reviews);
           }
