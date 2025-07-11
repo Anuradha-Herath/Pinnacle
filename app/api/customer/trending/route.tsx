@@ -2,26 +2,17 @@ import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import Product from "@/models/Product";
 import Inventory from "@/models/Inventory";
+import Discount from "@/models/Discount";
+import connectDB from "@/lib/optimizedDB"; // Use optimized connection
 
-// Connect to MongoDB using Mongoose
-const connectDB = async () => {
-  try {
-    if (mongoose.connection.readyState === 0) {
-      await mongoose.connect(process.env.MONGODB_URI!);
-      console.log('Connected to MongoDB via Mongoose');
-    }
-  } catch (error) {
-    console.error('MongoDB connection error:', error);
-    throw new Error('Failed to connect to database');
-  }
-};
-
-// Add CORS headers helper
+// Add CORS headers helper with caching
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Access-Control-Max-Age': '86400',
+  'Cache-Control': 'public, max-age=300, stale-while-revalidate=60',
+  'CDN-Cache-Control': 'max-age=300',
 };
 
 // Handle OPTIONS request for CORS
@@ -106,25 +97,53 @@ export async function GET(request: Request) {
       return { product, timestamp };
     });
     
+    // Get active discounts
+    const today = new Date().toISOString().split('T')[0];
+    const activeDiscounts = await Discount.find({
+      status: 'Active',
+      startDate: { $lte: today },
+      endDate: { $gte: today }
+    });
+    
     // Sort by timestamp (most recent first) and limit to exactly 10 products
     const sortedProducts = productsWithTimestamp
       .sort((a, b) => b.timestamp - a.timestamp)
       .slice(0, PRODUCT_LIMIT)
       .map(item => item.product);
     
-    // Transform products to customer format
+    // Transform products to customer format with discount information
     const customerProducts = sortedProducts.map(product => {
       const isNewAndStocked = newAndStockedIds.includes(product._id.toString());
+      
+      // Find applicable discount
+      const discount = activeDiscounts.find(
+        d => (d.type === 'Product' && d.product === product._id.toString()) ||
+             (d.type === 'Category' && d.product === product.category) ||
+             (d.type === 'All' && d.applyToAllProducts)
+      );
+      
+      // Calculate discounted price if discount exists
+      let discountedPrice = null;
+      if (discount) {
+        discountedPrice = product.regularPrice - (product.regularPrice * discount.percentage / 100);
+        discountedPrice = Math.round(discountedPrice * 100) / 100; // Round to 2 decimal places
+      }
       
       return {
         id: product._id,
         name: product.productName,
         price: product.regularPrice,
+        discountedPrice, // Include calculated discounted price
         image: product.gallery && product.gallery.length > 0 ? 
           product.gallery[0].src : '/placeholder.png',
         colors: product.gallery?.map((item: any) => item.src) || [],
         sizes: product.sizes || [],
         tag: isNewAndStocked ? "NEW" : null,
+        // Include discount info for immediate use
+        discount: discount ? {
+          percentage: discount.percentage,
+          discountedPrice
+        } : undefined
       };
     });
     

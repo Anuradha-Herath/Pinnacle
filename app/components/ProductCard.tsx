@@ -45,9 +45,9 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
 
-  // Check for discounts when component mounts
+  // Check for discounts when component mounts - OPTIMIZED VERSION
   useEffect(() => {
-    const checkForDiscounts = async () => {
+    const checkForDiscounts = () => {
       // Debug the incoming product data to understand what discount info we have
       console.log("Product discount data:", {
         id: product.id,
@@ -85,64 +85,10 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
         return; // Skip API call if we already have the discount info
       }
 
-      // Otherwise try to fetch from API with proper error handling
-      try {
-        console.log("Fetching discount from API for product:", product.id);
-        
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
-        
-        // Add a product ID check to prevent unnecessary API calls
-        if (!product.id) {
-          console.warn("Product ID is missing, cannot fetch discount");
-          clearTimeout(timeoutId);
-          return;
-        }
-        
-        const response = await fetch(`/api/discounts/product/${product.id}`, {
-          signal: controller.signal,
-          // Change cache strategy to always get fresh discount data
-          cache: 'no-store',
-          next: { revalidate: 60 } // Revalidate every minute
-        }).catch(error => {
-          if (error.name !== 'AbortError') {
-            console.warn("Discount fetch failed:", error.message);
-          }
-          return null; // Return null on network errors
-        });
-        
-        clearTimeout(timeoutId);
-        
-        if (response && response.ok) {
-          const data = await response.json();
-          console.log("Discount API response:", data);
-          
-          if (data.discount && data.discount.percentage > 0) {
-            // Calculate the discounted price
-            const percentage = data.discount.percentage;
-            const discountAmount = (product.price * percentage) / 100;
-            const discounted = product.price - discountAmount;
-            
-            console.log("Applied API discount:", {
-              percentage,
-              originalPrice: product.price,
-              calculatedDiscount: discounted
-            });
-            
-            setHasDiscount(true);
-            setDiscountedPrice(discounted);
-            setDiscountPercentage(percentage);
-          } else {
-            console.log("No active discount returned from API");
-          }
-        } else {
-          console.log("Discount API response was not OK or null");
-        }
-      } catch (error) {
-        // Handle fetch or JSON parsing errors
-        console.error("Error checking discounts:", error);
-        // Continue with standard pricing without discount
-      }
+      // Reset discount state if no discount information is available
+      setHasDiscount(false);
+      setDiscountedPrice(null);
+      setDiscountPercentage(null);
     };
     
     // Only check for discounts if the product has a valid ID and price
