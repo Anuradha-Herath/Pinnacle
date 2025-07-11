@@ -7,6 +7,7 @@ import Header from "@/app/components/Header";
 import Footer from "@/app/components/Footer";
 import ProductCard from "@/app/components/ProductCard";
 import FilterSidebar, { FilterOptions } from "@/app/components/FilterSidebar";
+import { fetchProducts } from "@/lib/apiUtils";
 
 // Define types
 interface Product {
@@ -42,17 +43,22 @@ export default function SubCategoryPage() {
   
   // Fetch products
   useEffect(() => {
-    const fetchProducts = async () => {
+    const fetchProductsData = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/api/products?category=${encodedMainCategory}&subCategory=${encodedSubCategory}`);
+        setError(null);
         
-        if (!response.ok) {
-          throw new Error('Failed to fetch products');
-        }
+        console.log(`Fetching products for ${mainCategory}/${subCategory}`);
         
-        const data = await response.json();
+        // Use the new API utility with deduplication
+        const data = await fetchProducts({
+          category: mainCategory, // Use decoded values for API
+          subCategory: subCategory,
+        }) as { products: Product[] };
+        
         const fetchedProducts = data.products || [];
+        
+        console.log(`Fetched ${fetchedProducts.length} products for ${mainCategory}/${subCategory}`);
         setProducts(fetchedProducts);
         
         // Extract available sizes and price range from products
@@ -88,9 +94,9 @@ export default function SubCategoryPage() {
     };
     
     if (encodedMainCategory && encodedSubCategory) {
-      fetchProducts();
+      fetchProductsData();
     }
-  }, [encodedMainCategory, encodedSubCategory]);
+  }, [encodedMainCategory, encodedSubCategory, mainCategory, subCategory]);
   
   // Apply filters when products or filters change
   useEffect(() => {

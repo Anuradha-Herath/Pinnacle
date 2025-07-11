@@ -8,6 +8,7 @@ import { Search, User, Heart, ShoppingBag, ChevronDown } from "react-feather";
 import Footer from "../../components/Footer";
 import ProductCard from "../../components/ProductCard";
 import Header from "../../components/Header";
+import { requestCache } from "@/lib/requestCache";
 
 interface Product {
   id: string;
@@ -23,35 +24,68 @@ const WishlistPage = () => {
   const [wishlistProducts, setWishlistProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastFetchedIds, setLastFetchedIds] = useState<string>(''); // Track last fetched IDs
+  const [isFetching, setIsFetching] = useState(false); // Prevent concurrent fetches
 
   // Fetch products when wishlist changes
   useEffect(() => {
     const fetchWishlistProducts = async () => {
-      if (wishlist.length === 0) {
+      // Filter out any null/undefined/empty values before making API call
+      const validWishlistIds = wishlist.filter(id => id && typeof id === 'string' && id.trim());
+      const idsString = validWishlistIds.join(',');
+      
+      // Skip fetch if no valid IDs or if the IDs haven't changed or already fetching
+      if (validWishlistIds.length === 0) {
         setWishlistProducts([]);
+        setLastFetchedIds('');
+        return;
+      }
+
+      // Only fetch if the IDs have actually changed and not currently fetching
+      if (idsString === lastFetchedIds || isFetching) {
         return;
       }
 
       try {
+        setIsFetching(true);
         setLoading(true);
-        const response = await fetch(`/api/customer/wishlist?ids=${wishlist.join(',')}`);
+        
+        // Check cache first
+        const cacheKey = `wishlist_products_${idsString}`;
+        const cachedData = requestCache.get(cacheKey);
+        
+        if (cachedData) {
+          setWishlistProducts(cachedData.products);
+          setLastFetchedIds(idsString);
+          setLoading(false);
+          setIsFetching(false);
+          return;
+        }
+        
+        const response = await fetch(`/api/customer/wishlist?ids=${idsString}`);
         
         if (!response.ok) {
           throw new Error('Failed to fetch wishlist products');
         }
         
         const data = await response.json();
+        
+        // Cache the response for 2 minutes
+        requestCache.set(cacheKey, data, 120000);
+        
         setWishlistProducts(data.products);
+        setLastFetchedIds(idsString);
       } catch (err) {
         console.error('Error fetching wishlist products:', err);
         setError(err instanceof Error ? err.message : 'An error occurred');
       } finally {
         setLoading(false);
+        setIsFetching(false);
       }
     };
 
     fetchWishlistProducts();
-  }, [wishlist]);
+  }, [wishlist, lastFetchedIds, isFetching]);
 
   return (
     <div className="bg-white min-h-screen flex flex-col">
