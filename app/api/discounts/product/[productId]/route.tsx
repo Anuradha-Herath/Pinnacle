@@ -49,6 +49,11 @@ export async function GET(
       return NextResponse.json({ 
         message: "No active discount found for this product",
         discount: null
+      }, {
+        headers: {
+          'Cache-Control': 'public, max-age=60, stale-while-revalidate=30',
+          'CDN-Cache-Control': 'max-age=60'
+        }
       });
     }
     
@@ -63,6 +68,11 @@ export async function GET(
         startDate: discount.startDate,
         endDate: discount.endDate
       } 
+    }, {
+      headers: {
+        'Cache-Control': 'public, max-age=300, stale-while-revalidate=60',
+        'CDN-Cache-Control': 'max-age=300'
+      }
     });
   } catch (error) {
     console.error("Error fetching product discount:", error);
