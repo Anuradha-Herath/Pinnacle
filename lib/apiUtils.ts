@@ -1,4 +1,5 @@
 // API utilities for request management and caching
+import { performanceMonitor } from './performanceMonitor';
 
 export interface PendingRequest {
   promise: Promise<any>;
@@ -8,8 +9,8 @@ export interface PendingRequest {
 // Request deduplication cache
 export const requestCache = new Map<string, PendingRequest>();
 
-// Cache timeout (5 minutes)
-export const CACHE_TIMEOUT = 5 * 60 * 1000;
+// Cache timeout (2 minutes for better performance)
+export const CACHE_TIMEOUT = 2 * 60 * 1000;
 
 /**
  * Deduplicates API requests by caching ongoing requests
@@ -26,7 +27,8 @@ export const deduplicateRequest = async <T>(
   if (cached) {
     // Check if cache is still valid
     if (Date.now() - cached.timestamp < CACHE_TIMEOUT) {
-      console.log(`Using cached request for: ${url}`);
+      console.log(`⚡ Using cached request for: ${url}`);
+      performanceMonitor.countRequest(`${url} (cached)`);
       return cached.promise;
     } else {
       // Remove expired cache entry
@@ -34,11 +36,16 @@ export const deduplicateRequest = async <T>(
     }
   }
   
-  // Create new request
+  console.log(`🚀 Making new request to: ${url}`);
+  performanceMonitor.countRequest(url);
+  
+  // Create new request with optimized headers
   const promise = fetch(url, {
     ...fetchOptions,
     headers: {
-      'Cache-Control': 'max-age=300', // 5 minutes client-side cache
+      'Cache-Control': 'max-age=180, stale-while-revalidate=60', // 3 minutes cache with stale-while-revalidate
+      'Accept': 'application/json',
+      'Connection': 'keep-alive',
       ...fetchOptions?.headers,
     },
   }).then(async (response) => {

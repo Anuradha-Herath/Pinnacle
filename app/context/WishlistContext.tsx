@@ -3,8 +3,8 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import { trackProductAction } from '@/lib/userPreferenceService';
-import { deduplicatedFetch } from '@/lib/requestDeduplication';
-import { cachedApiCall } from '@/lib/requestCache';
+import { deduplicateRequest } from '@/lib/apiUtils';
+import { usePathname } from 'next/navigation';
 
 interface WishlistContextType {
   wishlist: string[];
@@ -28,15 +28,24 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [wishlist, setWishlist] = useState<string[]>([]);
   const [initialized, setInitialized] = useState(false);
   const { user } = useAuth();
+  const pathname = usePathname();
+  
+  // Check if we're on an admin page - avoid wishlist loading for admin pages
+  const isAdminPage = pathname?.startsWith('/admin');
   
   // Load wishlist from localStorage or API when component mounts or user changes
   useEffect(() => {
+    // Skip wishlist loading for admin pages to improve performance
+    if (isAdminPage) {
+      setInitialized(true);
+      return;
+    }
     const loadWishlist = async () => {
       try {
         if (user) {
           // User is logged in, fetch wishlist from API with deduplication
           try {
-            const data = await cachedApiCall.getUserWishlist() as any;
+            const data: any = await deduplicateRequest('/api/user/wishlist');
             if (data.success && data.wishlist) {
               // Filter out any null/undefined values from the server response
               const cleanWishlist = data.wishlist.filter((id: any) => id && typeof id === 'string');
@@ -100,11 +109,14 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
 
     loadWishlist();
-  }, [user]);
+  }, [user, isAdminPage]);
 
   // Save wishlist to localStorage and API when it changes - DEBOUNCED
   useEffect(() => {
     if (!initialized) return;
+    
+    // Skip API calls for admin pages
+    if (isAdminPage) return;
     
     // Filter out any null/undefined values before saving
     const cleanWishlist = wishlist.filter(id => id && typeof id === 'string');
@@ -143,7 +155,7 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
       return () => clearTimeout(timeoutId);
     }
-  }, [wishlist, user, initialized]);
+  }, [wishlist, user, initialized, isAdminPage]);
 
   const addToWishlist = (productId: string) => {
     // Validate productId before adding

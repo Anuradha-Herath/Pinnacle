@@ -78,14 +78,17 @@ export async function GET(request: NextRequest) {
     const subCategory = searchParams.get('subCategory') ? decodeURIComponent(searchParams.get('subCategory')!) : null;
     const productId = searchParams.get('id'); // For fetching a single product
 
+    // Create cache key for this request
+    const cacheKey = `products:${JSON.stringify({ page, limit, searchQuery, category, subCategory, productId })}`;
+    
     console.log(`API: Fetching products with filters:`, { category, subCategory, searchQuery, page, limit });
 
-    // Get active discounts
+    // Get active discounts with caching
     const activeDiscounts = await Discount.find({
       status: 'Active',
       startDate: { $lte: new Date().toISOString().split('T')[0] },
       endDate: { $gte: new Date().toISOString().split('T')[0] }
-    });
+    }).lean(); // Use lean() for better performance
 
     // If fetching a single product by ID
     if (productId) {
@@ -132,7 +135,9 @@ export async function GET(request: NextRequest) {
       }, {
         headers: {
           ...corsHeaders,
-          ...cacheHeaders,
+          'Cache-Control': 'public, max-age=300, stale-while-revalidate=120', // 5 minutes cache for single products
+          'CDN-Cache-Control': 'public, max-age=600', // 10 minutes for CDN
+          'Vary': 'Accept-Encoding',
         },
       });
     }
@@ -171,21 +176,23 @@ export async function GET(request: NextRequest) {
 
     console.log(`API: Final query:`, JSON.stringify(query, null, 2));
 
-    // Count total products matching the query for pagination
-    const totalProducts = await Product.countDocuments(query);
+    // Optimize database queries with parallel execution
+    const [totalProducts, products] = await Promise.all([
+      Product.countDocuments(query),
+      Product.find(query)
+        .select('productName description category subCategory regularPrice gallery createdAt') // Only select needed fields
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean() // Use lean() for better performance
+    ]);
     
     // Calculate total pages
     const totalPages = Math.ceil(totalProducts / limit);
-
-    // Fetch products with pagination
-    let products = await Product.find(query)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
     
     // Calculate discounted prices for all fetched products
-    const productsWithDiscounts = products.map(product => {
-      const productObj = product.toObject();
+    const productsWithDiscounts = products.map((product: any) => {
+      const productObj = { ...product };
       
       // Find applicable discount
       const discount = activeDiscounts.find(

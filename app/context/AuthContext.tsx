@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { toast } from 'react-hot-toast';
+import { usePathname } from 'next/navigation';
 
 interface User {
   id: string;
@@ -43,9 +44,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastSyncTime, setLastSyncTime] = useState<number>(0);
+  const pathname = usePathname();
+  
+  // Check if we're on an admin page
+  const isAdminPage = pathname?.startsWith('/admin');
 
   // Check authentication status on mount
   useEffect(() => {
+    // For admin pages, we still need auth but can skip sync
     checkAuth();
   }, []);
 
@@ -53,6 +59,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const syncUserData = async (): Promise<void> => {
     try {
       if (!user) return;
+      
+      // Skip sync for admin pages to improve performance
+      if (isAdminPage) return;
       
       // Don't sync too frequently (prevent excessive API calls)
       const now = Date.now();
@@ -131,8 +140,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const data = await response.json();
         if (data.success && data.user) {
           setUser(data.user);
-          // After successful authentication check, sync local data with server
-          await syncUserData();
+          // After successful authentication check, sync local data with server only for non-admin pages
+          if (!isAdminPage) {
+            await syncUserData();
+          }
           return true;
         } else {
           setUser(null);
@@ -174,8 +185,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (response.ok) {
         setUser(data.user);
         
-        // After successful login, sync local data with server
-        await syncUserData();
+        // After successful login, sync local data with server only for non-admin pages
+        if (!isAdminPage) {
+          await syncUserData();
+        }
         
         // REMOVE THIS TOAST - will be handled in the Login component
         // toast.success("Successfully logged in");
@@ -211,8 +224,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (response.ok) {
         setUser(data.user);
         
-        // After successful signup, sync local data with server
-        await syncUserData();
+        // After successful signup, sync local data with server only for non-admin pages
+        if (!isAdminPage) {
+          await syncUserData();
+        }
         
         return true;
       } else {
@@ -233,8 +248,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       setLoading(true);
       
-      // Before logging out, ensure user data is synced (optional as a safeguard)
-      if (user) {
+      // Before logging out, ensure user data is synced (optional as a safeguard) only for non-admin pages
+      if (user && !isAdminPage) {
         await syncUserData();
       }
       
