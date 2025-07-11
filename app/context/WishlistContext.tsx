@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import { trackProductAction } from '@/lib/userPreferenceService';
 import { deduplicatedFetch } from '@/lib/requestDeduplication';
+import { cachedApiCall } from '@/lib/requestCache';
 
 interface WishlistContextType {
   wishlist: string[];
@@ -35,7 +36,7 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         if (user) {
           // User is logged in, fetch wishlist from API with deduplication
           try {
-            const data = await deduplicatedFetch('/api/user/wishlist');
+            const data = await cachedApiCall.getUserWishlist() as any;
             if (data.success && data.wishlist) {
               // Filter out any null/undefined values from the server response
               const cleanWishlist = data.wishlist.filter((id: any) => id && typeof id === 'string');
@@ -107,6 +108,17 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     
     // Filter out any null/undefined values before saving
     const cleanWishlist = wishlist.filter(id => id && typeof id === 'string');
+    
+    // Only proceed if we have a meaningful change
+    const currentWishlistString = JSON.stringify(cleanWishlist.sort());
+    const savedWishlistString = localStorage.getItem('wishlist');
+    const savedWishlist = savedWishlistString ? JSON.parse(savedWishlistString) : [];
+    const savedWishlistStringNormalized = JSON.stringify(savedWishlist.sort());
+    
+    // Skip if no actual change in content
+    if (currentWishlistString === savedWishlistStringNormalized) {
+      return;
+    }
     
     // Always save to localStorage (for guest users and as backup)
     localStorage.setItem('wishlist', JSON.stringify(cleanWishlist));
