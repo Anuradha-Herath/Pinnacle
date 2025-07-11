@@ -5,6 +5,7 @@ import { useAuth } from "./AuthContext";
 import { toast } from "react-hot-toast";
 import { getValidImageUrl } from "@/lib/imageUtils"; 
 import { trackProductAction } from '@/lib/userPreferenceService';
+import { usePathname } from 'next/navigation';
 
 // Define types
 export interface CartItem {
@@ -50,9 +51,20 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(false);
   const [isClearing, setIsClearing] = useState(false); // New flag to track clearing state
   const { user } = useAuth();
+  const pathname = usePathname();
+  
+  // Check if we're on an admin route
+  const isAdminRoute = pathname?.startsWith('/admin');
   
   // Load cart from localStorage or API when component mounts or user changes
   useEffect(() => {
+    // Skip loading cart for admin routes
+    if (isAdminRoute) {
+      console.log("Admin route detected - skipping cart loading");
+      setInitialized(true);
+      return;
+    }
+    
     // Don't reload cart if we're in the process of clearing it
     if (isClearing) {
       console.log("Skipping cart reload because cart is being cleared");
@@ -116,11 +128,17 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     loadCart();
-  }, [user, isClearing]);
+  }, [user, isClearing, isAdminRoute]);
 
   // Save cart to localStorage and API when it changes
   useEffect(() => {
     if (!initialized) return;
+    
+    // Skip saving cart for admin routes
+    if (isAdminRoute) {
+      console.log("Admin route detected - skipping cart saving");
+      return;
+    }
     
     // Always save to localStorage (for guest users and as backup)
     localStorage.setItem('cart', JSON.stringify(cart));
@@ -154,7 +172,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       saveCartToAPI();
     }
-  }, [cart, user, initialized]);
+  }, [cart, user, initialized, isAdminRoute]);
 
   // Helper function to generate a unique key for cart items
   const getItemKey = (id: string, size?: string, color?: string): string => {

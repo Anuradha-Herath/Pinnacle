@@ -2,12 +2,10 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Providers } from './providers';
 import "./globals.css";
-import { CartProvider } from "./context/CartContext";
-import { WishlistProvider } from "./context/WishlistContext";
 import { AuthProvider } from "./context/AuthContext";
 import { Toaster } from "react-hot-toast";
 import CloudinaryProvider from "./components/CloudinaryProvider";
-import ChatbotWrapper from "./components/ChatbotWrapper"; // Changed from Chatbot to ChatbotWrapper
+import ConditionalProviders from "./components/ConditionalProviders";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -58,17 +56,14 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <AuthProvider>
-          <WishlistProvider>
-            <CartProvider>
-              <CloudinaryProvider>
-                <Providers>
-                  {children}
-                </Providers>
-                <Toaster position="bottom-center" />
-                <ChatbotWrapper /> {/* Using the wrapper instead of direct Chatbot */}
-              </CloudinaryProvider>
-            </CartProvider>
-          </WishlistProvider>
+          <CloudinaryProvider>
+            <Providers>
+              <ConditionalProviders>
+                {children}
+              </ConditionalProviders>
+            </Providers>
+            <Toaster position="bottom-center" />
+          </CloudinaryProvider>
         </AuthProvider>
       </body>
     </html>

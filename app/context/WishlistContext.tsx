@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import { trackProductAction } from '@/lib/userPreferenceService';
+import { usePathname } from 'next/navigation';
 
 interface WishlistContextType {
   wishlist: string[];
@@ -26,9 +27,20 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   const [wishlist, setWishlist] = useState<string[]>([]);
   const [initialized, setInitialized] = useState(false);
   const { user } = useAuth();
+  const pathname = usePathname();
+  
+  // Check if we're on an admin route
+  const isAdminRoute = pathname?.startsWith('/admin');
   
   // Load wishlist from localStorage or API when component mounts or user changes
   useEffect(() => {
+    // Skip loading wishlist for admin routes
+    if (isAdminRoute) {
+      console.log("Admin route detected - skipping wishlist loading");
+      setInitialized(true);
+      return;
+    }
+    
     const loadWishlist = async () => {
       try {
         if (user) {
@@ -69,11 +81,17 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     };
 
     loadWishlist();
-  }, [user]);
+  }, [user, isAdminRoute]);
 
   // Save wishlist to localStorage and API when it changes
   useEffect(() => {
     if (!initialized) return;
+    
+    // Skip saving wishlist for admin routes
+    if (isAdminRoute) {
+      console.log("Admin route detected - skipping wishlist saving");
+      return;
+    }
     
     // Always save to localStorage (for guest users and as backup)
     localStorage.setItem('wishlist', JSON.stringify(wishlist));
@@ -96,7 +114,7 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       
       saveWishlistToAPI();
     }
-  }, [wishlist, user, initialized]);
+  }, [wishlist, user, initialized, isAdminRoute]);
 
   const addToWishlist = (productId: string) => {
     // Track action in userPreferenceService
