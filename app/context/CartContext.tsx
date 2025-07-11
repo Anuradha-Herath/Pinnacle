@@ -5,6 +5,7 @@ import { useAuth } from "./AuthContext";
 import { toast } from "react-hot-toast";
 import { getValidImageUrl } from "@/lib/imageUtils"; 
 import { trackProductAction } from '@/lib/userPreferenceService';
+import { deduplicatedFetch } from '@/lib/requestDeduplication';
 
 // Define types
 export interface CartItem {
@@ -63,11 +64,10 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         setIsLoading(true);
         if (user) {
-          // User is logged in, fetch cart from API
+          // User is logged in, fetch cart from API with deduplication
           console.log("Fetching cart from server for user:", user.id);
-          const response = await fetch('/api/user/cart');
-          if (response.ok) {
-            const data = await response.json();
+          try {
+            const data = await deduplicatedFetch('/api/user/cart');
             if (data.success && data.cart) {
               console.log("Successfully loaded cart from server with", data.cart.length, "items");
               // Convert API cart format to our CartItem format with validated images
@@ -81,9 +81,21 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 quantity: item.quantity,
               }));
               setCart(apiCart);
+            } else {
+              console.log("No cart data received from server");
+              setCart([]);
             }
-          } else {
-            console.log("Failed to load cart from server:", response.status);
+          } catch (error) {
+            console.error("Failed to load cart from server:", error);
+            // Fallback to localStorage on API error
+            const savedCart = localStorage.getItem('cart');
+            if (savedCart) {
+              try {
+                setCart(JSON.parse(savedCart));
+              } catch (e) {
+                setCart([]);
+              }
+            }
           }
         } else {
           // User is not logged in, load from localStorage

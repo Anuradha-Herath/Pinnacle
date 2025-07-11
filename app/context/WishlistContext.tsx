@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import { trackProductAction } from '@/lib/userPreferenceService';
+import { deduplicatedFetch } from '@/lib/requestDeduplication';
 
 interface WishlistContextType {
   wishlist: string[];
@@ -32,12 +33,24 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     const loadWishlist = async () => {
       try {
         if (user) {
-          // User is logged in, fetch wishlist from API
-          const response = await fetch('/api/user/wishlist');
-          if (response.ok) {
-            const data = await response.json();
+          // User is logged in, fetch wishlist from API with deduplication
+          try {
+            const data = await deduplicatedFetch('/api/user/wishlist');
             if (data.success && data.wishlist) {
               setWishlist(data.wishlist);
+            } else {
+              setWishlist([]);
+            }
+          } catch (error) {
+            console.error("Failed to load wishlist from server:", error);
+            // Fallback to localStorage on API error
+            const savedWishlist = localStorage.getItem('wishlist');
+            if (savedWishlist) {
+              try {
+                setWishlist(JSON.parse(savedWishlist));
+              } catch (e) {
+                setWishlist([]);
+              }
             }
           }
         } else {
