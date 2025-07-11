@@ -4,7 +4,6 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import ProductCard from "./ProductCard";
 import ProductCardSkeleton from "./ProductCardSkeleton";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useDiscounts } from "../context/DiscountContext";
 
 interface ProductCarouselProps {
   title: string;
@@ -22,30 +21,6 @@ const ProductCarousel = ({ title, products, loading = false }: ProductCarouselPr
   const scrollTimerRef = useRef<NodeJS.Timeout | null>(null);
   const isProgrammaticScrollRef = useRef(false);
   const animationFrameRef = useRef<number | null>(null);
-  
-  // Use discount context for bulk fetching
-  const { fetchBulkDiscounts } = useDiscounts();
-
-  // Fetch discounts when products change
-  useEffect(() => {
-    if (products.length > 0) {
-      const productIds = products
-        .map(product => product.id)
-        .filter(id => id); // Filter out any undefined/null IDs
-      
-      if (productIds.length > 0) {
-        // Only fetch if products don't already have discount info
-        const needsDiscountFetch = products.some(product => 
-          product.discountedPrice === undefined && !product.discount
-        );
-        
-        if (needsDiscountFetch) {
-          console.log(`Fetching bulk discounts for ${productIds.length} products in carousel: ${title}`);
-          fetchBulkDiscounts(productIds);
-        }
-      }
-    }
-  }, [products, fetchBulkDiscounts, title]);
 
   useEffect(() => {
     const updateCardsPerView = () => {

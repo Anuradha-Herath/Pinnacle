@@ -36,19 +36,12 @@ const uploadToCloudinary = async (imageData: string) => {
   }
 };
 
-// Add CORS headers helper with cache control
+// Add CORS headers helper
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Access-Control-Max-Age': '86400',
-};
-
-// Add cache headers for categories (relatively stable data)
-const cacheHeaders = {
-  'Cache-Control': 'public, max-age=300, stale-while-revalidate=60', // 5 minutes cache, 1 minute stale
-  'CDN-Cache-Control': 'public, max-age=600', // 10 minutes for CDN
-  'Vary': 'Accept-Encoding',
 };
 
 // Handle OPTIONS request for CORS
@@ -66,10 +59,7 @@ export async function GET() {
     const categories = await Category.find().sort({ createdAt: -1 });
     
     return NextResponse.json({ categories }, {
-      headers: {
-        ...corsHeaders,
-        ...cacheHeaders,
-      },
+      headers: corsHeaders,
     });
   } catch (error) {
     console.error("Error fetching categories:", error);
