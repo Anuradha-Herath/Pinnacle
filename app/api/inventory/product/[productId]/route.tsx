@@ -23,7 +23,8 @@ export async function GET(
   try {
     await connectDB();
     
-    const { productId } = params;
+    // Access productId asynchronously
+    const { productId } = await params;
     
     if (!mongoose.Types.ObjectId.isValid(productId)) {
       return NextResponse.json({ error: "Invalid product ID" }, { status: 400 });

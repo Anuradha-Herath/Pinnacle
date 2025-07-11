@@ -23,7 +23,10 @@ export async function GET(
   try {
     await connectDB();
     
-    const discount = await Discount.findById(params.id);
+    // Get the ID asynchronously
+    const { id } = await params;
+    
+    const discount = await Discount.findById(id);
     
     if (!discount) {
       return NextResponse.json({ error: "Discount not found" }, { status: 404 });
@@ -46,10 +49,13 @@ export async function PUT(
   try {
     await connectDB();
     
+    // Get the ID asynchronously
+    const { id } = await params;
+    
     const body = await request.json();
     
     const updatedDiscount = await Discount.findByIdAndUpdate(
-      params.id,
+      id,
       {
         product: body.productId,
         type: body.discountType.charAt(0).toUpperCase() + body.discountType.slice(1),
@@ -86,7 +92,10 @@ export async function DELETE(
   try {
     await connectDB();
     
-    const deletedDiscount = await Discount.findByIdAndDelete(params.id);
+    // Get the ID asynchronously
+    const { id } = await params;
+    
+    const deletedDiscount = await Discount.findByIdAndDelete(id);
     
     if (!deletedDiscount) {
       return NextResponse.json({ error: "Discount not found" }, { status: 404 });

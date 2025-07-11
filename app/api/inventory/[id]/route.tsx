@@ -23,8 +23,11 @@ export async function GET(
   try {
     await connectDB();
     
+    // Access id asynchronously
+    const { id } = await params;
+    
     // Fetch inventory with product details
-    const inventoryItem = await Inventory.findById(params.id);
+    const inventoryItem = await Inventory.findById(id);
     
     if (!inventoryItem) {
       return NextResponse.json({ error: "Inventory item not found" }, { status: 404 });
@@ -51,7 +54,8 @@ export async function DELETE(
   try {
     await connectDB();
     
-    const { id } = params;
+    // Access id asynchronously
+    const { id } = await params;
     
     // Check if the ID is for a product (query param) or inventory item (path param)
     const url = new URL(request.url);

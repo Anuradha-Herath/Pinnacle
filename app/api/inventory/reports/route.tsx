@@ -18,7 +18,8 @@ export async function GET(request: NextRequest) {
     await connectDB();
     
     const searchParams = request.nextUrl.searchParams;
-    const reportType = searchParams.get('type') || 'colorSize';
+    // Access search parameters asynchronously
+    const reportType = await searchParams.get('type') || 'colorSize';
     
     let results;
     

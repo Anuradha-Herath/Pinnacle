@@ -21,8 +21,8 @@ export async function GET(
   { params }: { params: { productId: string } }
 ) {
   try {
-    // Validate productId parameter
-    const { productId } = params;
+    // Get productId parameter asynchronously
+    const { productId } = await params;
     
     if (!productId || productId === 'undefined' || productId === 'null') {
       return NextResponse.json({ 
