@@ -1,20 +1,122 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Sidebar from "../../components/Sidebar";
 import { BellIcon, Cog6ToothIcon, ClockIcon } from "@heroicons/react/24/solid";
 import Image from "next/image";
 import { Crown } from "lucide-react";
+import { useEffect, useState } from "react";
+
+interface Order {
+  _id: string;
+  orderNumber: string;
+  createdAt: string;
+  status: string;
+  amount: {
+    total: number;
+  };
+}
+
+interface User {
+  _id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  address: string;
+  createdAt: string;
+  profilePicture: string;
+  role: string;
+}
 
 export default function CustomerDetails() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const userId = searchParams.get('id');
+  
+  const [user, setUser] = useState<User | null>(null);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [totalOrders, setTotalOrders] = useState(0);
+  const [totalAmount, setTotalAmount] = useState(0);
+  
+  useEffect(() => {
+    if (!userId) {
+      setError("No user ID provided");
+      setLoading(false);
+      return;
+    }
+    
+    const fetchUserData = async () => {
+      try {
+        // Fetch user details
+        const userResponse = await fetch(`/api/users/${userId}`);
+        if (!userResponse.ok) {
+          throw new Error('Failed to fetch user data');
+        }
+        const userData = await userResponse.json();
+        
+        if (!userData.success) {
+          throw new Error(userData.error || 'Failed to fetch user data');
+        }
+        
+        setUser(userData.user);
+        
+        // Fetch user orders
+        const ordersResponse = await fetch(`/api/users/orders/${userId}`);
+        if (!ordersResponse.ok) {
+          throw new Error('Failed to fetch user orders');
+        }
+        const ordersData = await ordersResponse.json();
+        
+        if (!ordersData.success) {
+          throw new Error(ordersData.error || 'Failed to fetch user orders');
+        }
+        
+        setOrders(ordersData.orders);
+        setTotalOrders(ordersData.totalOrders);
+        setTotalAmount(ordersData.totalAmount);
+        
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+        console.error('Error fetching data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchUserData();
+  }, [userId]);
+  
+  // Format date function
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const options: Intl.DateTimeFormatOptions = { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    };
+    return date.toLocaleDateString('en-US', options);
+  };
 
   return (
     <div className="flex">
       <Sidebar />
       <div className="min-h-screen bg-gray-50 p-6 flex-1">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-semibold">Customer Details</h1>
+          <div className="flex items-center">
+            <button 
+              onClick={() => router.push("/admin/customerlist")} 
+              className="mr-4 flex items-center text-gray-600 hover:text-orange-500"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-1" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clipRule="evenodd" />
+              </svg>
+              Back to List
+            </button>
+            <h1 className="text-2xl font-semibold">Customer Details</h1>
+          </div>
           <div className="flex items-center gap-2">
             <button onClick={() => router.push("/admin/notifications")} className="p-2 hover:bg-gray-200 rounded-lg">
               <BellIcon className="h-6 w-6 text-gray-600" />
@@ -32,97 +134,123 @@ export default function CustomerDetails() {
           </div>
         </div>
 
-        {/* Main Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Profile Card */}
-          <div className="bg-white rounded-2xl shadow-lg p-6 relative">
-            <div className="bg-orange-100 rounded-t-2xl p-8 flex justify-center relative">
-              <Image src="/p3.webp" alt="Micheal Scofield" width={80} height={80} className="rounded-full border-4 border-white" />
-              <div className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-md">
-                <Crown className="text-orange-500 w-6 h-6" />
+        {loading ? (
+          <div className="flex justify-center items-center h-96">
+            <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-orange-500"></div>
+          </div>
+        ) : error ? (
+          <div className="flex justify-center items-center h-96">
+            <div className="text-red-500 bg-red-50 p-4 rounded-lg">
+              <p className="font-semibold">Error</p>
+              <p>{error}</p>
+              <button 
+                onClick={() => router.push("/admin/customerlist")} 
+                className="mt-4 bg-orange-500 text-white px-4 py-2 rounded-lg"
+              >
+                Return to Customer List
+              </button>
+            </div>
+          </div>
+        ) : user ? (
+          <>
+            {/* Main Layout */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Left Column - Profile Card */}
+              <div className="bg-white rounded-2xl shadow-lg p-6 relative">
+                <div className="bg-orange-100 rounded-t-2xl p-8 flex justify-center relative">
+                  <Image 
+                    src={user.profilePicture || "/p3.webp"} 
+                    alt={`${user.firstName} ${user.lastName}`} 
+                    width={80} 
+                    height={80} 
+                    className="rounded-full border-4 border-white" 
+                  />
+                  <div className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-md">
+                    <Crown className={`w-6 h-6 ${
+                      user.role === 'admin' ? 'text-black' : 
+                      user.role === 'premium' ? 'text-orange-500' : 'text-gray-400'
+                    }`} />
+                  </div>
+                </div>
+                <div className="p-4 text-center">
+                  <h2 className="text-lg font-semibold">{`${user.firstName} ${user.lastName}`}</h2>
+                  <p className="text-sm text-gray-600">Email: {user.email}</p>
+                  <p className="text-sm text-gray-600">Phone: {user.phone || 'N/A'}</p>
+                </div>
+              </div>
+
+              {/* Middle Column - Order Summary */}
+              <div className="col-span-2 grid grid-cols-3 gap-6">
+                <div className="bg-white p-2 rounded-lg shadow-lg text-center h-24 flex flex-col justify-center relative pl-4">
+                  <div className="absolute top-2 right-2">
+                    <span className="text-gray-400 top-1/2 right-10 transform -translate-y-1/2">...</span>
+                  </div>
+                  <p className="text-gray-600 text-left w-32">Total Orders</p>
+                  <h2 className="text-2xl font-bold text-left">{totalOrders}</h2>
+                  <span className="absolute top-1/2 right-2 transform -translate-y-1 text-3xl">📦</span>
+                </div>
+                <div className="bg-white p-2 rounded-lg shadow-lg text-center h-24 flex flex-col justify-center relative pl-4">
+                  <div className="absolute top-2 right-2">
+                    <span className="text-gray-400 top-1/2 right-10 transform -translate-y-1/2">...</span>
+                  </div>
+                  <p className="text-gray-600 text-left w-32">Total Amount</p>
+                  <h2 className="text-2xl font-bold text-left">${totalAmount.toFixed(2)}</h2>
+                  <span className="absolute top-1/2 right-2 transform -translate-y-1 text-3xl">💰</span>
+                </div>
               </div>
             </div>
-            <div className="p-4 text-center">
-              <h2 className="text-lg font-semibold">Micheal Scofield</h2>
-              <p className="text-sm text-gray-600">Email: Micheal369@gmail.com</p>
-              <p className="text-sm text-gray-600">Phone: +94773445698</p>
-            </div>
-          </div>
 
-          {/* Middle Column - Order Summary */}
-          <div className="col-span-2 grid grid-cols-3 gap-6">
-            <div className="bg-white p-2 rounded-lg shadow-lg text-center h-24 flex flex-col justify-center relative pl-4">
-              <div className="absolute top-2 right-2">
-                <span className="text-gray-400 top-1/2 right-10 transform -translate-y-1/2">...</span>
+            {/* Customer & Order Details */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+              {/* Customer Details */}
+              <div className="bg-white p-6 rounded-lg shadow-lg">
+                <h3 className="text-md font-semibold mb-4">Customer Details</h3>
+                <div className="space-y-2 text-sm text-gray-600">
+                  <p><span className="font-semibold">Customer Id:</span><br></br> #{user._id.substring(0, 5)}</p>
+                  <p><span className="font-semibold">Delivery Address:</span><br></br> {user.address || 'Not provided'}</p>
+                  <p><span className="font-semibold">Latest Order Id:</span><br></br> {orders.length > 0 ? `#${orders[0].orderNumber}` : 'No orders'}</p>
+                  <p><span className="font-semibold">Registration Date:</span><br></br> {formatDate(user.createdAt)}</p>
+                  <p><span className="font-semibold">Last Login Date:</span><br></br> {formatDate(new Date().toISOString())}</p>
+                </div>
               </div>
-              <p className="text-gray-600 text-left w-32">Total Orders</p>
-              <h2 className="text-2xl font-bold text-left">523</h2>
-              <span className="absolute top-1/2 right-2 transform -translate-y-1 text-3xl">📦</span>
-            </div>
-            <div className="bg-white p-2 rounded-lg shadow-lg text-center h-24 flex flex-col justify-center relative pl-4">
-              <div className="absolute top-2 right-2">
-                <span className="text-gray-400 top-1/2 right-10 transform -translate-y-1/2">...</span>
+
+              {/* Recent Orders Table */}
+              <div className="col-span-2 bg-white p-6 rounded-lg shadow-lg self-start h-96 overflow-y-auto">
+                <h2 className="text-lg font-semibold mb-4">Recent Orders</h2>
+                {orders.length === 0 ? (
+                  <div className="text-center text-gray-500 py-10">
+                    No orders found for this customer
+                  </div>
+                ) : (
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-gray-100 text-left">
+                        <th className="p-3">Order ID</th>
+                        <th className="p-3">Date</th>
+                        <th className="p-3">Status</th>
+                        <th className="p-3">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {orders.map((order) => (
+                        <tr key={order._id} className="border-t">
+                          <td className="p-3">{order.orderNumber}</td>
+                          <td className="p-3">{formatDate(order.createdAt)}</td>
+                          <td className="p-3">{order.status}</td>
+                          <td className="p-3">${order.amount.total.toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
               </div>
-              <p className="text-gray-600 text-left w-32">Total Amount</p>
-              <h2 className="text-2xl font-bold text-left">$10,230</h2>
-              <span className="absolute top-1/2 right-2 transform -translate-y-1 text-3xl">💰</span>
             </div>
+          </>
+        ) : (
+          <div className="flex justify-center items-center h-96">
+            <div className="text-gray-500">No user data found</div>
           </div>
-        </div>
-
-        {/* Customer & Order Details */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
-          {/* Customer Details */}
-          <div className="bg-white p-6 rounded-lg shadow-lg">
-            <h3 className="text-md font-semibold mb-4">Customer Details</h3>
-            <div className="space-y-2 text-sm text-gray-600">
-              <p><span className="font-semibold">Customer Id:</span><br></br> #10101</p>
-              <p><span className="font-semibold">Delivery Address:</span><br></br> 22/B Rosmead Place, Colombo 07</p>
-              <p><span className="font-semibold">Latest Order Id:</span><br></br> #25426</p>
-              <p><span className="font-semibold">Registration Date:</span><br></br> Jun 28th, 2022</p>
-              <p><span className="font-semibold">Last Login Date:</span><br></br> Nov 10th, 2024</p>
-            </div>
-          </div>
-
-          {/* Recent Orders Table */}
-          <div className="col-span-2 bg-white p-6 rounded-lg shadow-lg self-start h-96 overflow-y-auto">
-            <h2 className="text-lg font-semibold mb-4">Recent Orders</h2>
-            <table className="w-full border-collapse">
-              <thead>
-                <tr className="bg-gray-100 text-left">
-                  <th className="p-3">Order ID</th>
-                  <th className="p-3">Date</th>
-                  <th className="p-3">Status</th>
-                  <th className="p-3">Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[{ id: "#25426", date: "Nov 8th, 2024", status: "Order Confirmed", amount: "$200.00" },
-                  { id: "#25425", date: "Nov 7th, 2024", status: "Processed", amount: "$240.00" },
-                  { id: "#25424", date: "Nov 6th, 2024", status: "Out for Delivery", amount: "$150.00" },
-                  { id: "#25423", date: "Nov 5th, 2024", status: "Delivered", amount: "$130.00" }]
-                  .map((order, index) => (
-                  <tr key={index} className="border-t">
-                    <td className="p-3">{order.id}</td>
-                    <td className="p-3">{order.date}</td>
-                    <td className="p-3">{order.status}</td>
-                    <td className="p-3">{order.amount}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Pagination */}
-        <div className="flex justify-end mt-6">
-          <div className="flex items-center space-x-2">
-            <button className="px-4 py-2 border bg-white hover:bg-gray-200">Previous</button>
-            <button className="px-4 py-2 bg-orange-500 text-white font-semibold">1</button>
-            <button className="px-4 py-2 border bg-white hover:bg-gray-200">2</button>
-            <button className="px-4 py-2 border bg-white hover:bg-gray-200">Next</button>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );
