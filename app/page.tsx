@@ -7,7 +7,6 @@ import Footer from "./components/Footer";
 import Link from "next/link";
 import HeaderPlaceholder from "./components/HeaderPlaceholder";
 import { getBrowserInfo, logBrowserInfo } from "@/lib/browserUtils";
-import { logPerformanceMetrics, measureApiCallTime } from "@/lib/performanceUtils";
 
 const HomePage = () => {
   const [products, setProducts] = useState([]);
@@ -28,20 +27,22 @@ const HomePage = () => {
     accessories: []
   });
 
-  // Enhanced fetch function for Edge browser compatibility with caching
+  // Enhanced fetch function for Edge browser compatibility
   const edgeCompatibleFetch = async (url: string, options: RequestInit = {}) => {
     const browserInfo = getBrowserInfo();
     
     const defaultHeaders = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
+      'Cache-Control': 'no-cache',
+      'Pragma': 'no-cache',
     };
     
     const enhancedOptions: RequestInit = {
       method: 'GET',
       mode: 'cors',
       credentials: 'same-origin',
-      cache: 'force-cache', // Use cache when available
+      cache: 'no-cache',
       headers: {
         ...defaultHeaders,
         ...options.headers,
@@ -66,7 +67,7 @@ const HomePage = () => {
       
       // Fetch all products with timeout and proper error handling for Edge
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // Reduced timeout
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // Increased timeout for Edge
       
       const response = await edgeCompatibleFetch('/api/customer/products', {
         signal: controller.signal,
@@ -115,7 +116,7 @@ const HomePage = () => {
       
       // Fetch trending products (newly created + recently stocked)
       const trendingController = new AbortController();
-      const trendingTimeoutId = setTimeout(() => trendingController.abort(), 8000); // Reduced timeout
+      const trendingTimeoutId = setTimeout(() => trendingController.abort(), 15000);
       
       const trendingResponse = await edgeCompatibleFetch('/api/customer/trending', {
         signal: trendingController.signal,
@@ -169,7 +170,7 @@ const HomePage = () => {
       
       // Fetch products filtered by category with timeout
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000); // Reduced timeout
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
       
       const response = await edgeCompatibleFetch(`/api/customer/products?category=${apiCategory}`, {
         signal: controller.signal,
@@ -211,7 +212,7 @@ const HomePage = () => {
       console.log('Fetching accessories products...');
       
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000); // Reduced timeout
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
       
       const response = await edgeCompatibleFetch(`/api/customer/products?category=Accessories`, {
         signal: controller.signal,
@@ -259,9 +260,6 @@ const HomePage = () => {
   useEffect(() => {
     // Log browser info for debugging
     logBrowserInfo();
-    
-    // Start performance monitoring
-    logPerformanceMetrics();
     
     const loadAllData = async () => {
       // First fetch all products

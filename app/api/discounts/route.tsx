@@ -16,7 +16,7 @@ const connectDB = async () => {
   }
 };
 
-// GET all discounts with caching headers
+// GET all discounts
 export async function GET() {
   try {
     console.log('GET /api/discounts: Starting request');
@@ -46,11 +46,6 @@ export async function GET() {
     return NextResponse.json({ 
       discounts,
       updated: updateResult.modifiedCount > 0
-    }, {
-      headers: {
-        'Cache-Control': 'public, max-age=300, stale-while-revalidate=60',
-        'CDN-Cache-Control': 'max-age=300'
-      }
     });
     
   } catch (error) {

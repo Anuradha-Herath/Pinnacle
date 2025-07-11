@@ -11,7 +11,6 @@ import { useOnClickOutside } from "../hooks/useOnClickOutside";
 import { useAuth } from "../context/AuthContext";
 import { authNotifications } from "@/lib/notificationService";
 import { useSearchHistory } from "../hooks/useSearchHistory";
-import { apiHelpers } from "@/lib/simpleRequestHelper";
 
 // Define types for suggestions
 interface Suggestion {
@@ -219,8 +218,25 @@ const Header = () => {
       try {
         setCategoriesLoading(true);
         
-        // Use deduplicated API helper instead of direct fetch
-        const data = await apiHelpers.getCategories();
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        
+        const response = await fetch("/api/categories", {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache',
+          },
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch categories: ${response.status} ${response.statusText}`);
+        }
+
+        const data = await response.json();
         setCategories(data.categories || []);
 
         const men = data.categories.filter((cat: Category) => cat.mainCategory.includes("Men"));
@@ -232,6 +248,9 @@ const Header = () => {
         setAccessoriesCategories(accessories);
       } catch (error) {
         console.error("Error fetching categories:", error);
+        if (error instanceof Error && error.name === 'AbortError') {
+          console.error('Categories request timed out');
+        }
       } finally {
         setCategoriesLoading(false);
       }
@@ -305,7 +324,42 @@ const Header = () => {
     Accessories: "/SportsCap.webp",
   };
 
+  // Fetch categories from API
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        setLoading(true);
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        
+        const response = await fetch('/api/categories', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache',
+          },
+          signal: controller.signal,
+        });
+        
+        clearTimeout(timeoutId);
+        
+        if (response.ok) {
+          const data = await response.json();
+          setCategories(data.categories || []);
+        }
+      } catch (error) {
+        console.error("Error fetching categories:", error);
+        if (error instanceof Error && error.name === 'AbortError') {
+          console.error('Categories request timed out (second fetch)');
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
 
+    fetchCategories();
+  }, []);
 
   // Handle click outside and scroll to close dropdown
   useEffect(() => {

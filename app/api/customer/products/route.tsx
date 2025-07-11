@@ -1,9 +1,20 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import Product from "@/models/Product";
-import Inventory from "@/models/Inventory";
-import Discount from "@/models/Discount"; // Add discount import
-import connectDB from "@/lib/optimizedDB"; // Use optimized connection
+import Inventory from "@/models/Inventory"; // Add this import
+
+// Connect to MongoDB using Mongoose
+const connectDB = async () => {
+  try {
+    if (mongoose.connection.readyState === 0) {
+      await mongoose.connect(process.env.MONGODB_URI!);
+      console.log('Connected to MongoDB via Mongoose');
+    }
+  } catch (error) {
+    console.error('MongoDB connection error:', error);
+    throw new Error('Failed to connect to database');
+  }
+};
 
 // First, define a proper interface for your product items
 interface ProductItem {
@@ -16,14 +27,12 @@ interface ProductItem {
   // Add other properties as needed
 }
 
-// Add CORS headers helper with caching
+// Add CORS headers helper
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Access-Control-Max-Age': '86400',
-  'Cache-Control': 'public, max-age=180, stale-while-revalidate=60',
-  'CDN-Cache-Control': 'max-age=180',
 };
 
 // Handle OPTIONS request for CORS
@@ -70,14 +79,6 @@ export async function GET(request: Request) {
     
     console.log(`Fetching in-stock products with category: ${category || 'All'}`);
     
-    // Get active discounts to include in the response
-    const today = new Date().toISOString().split('T')[0];
-    const activeDiscounts = await Discount.find({
-      status: 'Active',
-      startDate: { $lte: today },
-      endDate: { $gte: today }
-    });
-    
     // Get products from the database
     const products = await Product.find(query)
       .sort({ createdAt: -1 })
@@ -85,39 +86,17 @@ export async function GET(request: Request) {
     
     console.log(`Found ${products.length} in-stock products with category: ${category || 'All'}`);
     
-    // Transform products to customer format with discount information
-    const customerProducts = products.map((item: ProductItem) => {
-      // Find applicable discount
-      const discount = activeDiscounts.find(
-        d => (d.type === 'Product' && d.product === item._id.toString()) ||
-             (d.type === 'Category' && d.product === item.category) ||
-             (d.type === 'All' && d.applyToAllProducts)
-      );
-      
-      // Calculate discounted price if discount exists
-      let discountedPrice = null;
-      if (discount) {
-        discountedPrice = item.regularPrice - (item.regularPrice * discount.percentage / 100);
-        discountedPrice = Math.round(discountedPrice * 100) / 100; // Round to 2 decimal places
-      }
-      
-      return {
-        id: item._id,
-        name: item.productName,
-        price: item.regularPrice,
-        discountedPrice, // Include calculated discounted price
-        category: item.category,
-        image: item.gallery && item.gallery.length > 0 ? 
-          item.gallery[0].src : '/placeholder.png',
-        colors: item.gallery?.map((galleryItem) => galleryItem.src) || [],
-        sizes: item.sizes || [],
-        // Include discount info for immediate use
-        discount: discount ? {
-          percentage: discount.percentage,
-          discountedPrice
-        } : undefined
-      };
-    });
+    // Transform products to customer format
+    const customerProducts = products.map((item: ProductItem) => ({
+      id: item._id,
+      name: item.productName,
+      price: item.regularPrice,
+      category: item.category, // Include category for debugging
+      image: item.gallery && item.gallery.length > 0 ? 
+        item.gallery[0].src : '/placeholder.png',
+      colors: item.gallery?.map((galleryItem) => galleryItem.src) || [],
+      sizes: item.sizes || [],
+    }));
     
     return NextResponse.json({ products: customerProducts }, {
       headers: corsHeaders,

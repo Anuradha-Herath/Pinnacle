@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { deduplicatedFetch } from "@/lib/requestDeduplication";
 
 interface Category {
   _id: string;
@@ -18,7 +17,13 @@ export function useCategories(selectedMainCategory: string) {
     const fetchCategories = async () => {
       try {
         setLoading(true);
-        const data = await deduplicatedFetch("/api/categories");
+        const response = await fetch("/api/categories");
+        
+        if (!response.ok) {
+          throw new Error("Failed to fetch categories");
+        }
+        
+        const data = await response.json();
         setCategories(data.categories || []);
       } catch (err) {
         console.error("Error fetching categories:", err);
