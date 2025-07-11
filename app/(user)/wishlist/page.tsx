@@ -27,14 +27,17 @@ const WishlistPage = () => {
   // Fetch products when wishlist changes
   useEffect(() => {
     const fetchWishlistProducts = async () => {
-      if (wishlist.length === 0) {
+      // Filter out any null/undefined/empty values before making API call
+      const validWishlistIds = wishlist.filter(id => id && typeof id === 'string' && id.trim());
+      
+      if (validWishlistIds.length === 0) {
         setWishlistProducts([]);
         return;
       }
 
       try {
         setLoading(true);
-        const response = await fetch(`/api/customer/wishlist?ids=${wishlist.join(',')}`);
+        const response = await fetch(`/api/customer/wishlist?ids=${validWishlistIds.join(',')}`);
         
         if (!response.ok) {
           throw new Error('Failed to fetch wishlist products');

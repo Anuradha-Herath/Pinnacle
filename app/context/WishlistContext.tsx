@@ -37,7 +37,9 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           try {
             const data = await deduplicatedFetch('/api/user/wishlist');
             if (data.success && data.wishlist) {
-              setWishlist(data.wishlist);
+              // Filter out any null/undefined values from the server response
+              const cleanWishlist = data.wishlist.filter((id: any) => id && typeof id === 'string');
+              setWishlist(cleanWishlist);
             } else {
               setWishlist([]);
             }
@@ -47,7 +49,12 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
             const savedWishlist = localStorage.getItem('wishlist');
             if (savedWishlist) {
               try {
-                setWishlist(JSON.parse(savedWishlist));
+                const parsedWishlist = JSON.parse(savedWishlist);
+                // Filter out any null/undefined values from localStorage
+                const cleanWishlist = Array.isArray(parsedWishlist) 
+                  ? parsedWishlist.filter((id: any) => id && typeof id === 'string')
+                  : [];
+                setWishlist(cleanWishlist);
               } catch (e) {
                 setWishlist([]);
               }
@@ -58,7 +65,12 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
           const savedWishlist = localStorage.getItem('wishlist');
           if (savedWishlist) {
             try {
-              setWishlist(JSON.parse(savedWishlist));
+              const parsedWishlist = JSON.parse(savedWishlist);
+              // Filter out any null/undefined values from localStorage
+              const cleanWishlist = Array.isArray(parsedWishlist) 
+                ? parsedWishlist.filter((id: any) => id && typeof id === 'string')
+                : [];
+              setWishlist(cleanWishlist);
             } catch (e) {
               console.error('Error parsing wishlist from localStorage:', e);
               setWishlist([]);
@@ -72,7 +84,12 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
         const savedWishlist = localStorage.getItem('wishlist');
         if (savedWishlist) {
           try {
-            setWishlist(JSON.parse(savedWishlist));
+            const parsedWishlist = JSON.parse(savedWishlist);
+            // Filter out any null/undefined values from localStorage
+            const cleanWishlist = Array.isArray(parsedWishlist) 
+              ? parsedWishlist.filter((id: any) => id && typeof id === 'string')
+              : [];
+            setWishlist(cleanWishlist);
           } catch (e) {
             setWishlist([]);
           }
@@ -88,21 +105,24 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   useEffect(() => {
     if (!initialized) return;
     
+    // Filter out any null/undefined values before saving
+    const cleanWishlist = wishlist.filter(id => id && typeof id === 'string');
+    
     // Always save to localStorage (for guest users and as backup)
-    localStorage.setItem('wishlist', JSON.stringify(wishlist));
+    localStorage.setItem('wishlist', JSON.stringify(cleanWishlist));
     
     // If user is logged in, also save to API with debouncing
     if (user) {
       // Debounce API calls to prevent excessive requests
       const timeoutId = setTimeout(async () => {
         try {
-          console.log(`Saving wishlist to API (debounced): ${wishlist.length} items`);
+          console.log(`Saving wishlist to API (debounced): ${cleanWishlist.length} items`);
           await fetch('/api/user/wishlist', {
             method: 'PUT',
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ wishlist }),
+            body: JSON.stringify({ wishlist: cleanWishlist }),
           });
         } catch (error) {
           console.error('Error saving wishlist to API:', error);
@@ -114,6 +134,12 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [wishlist, user, initialized]);
 
   const addToWishlist = (productId: string) => {
+    // Validate productId before adding
+    if (!productId || typeof productId !== 'string') {
+      console.error('Invalid product ID provided to addToWishlist:', productId);
+      return;
+    }
+
     // Track action in userPreferenceService
     fetch(`/api/products/${productId}`)
       .then(response => response.json())
@@ -131,16 +157,21 @@ export const WishlistProvider: React.FC<{ children: React.ReactNode }> = ({ chil
       .catch(err => console.error('Error fetching product for preference tracking:', err));
     
     setWishlist(prevWishlist => {
-      if (!prevWishlist.includes(productId)) {
-        return [...prevWishlist, productId];
+      // Filter out any null/undefined values and ensure no duplicates
+      const cleanWishlist = prevWishlist.filter(id => id && typeof id === 'string');
+      if (!cleanWishlist.includes(productId)) {
+        return [...cleanWishlist, productId];
       }
-      return prevWishlist;
+      return cleanWishlist;
     });
     // Don't show toast from here
   };
 
   const removeFromWishlist = (productId: string) => {
-    setWishlist(prevWishlist => prevWishlist.filter(id => id !== productId));
+    setWishlist(prevWishlist => {
+      // Filter out the specific productId and any null/undefined values
+      return prevWishlist.filter(id => id && id !== productId && typeof id === 'string');
+    });
     // Don't show toast from here
   };
 
