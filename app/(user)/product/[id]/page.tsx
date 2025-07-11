@@ -14,6 +14,7 @@ import { toast } from "react-hot-toast";
 import { Heart, ShoppingBag } from "lucide-react";
 import { cartNotifications, wishlistNotifications } from "@/lib/notificationService";
 import { trackProductView, trackProductAction } from "@/lib/userPreferenceService";
+import { apiHelpers } from "@/lib/simpleRequestHelper";
 
 // Fix the debounce utility to properly handle 'this' context using arrow function
 const debounce = (func: Function, delay: number) => {
@@ -90,18 +91,14 @@ export default function EnhancedProductDetailPage() {
     return color;
   };
 
-  // Fetch product data
+  // Optimized fetch product data with simple request deduplication
   useEffect(() => {
     const fetchProductData = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/api/products?id=${id}`);
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch product');
-        }
-
-        const data = await response.json();
+        
+        // Use deduplicating API helper to prevent duplicate requests
+        const data = await apiHelpers.getProduct(id);
 
         // Extract and process gallery and additional images
         const mainImages = data.product.gallery?.map((item: any) => item.src) || [];
@@ -118,19 +115,19 @@ export default function EnhancedProductDetailPage() {
           ...(data.product.discountedPrice && { discountedPrice: data.product.discountedPrice }),
           description: data.product.description || 'No description available',
           images: mainImages.filter((src: string) => src && src.trim() !== ''),
-          additionalImagesByColor: colorAdditionalImages, // Store all additional images by color index
+          additionalImagesByColor: colorAdditionalImages,
           details: [
             `Category: ${data.product.category}`,
             `Sub-Category: ${data.product.subCategory}`,
           ].filter(Boolean),
           colors: data.product.gallery?.map((item: any) => item.color) || [],
           sizes: data.product.sizes || [],
-          rating: 0, // Initialize with 0
+          rating: 0, // Initialize with 0, will be updated when reviews are fetched
           occasions: data.product.occasions || [],
           style: data.product.style || [],
           season: data.product.season || [],
-          category: data.product.category, // Make sure category is passed for accessory check
-          sizeChartImage: data.product.sizeChartImage, // Include size chart image
+          category: data.product.category,
+          sizeChartImage: data.product.sizeChartImage,
         };
 
         // Set the initial additional images based on the first color
@@ -149,7 +146,7 @@ export default function EnhancedProductDetailPage() {
           price: data.product.regularPrice
         });
 
-        // Store raw data for API interactions
+        // Store all data
         setProduct({
           ...formattedProduct,
           rawData: data.product
@@ -158,32 +155,30 @@ export default function EnhancedProductDetailPage() {
         // Store recently viewed products in localStorage
         storeRecentlyViewed(formattedProduct);
 
-        // Fetch related products based on category
-        fetchRelatedProducts(data.product.category);
-
-        // Fetch recently viewed products
+        // Fetch recently viewed products (only local storage operation)
         fetchRecentlyViewed();
 
-        // Fetch inventory data to check stock status
-        try {
-          const inventoryResponse = await fetch(`/api/inventory/product/${data.product._id}`);
-          if (inventoryResponse.ok) {
-            const inventoryData = await inventoryResponse.json();
-            if (inventoryData.inventory) {
-              setInventoryStatus(inventoryData.inventory.status);
-              // Only mark as out of stock if explicitly "Out Of Stock", not if "Newly Added"
-              setIsOutOfStock(inventoryData.inventory.status === "Out Of Stock");
-              console.log("Inventory status:", inventoryData.inventory.status);
-              // Store color-size stock information if available
-              if (inventoryData.inventory.colorSizeStock) {
-                setColorSizeStock(inventoryData.inventory.colorSizeStock);
-                console.log("Color-size stock data:", inventoryData.inventory.colorSizeStock);
+        // Fetch related products in parallel (with deduplication)
+        Promise.all([
+          apiHelpers.getRelatedProducts(data.product.category, 4)
+            .then(relatedData => {
+              const filteredRelated = relatedData.products.filter((p: any) => p.id !== id).slice(0, 4);
+              setRelatedProducts(filteredRelated);
+            })
+            .catch(error => console.error("Failed to fetch related products:", error)),
+            
+          apiHelpers.getInventory(data.product._id)
+            .then(inventoryData => {
+              if (inventoryData.inventory) {
+                setInventoryStatus(inventoryData.inventory.status);
+                setIsOutOfStock(inventoryData.inventory.status === "Out Of Stock");
+                if (inventoryData.inventory.colorSizeStock) {
+                  setColorSizeStock(inventoryData.inventory.colorSizeStock);
+                }
               }
-            }
-          }
-        } catch (error) {
-          console.error("Failed to fetch inventory status:", error);
-        }
+            })
+            .catch(error => console.error("Failed to fetch inventory status:", error))
+        ]);
 
       } catch (err) {
         console.error('Error fetching product:', err);
@@ -244,23 +239,6 @@ export default function EnhancedProductDetailPage() {
       setRecentlyViewed(validatedItems);
     } catch (error) {
       console.error('Error retrieving recently viewed products:', error);
-    }
-  };
-
-  // Fetch related products
-  const fetchRelatedProducts = async (category: string) => {
-    try {
-      const response = await fetch(`/api/customer/products?category=${category}&limit=6`);
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch related products');
-      }
-
-      const data = await response.json();
-      setRelatedProducts(data.products.filter((p: any) => p.id !== id).slice(0, 4));
-
-    } catch (err) {
-      console.error('Error fetching related products:', err);
     }
   };
 

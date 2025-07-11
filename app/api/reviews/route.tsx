@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// GET - Fetch reviews for a product
+// GET - Fetch reviews for a product with caching headers
 export async function GET(request: NextRequest) {
   try {
     await connectDB();
@@ -119,10 +119,15 @@ export async function GET(request: NextRequest) {
     const reviews = await Review.find({ productId })
       .sort({ createdAt: -1 });
     
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       reviews
     });
+    
+    // Add caching headers to prevent duplicate requests
+    response.headers.set('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
+    
+    return response;
   } catch (error) {
     console.error("Error fetching reviews:", error);
     return NextResponse.json({ 
