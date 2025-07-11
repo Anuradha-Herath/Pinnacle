@@ -45,11 +45,20 @@
 - **Load time**: 3-5 seconds with frequent timeouts
 - **Duplicate requests**: Multiple calls to same endpoints
 
-### After Optimization:
+### After Optimization (Real Metrics):
+- **Network requests**: 74 requests (26% reduction from 100+)
+- **Data transferred**: 4.5 MB
+- **Total resources**: 23.3 MB
+- **DOMContentLoaded**: 456ms ⭐ (Excellent)
+- **Load event**: 1.82s ⭐ (Good - under 2s target)
+- **Finish time**: 5.11s ⚠️ (Background requests still loading)
 - **Bulk API calls**: 0-2 discount API calls maximum
-- **Network requests**: Reduced by ~70%
-- **Load time**: Expected 1-2 seconds
 - **Duplicate requests**: Eliminated through caching and bulk fetching
+
+### Performance Rating: **GOOD** ✅
+- Core content loads fast (1.82s)
+- Interactive quickly (456ms)
+- Room for image optimization
 
 ## 🛠️ Files Modified
 
@@ -125,11 +134,49 @@ The optimization includes built-in performance monitoring:
 
 ## ⚡ Additional Recommendations
 
-1. **CDN Implementation**: Consider using a CDN for static assets
-2. **Image Optimization**: Implement next/image optimizations
-3. **Code Splitting**: Further optimize with dynamic imports
-4. **Service Worker**: Implement for offline caching
-5. **Database Indexing**: Add indexes for frequently queried fields
+### 🚨 **Priority Optimizations** (Based on Current Metrics):
+1. **Image Optimization**: 23.3 MB resources suggests large images
+   - Use WebP format instead of JPEG/PNG
+   - Implement responsive image sizes
+   - Consider Cloudinary auto-optimization
+   - Add lazy loading for below-fold images
+
+2. **Background Request Optimization**: 5.11s finish time indicates slow background calls
+   - Identify and defer non-critical API calls
+   - Implement request prioritization
+   - Consider using service workers for background data
+
+### 🎯 **Secondary Optimizations**:
+3. **CDN Implementation**: Consider using a CDN for static assets
+4. **Code Splitting**: Further optimize with dynamic imports
+5. **Service Worker**: Implement for offline caching
+6. **Database Indexing**: Add indexes for frequently queried fields
+
+## 🎯 Next Steps for Further Optimization
+
+Based on your current metrics (74 requests, 1.82s load, 5.11s finish):
+
+### **Immediate Actions** (High Impact):
+1. **Optimize Images**: The 23.3 MB resource size is primarily images
+   ```javascript
+   // In next.config.ts, enable image optimization
+   images: {
+     formats: ['image/webp', 'image/avif'],
+     deviceSizes: [640, 750, 828, 1080, 1200],
+     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+   }
+   ```
+
+2. **Analyze Slow Background Requests**: 5.11s finish time needs investigation
+   - Open Network tab → Sort by "Time" to identify slowest requests
+   - Look for requests taking >2 seconds
+   - Consider deferring non-critical data
+
+### **Target Metrics** (After further optimization):
+- **Requests**: 50-60 (current: 74)
+- **Resources**: <10 MB (current: 23.3 MB)
+- **Load time**: <1.5s (current: 1.82s)
+- **Finish time**: <3s (current: 5.11s)
 
 ## 🐛 Troubleshooting
 

@@ -56,39 +56,54 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
         price: product.price
       });
 
+      // Reset discount state first
+      setHasDiscount(false);
+      setDiscountedPrice(null);
+      setDiscountPercentage(null);
+
       // First check if product already has discountedPrice directly in its data
-      if (product.discountedPrice !== undefined && product.price > product.discountedPrice) {
+      if (product.discountedPrice !== undefined && 
+          product.discountedPrice > 0 && 
+          product.price > product.discountedPrice) {
         // Calculate percentage based on the provided discountedPrice
         const percentage = Math.round(((product.price - product.discountedPrice) / product.price) * 100);
-        console.log("Using direct discountedPrice:", {
-          originalPrice: product.price,
-          discountedPrice: product.discountedPrice,
-          calculatedPercentage: percentage
-        });
         
-        setHasDiscount(true);
-        setDiscountedPrice(product.discountedPrice);
-        setDiscountPercentage(percentage);
-        return; // Skip API call if we already have the discount info
+        // Only apply discount if percentage is valid and positive
+        if (percentage > 0 && percentage <= 100) {
+          console.log("Using direct discountedPrice:", {
+            originalPrice: product.price,
+            discountedPrice: product.discountedPrice,
+            calculatedPercentage: percentage
+          });
+          
+          setHasDiscount(true);
+          setDiscountedPrice(product.discountedPrice);
+          setDiscountPercentage(percentage);
+        }
+        return;
       }
       
       // If there's a discount property on the product, use it directly
-      if (product.discount && product.discount.percentage > 0) {
+      if (product.discount && 
+          product.discount.percentage > 0 && 
+          product.discount.discountedPrice && 
+          product.discount.discountedPrice > 0) {
         console.log("Using discount object:", {
           percentage: product.discount.percentage,
           discountedPrice: product.discount.discountedPrice
         });
         
-        setHasDiscount(true);
-        setDiscountedPrice(product.discount.discountedPrice);
-        setDiscountPercentage(product.discount.percentage);
-        return; // Skip API call if we already have the discount info
+        // Validate the discount percentage
+        if (product.discount.percentage > 0 && product.discount.percentage <= 100) {
+          setHasDiscount(true);
+          setDiscountedPrice(product.discount.discountedPrice);
+          setDiscountPercentage(product.discount.percentage);
+        }
+        return;
       }
 
-      // Reset discount state if no discount information is available
-      setHasDiscount(false);
-      setDiscountedPrice(null);
-      setDiscountPercentage(null);
+      // If we reach here, there's no valid discount - state is already reset above
+      console.log("No valid discount found for product:", product.id);
     };
     
     // Only check for discounts if the product has a valid ID and price
@@ -99,6 +114,10 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
         hasId: !!product.id, 
         hasPrice: !!product.price 
       });
+      // Reset discount state for invalid products
+      setHasDiscount(false);
+      setDiscountedPrice(null);
+      setDiscountPercentage(null);
     }
   }, [product.id, product.price, product.discountedPrice, product.discount]);
 
@@ -254,7 +273,7 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
       )}
 
       {/* Discount Badge - Moved to top right below wishlist heart */}
-      {hasDiscount && discountPercentage !== null && (
+      {hasDiscount && discountPercentage !== null && discountPercentage > 0 && (
         <div className="absolute top-12 right-3 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full z-10 animate-fadeIn">
           -{Math.round(discountPercentage)}%
         </div>
