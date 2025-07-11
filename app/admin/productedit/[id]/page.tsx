@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useParams } from "next/navigation";
 import TopBar from "../../../components/TopBar";
 import Sidebar from "../../../components/Sidebar";
@@ -18,14 +18,24 @@ export default function ProductEdit() {
   }, []);
 
   useEffect(() => {
+    let isMounted = true;
+    
     const fetchProduct = async () => {
+      if (!isMounted) return;
+      
       try {
         setIsLoading(true);
-        const res = await fetch(`/api/products/${id}`);
+        const res = await fetch(`/api/products/${id}`, {
+          cache: 'force-cache',
+          next: { revalidate: 60 }
+        });
         
         if (!res.ok) throw new Error("Failed to fetch product");
         
         const data = await res.json();
+        
+        if (!isMounted) return;
+        
         const product = data.product;
 
         // Process gallery with additional images
@@ -58,16 +68,24 @@ export default function ProductEdit() {
         });
         
       } catch (error) {
-        console.error("Error fetching product:", error);
-        setError(error instanceof Error ? error.message : "An error occurred");
+        if (isMounted) {
+          console.error("Error fetching product:", error);
+          setError(error instanceof Error ? error.message : "An error occurred");
+        }
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
 
     if (isClient && id) {
       fetchProduct();
     }
+    
+    return () => {
+      isMounted = false;
+    };
   }, [id, isClient]);
 
   if (!isClient) {

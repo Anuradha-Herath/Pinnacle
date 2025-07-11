@@ -5,7 +5,20 @@ const nextConfig: NextConfig = {
     domains: [
       'res.cloudinary.com',
     ],
+    minimumCacheTTL: 60, // Cache images for 60 seconds
   },
+  
+  // Enable experimental features for better performance
+  experimental: {
+    optimizeCss: true,
+    optimizePackageImports: ['@heroicons/react'],
+  },
+  
+  // Add compiler optimizations
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production',
+  },
+  
   // Add headers for better browser compatibility
   async headers() {
     return [
@@ -24,17 +37,15 @@ const nextConfig: NextConfig = {
             key: 'Access-Control-Allow-Headers',
             value: 'Content-Type, Authorization, X-Requested-With',
           },
+        ],
+      },
+      // Add caching headers for static assets
+      {
+        source: '/_next/static/:path*',
+        headers: [
           {
             key: 'Cache-Control',
-            value: 'no-cache, no-store, must-revalidate',
-          },
-          {
-            key: 'Pragma',
-            value: 'no-cache',
-          },
-          {
-            key: 'Expires',
-            value: '0',
+            value: 'public, max-age=31536000, immutable',
           },
         ],
       },

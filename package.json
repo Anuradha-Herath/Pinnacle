@@ -7,7 +7,9 @@
     "dev:turbo": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "clear-cache": "node clear-dev-cache.js",
+    "dev:fresh": "npm run clear-cache && npm run dev"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",

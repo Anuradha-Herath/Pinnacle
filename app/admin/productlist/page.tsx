@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import Sidebar from '../../components/Sidebar';
 import AdminProductCart from '../../components/AdminProductCard';
 import TopBar from '../../components/TopBar';
@@ -38,13 +38,21 @@ const [filter, setFilter] = useState('All'); // Add state for filter
   const [showSuggestions, setShowSuggestions] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
 
-  const fetchProducts = async (page = 1, query = searchQuery, category = filter) => {
+  const fetchProducts = useCallback(async (page = 1, query = searchQuery, category = filter) => {
     try {
       setLoading(true);
       // Include the search query in the API call if it exists
       const queryParam = query ? `&q=${encodeURIComponent(query)}` : '';
-const categoryParam = category && category !== 'All' ? `&category=${encodeURIComponent(category)}` : '';
-      const response = await fetch(`/api/products?page=${page}&limit=${itemsPerPage}${queryParam}${categoryParam}`);
+      const categoryParam = category && category !== 'All' ? `&category=${encodeURIComponent(category)}` : '';
+      
+      // Create AbortController to cancel previous requests
+      const controller = new AbortController();
+      
+      const response = await fetch(`/api/products?page=${page}&limit=${itemsPerPage}${queryParam}${categoryParam}`, {
+        signal: controller.signal,
+        cache: 'force-cache', // Add caching
+        next: { revalidate: 30 } // Revalidate every 30 seconds
+      });
       
       if (!response.ok) {
         throw new Error('Failed to fetch products');
@@ -54,15 +62,32 @@ const categoryParam = category && category !== 'All' ? `&category=${encodeURICom
       setProducts(data.products);
       setTotalPages(data.pagination.pages);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-      console.error('Error fetching products:', err);
+      if (err instanceof Error && err.name !== 'AbortError') {
+        setError(err.message);
+        console.error('Error fetching products:', err);
+      } else if (!(err instanceof Error)) {
+        setError('An error occurred');
+        console.error('Error fetching products:', err);
+      }
     } finally {
       setLoading(false);
     }
-  };
+  }, [searchQuery, filter, itemsPerPage]);
 
   useEffect(() => {
-    fetchProducts(currentPage);
+    let isMounted = true;
+    
+    const loadProducts = async () => {
+      if (isMounted) {
+        await fetchProducts(currentPage);
+      }
+    };
+    
+    loadProducts();
+    
+    return () => {
+      isMounted = false;
+    };
   }, [currentPage, itemsPerPage]);
 
   // Close suggestions when clicking outside
@@ -81,17 +106,27 @@ const categoryParam = category && category !== 'All' ? `&category=${encodeURICom
 
   // Fetch suggestions as user types
   useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    let controller: AbortController;
+    
     const fetchSuggestions = async () => {
       if (searchQuery.length >= 2) {
         try {
-          const response = await fetch(`/api/search/suggestions?q=${encodeURIComponent(searchQuery)}&limit=5`);
+          controller = new AbortController();
+          const response = await fetch(`/api/search/suggestions?q=${encodeURIComponent(searchQuery)}&limit=5`, {
+            signal: controller.signal,
+            cache: 'force-cache',
+            next: { revalidate: 60 }
+          });
           if (response.ok) {
             const data = await response.json();
             setSuggestions(data.suggestions);
             setShowSuggestions(true);
           }
         } catch (error) {
-          console.error('Error fetching suggestions:', error);
+          if (error instanceof Error && error.name !== 'AbortError') {
+            console.error('Error fetching suggestions:', error);
+          }
         }
       } else {
         setSuggestions([]);
@@ -100,7 +135,7 @@ const categoryParam = category && category !== 'All' ? `&category=${encodeURICom
     };
 
     // Debounce the search to prevent too many API calls
-    const debounceTimer = setTimeout(() => {
+    timeoutId = setTimeout(() => {
       if (searchQuery) {
         fetchSuggestions();
       } else {
@@ -109,10 +144,15 @@ const categoryParam = category && category !== 'All' ? `&category=${encodeURICom
       }
     }, 300);
 
-    return () => clearTimeout(debounceTimer);
+    return () => {
+      clearTimeout(timeoutId);
+      if (controller) {
+        controller.abort();
+      }
+    };
   }, [searchQuery]);
 
-  const handleProductDelete = (deletedProductId: string) => {
+  const handleProductDelete = useCallback((deletedProductId: string) => {
     // Remove the deleted product from the state
     setProducts(products.filter(product => product._id !== deletedProductId));
     
@@ -123,23 +163,23 @@ const categoryParam = category && category !== 'All' ? `&category=${encodeURICom
       // Otherwise just refresh the current page
       fetchProducts(currentPage, searchQuery);
     }
-  };
+  }, [products, currentPage, searchQuery, fetchProducts]);
 
   // Handle search submission
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     setCurrentPage(1); // Reset to first page when searching
     fetchProducts(1, searchQuery);
-  };
+  }, [searchQuery, fetchProducts]);
 
-  const handleSuggestionClick = (suggestion: string) => {
+  const handleSuggestionClick = useCallback((suggestion: string) => {
     setSearchQuery(suggestion);
     setShowSuggestions(false);
     fetchProducts(1, suggestion);
-  };
+  }, [fetchProducts]);
 
   // Handle search input change
-  const handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSearchInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const newValue = e.target.value;
     setSearchQuery(newValue);
     
@@ -148,39 +188,41 @@ const categoryParam = category && category !== 'All' ? `&category=${encodeURICom
       setCurrentPage(1);
       fetchProducts(1, '');
     }
-  };
+  }, [fetchProducts]);
 
   // Clear search and show all products
-  const handleClearSearch = () => {
+  const handleClearSearch = useCallback(() => {
     setSearchQuery('');
     setCurrentPage(1);
     fetchProducts(1, '');
     setShowSuggestions(false);
-  };
+  }, [fetchProducts]);
 
   // Handle pagination navigation
-  const handlePreviousPage = () => {
+  const handlePreviousPage = useCallback(() => {
     if (currentPage > 1) {
       setCurrentPage(currentPage - 1);
     }
-  };
+  }, [currentPage]);
 
-  const handleNextPage = () => {
+  const handleNextPage = useCallback(() => {
     if (currentPage < totalPages) {
       setCurrentPage(currentPage + 1);
     }
-  };
+  }, [currentPage, totalPages]);
 
   // Transform database products to the format expected by AdminProductCard
-  const formattedProducts = products.map(product => ({
-    id: product._id,
-    name: product.productName,
-    image: product.gallery && product.gallery.length > 0 ? product.gallery[0].src : '/placeholder.png',
-    price: product.regularPrice,
-discountedPrice: product.discountedPrice, // Pass discounted price if it exists
-    sales: product.sales || 0,  // Default to 0 if sales doesn't exist
-    remaining: product.remaining || 100  // Default to 100 if remaining doesn't exist
-  }));
+  const formattedProducts = useMemo(() => 
+    products.map(product => ({
+      id: product._id,
+      name: product.productName,
+      image: product.gallery && product.gallery.length > 0 ? product.gallery[0].src : '/placeholder.png',
+      price: product.regularPrice,
+      discountedPrice: product.discountedPrice, // Pass discounted price if it exists
+      sales: product.sales || 0,  // Default to 0 if sales doesn't exist
+      remaining: product.remaining || 100  // Default to 100 if remaining doesn't exist
+    })), [products]
+  );
 
   return (
     <div className="flex min-h-screen bg-gray-100">

@@ -53,33 +53,60 @@ export default function ProductDetails() {
   const [viewingAdditionalImage, setViewingAdditionalImage] = useState(false);
 
   useEffect(() => {
+    let isMounted = true;
+    
     const fetchData = async () => {
+      if (!isMounted) return;
+      
       try {
         setIsLoading(true);
-        // Fetch product data
-        const productResponse = await fetch(`/api/products/${id}`);
+        
+        // Use Promise.all to fetch both product and inventory data simultaneously
+        const [productResponse, inventoryResponse] = await Promise.all([
+          fetch(`/api/products/${id}`, {
+            cache: 'force-cache',
+            next: { revalidate: 60 }
+          }),
+          fetch(`/api/inventory/product/${id}`, {
+            cache: 'force-cache',
+            next: { revalidate: 30 }
+          })
+        ]);
+
         if (!productResponse.ok) {
           throw new Error("Failed to fetch product");
         }
+        
         const productData = await productResponse.json();
+        
+        if (isMounted) {
+          setProduct(productData.product);
+        }
 
-        setProduct(productData.product);
-
-        // Fetch inventory data using product ID
-        const inventoryResponse = await fetch(`/api/inventory/product/${productData.product._id}`);
+        // Handle inventory response
         if (inventoryResponse.ok) {
           const inventoryData = await inventoryResponse.json();
-          setInventory(inventoryData.inventory);
+          if (isMounted) {
+            setInventory(inventoryData.inventory);
+          }
         }
       } catch (err) {
-        console.error("Error fetching data:", err);
-        setError(err instanceof Error ? err.message : "Failed to load product");
+        if (isMounted) {
+          console.error("Error fetching data:", err);
+          setError(err instanceof Error ? err.message : "Failed to load product");
+        }
       } finally {
-        setIsLoading(false);
+        if (isMounted) {
+          setIsLoading(false);
+        }
       }
     };
 
     fetchData();
+    
+    return () => {
+      isMounted = false;
+    };
   }, [id]);
 
   const tags = product?.tag ? product.tag.split(",").map((tag) => tag.trim()) : [];

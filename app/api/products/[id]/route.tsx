@@ -3,13 +3,25 @@ import mongoose from "mongoose";
 import Product from "@/models/Product";
 import cloudinary from "@/lib/cloudinary";
 
-// Connect to MongoDB using Mongoose
+// Connect to MongoDB with connection pooling
+let cachedConnection: typeof mongoose | null = null;
+
 const connectDB = async () => {
   try {
+    if (cachedConnection && mongoose.connection.readyState === 1) {
+      return cachedConnection;
+    }
+    
     if (mongoose.connection.readyState === 0) {
-      await mongoose.connect(process.env.MONGODB_URI!);
+      cachedConnection = await mongoose.connect(process.env.MONGODB_URI!, {
+        bufferCommands: false,
+        maxPoolSize: 10,
+        serverSelectionTimeoutMS: 5000,
+        socketTimeoutMS: 45000,
+      });
       console.log('Connected to MongoDB via Mongoose');
     }
+    return cachedConnection;
   } catch (error) {
     console.error('MongoDB connection error:', error);
     throw new Error('Failed to connect to database');
@@ -57,10 +69,17 @@ export async function GET(
       return NextResponse.json({ error: "Product not found" }, { status: 404 });
     }
     
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       product
     });
+    
+    // Add caching headers
+    response.headers.set('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
+    response.headers.set('CDN-Cache-Control', 'public, max-age=300');
+    response.headers.set('Vercel-CDN-Cache-Control', 'public, max-age=300');
+    
+    return response;
   } catch (error) {
     console.error("Error fetching product:", error);
     return NextResponse.json({ 

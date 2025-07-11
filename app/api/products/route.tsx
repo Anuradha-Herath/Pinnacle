@@ -5,12 +5,24 @@ import Inventory from '@/models/Inventory';
 import Discount from '@/models/Discount'; // Add this import
 import cloudinary from "@/lib/cloudinary"; // Uncomment this for image uploads
 
-// Connect to MongoDB
+// Connect to MongoDB with connection pooling
+let cachedConnection: typeof mongoose | null = null;
+
 const connectDB = async () => {
   try {
-    if (mongoose.connection.readyState === 0) {
-      await mongoose.connect(process.env.MONGODB_URI!);
+    if (cachedConnection && mongoose.connection.readyState === 1) {
+      return cachedConnection;
     }
+    
+    if (mongoose.connection.readyState === 0) {
+      cachedConnection = await mongoose.connect(process.env.MONGODB_URI!, {
+        bufferCommands: false,
+        maxPoolSize: 10, // Maintain up to 10 socket connections
+        serverSelectionTimeoutMS: 5000, // Keep trying to send operations for 5 seconds
+        socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
+      });
+    }
+    return cachedConnection;
   } catch (error) {
     console.error('MongoDB connection error:', error);
     throw new Error('Failed to connect to database');
@@ -96,10 +108,17 @@ export async function GET(request: NextRequest) {
         productWithDiscount.discountedPrice = discountedPrice;
       }
       
-      return NextResponse.json({
+      const response = NextResponse.json({
         success: true,
         product: productWithDiscount
       });
+      
+      // Add caching headers for individual product
+      response.headers.set('Cache-Control', 'public, max-age=300, stale-while-revalidate=600');
+      response.headers.set('CDN-Cache-Control', 'public, max-age=300');
+      response.headers.set('Vercel-CDN-Cache-Control', 'public, max-age=300');
+      
+      return response;
     }
 
     // For fetching multiple products with pagination
@@ -163,7 +182,7 @@ export async function GET(request: NextRequest) {
       return productObj;
     });
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       products: productsWithDiscounts,
       pagination: {
@@ -173,6 +192,13 @@ export async function GET(request: NextRequest) {
         limit
       }
     });
+    
+    // Add caching headers for product list
+    response.headers.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=120');
+    response.headers.set('CDN-Cache-Control', 'public, max-age=60');
+    response.headers.set('Vercel-CDN-Cache-Control', 'public, max-age=60');
+    
+    return response;
 
   } catch (error) {
     console.error('Error fetching products:', error);
