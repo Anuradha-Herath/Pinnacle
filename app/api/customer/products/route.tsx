@@ -11,6 +11,7 @@ interface ProductItem {
   productName: string;
   regularPrice: number;
   category: string;
+  subCategory?: string;
   gallery?: Array<{src: string, color?: string, name?: string}>;
   sizes?: string[];
   // Add other properties as needed
@@ -43,13 +44,18 @@ export async function GET(request: Request) {
     // Get URL parameters
     const url = new URL(request.url);
     const category = url.searchParams.get('category');
-    const limit = parseInt(url.searchParams.get('limit') || '12');
+    const subCategory = url.searchParams.get('subCategory');
+    const limit = parseInt(url.searchParams.get('limit') || '50');
+    
+    console.log(`API Request - Category: ${category}, SubCategory: ${subCategory}, Limit: ${limit}`);
     
     // Find inventory items that are in stock
     const inStockInventory = await Inventory.find({ status: 'In Stock' });
     
     // Extract product IDs from in-stock inventory
     const inStockProductIds = inStockInventory.map(item => item.productId);
+    
+    console.log(`Found ${inStockProductIds.length} products in stock`);
     
     if (inStockProductIds.length === 0) {
       return NextResponse.json({ products: [] }, {
@@ -62,13 +68,26 @@ export async function GET(request: Request) {
     
     // Add category filter if provided - use case-insensitive regex matching
     if (category) {
-      // For exact category matching (case-insensitive)
-      query.category = { $regex: new RegExp(`^${category}$`, 'i') };
+      // Handle common variations like "Women" vs "Womens"
+      let categoryPattern = category;
+      if (category.toLowerCase() === 'women') {
+        categoryPattern = '(women|womens)';
+      } else if (category.toLowerCase() === 'men') {
+        categoryPattern = '(men|mens)';
+      }
       
-      console.log(`Filtering products by category: ${category}`);
+      query.category = { $regex: new RegExp(`^${categoryPattern}$`, 'i') };
+      console.log(`Filtering products by category pattern: ${categoryPattern}`);
     }
     
-    console.log(`Fetching in-stock products with category: ${category || 'All'}`);
+    // Add subcategory filter if provided
+    if (subCategory) {
+      query.subCategory = { $regex: new RegExp(`^${subCategory}$`, 'i') };
+      console.log(`Filtering products by subcategory: ${subCategory}`);
+    }
+    
+    console.log(`Fetching in-stock products with category: ${category || 'All'}, subCategory: ${subCategory || 'All'}`);
+    console.log('Query:', JSON.stringify(query));
     
     // Get active discounts to include in the response
     const today = new Date().toISOString().split('T')[0];
@@ -78,45 +97,65 @@ export async function GET(request: Request) {
       endDate: { $gte: today }
     });
     
+    console.log(`Found ${activeDiscounts.length} active discounts`);
+    
     // Get products from the database
     const products = await Product.find(query)
       .sort({ createdAt: -1 })
       .limit(limit);
     
-    console.log(`Found ${products.length} in-stock products with category: ${category || 'All'}`);
+    console.log(`Found ${products.length} in-stock products with category: ${category || 'All'}, subCategory: ${subCategory || 'All'}`);
     
     // Transform products to customer format with discount information
     const customerProducts = products.map((item: ProductItem) => {
-      // Find applicable discount
-      const discount = activeDiscounts.find(
-        d => (d.type === 'Product' && d.product === item._id.toString()) ||
-             (d.type === 'Category' && d.product === item.category) ||
-             (d.type === 'All' && d.applyToAllProducts)
-      );
-      
-      // Calculate discounted price if discount exists
-      let discountedPrice = null;
-      if (discount) {
-        discountedPrice = item.regularPrice - (item.regularPrice * discount.percentage / 100);
-        discountedPrice = Math.round(discountedPrice * 100) / 100; // Round to 2 decimal places
+      try {
+        // Find applicable discount
+        const discount = activeDiscounts.find(
+          d => (d.type === 'Product' && d.product === item._id.toString()) ||
+               (d.type === 'Category' && d.product === item.category) ||
+               (d.type === 'All' && d.applyToAllProducts)
+        );
+        
+        // Calculate discounted price if discount exists
+        let discountedPrice = null;
+        if (discount && item.regularPrice) {
+          discountedPrice = item.regularPrice - (item.regularPrice * discount.percentage / 100);
+          discountedPrice = Math.round(discountedPrice * 100) / 100; // Round to 2 decimal places
+        }
+        
+        return {
+          id: item._id,
+          name: item.productName,
+          price: item.regularPrice || 0,
+          discountedPrice, // Include calculated discounted price
+          category: item.category,
+          subCategory: item.subCategory,
+          image: item.gallery && item.gallery.length > 0 ? 
+            item.gallery[0].src : '/placeholder.png',
+          colors: item.gallery?.map((galleryItem) => galleryItem.src) || [],
+          sizes: item.sizes || [],
+          // Include discount info for immediate use
+          discount: discount ? {
+            percentage: discount.percentage,
+            discountedPrice
+          } : undefined
+        };
+      } catch (error) {
+        console.error('Error processing product:', item._id, error);
+        // Return a safe fallback product
+        return {
+          id: item._id,
+          name: item.productName || 'Unknown Product',
+          price: item.regularPrice || 0,
+          discountedPrice: null,
+          category: item.category || '',
+          subCategory: item.subCategory || '',
+          image: '/placeholder.png',
+          colors: [],
+          sizes: [],
+          discount: undefined
+        };
       }
-      
-      return {
-        id: item._id,
-        name: item.productName,
-        price: item.regularPrice,
-        discountedPrice, // Include calculated discounted price
-        category: item.category,
-        image: item.gallery && item.gallery.length > 0 ? 
-          item.gallery[0].src : '/placeholder.png',
-        colors: item.gallery?.map((galleryItem) => galleryItem.src) || [],
-        sizes: item.sizes || [],
-        // Include discount info for immediate use
-        discount: discount ? {
-          percentage: discount.percentage,
-          discountedPrice
-        } : undefined
-      };
     });
     
     return NextResponse.json({ products: customerProducts }, {
