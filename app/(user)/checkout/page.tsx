@@ -254,162 +254,17 @@ function Checkout() {
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Header />
 
-      <main className="flex-grow container mx-auto px-4 py-8">
-        <h1 className="text-3xl font-bold mb-6">Checkout</h1>
+      <main className="flex-grow container mx-auto px-2 sm:px-4 py-4 sm:py-8">
+        <h1 className="text-2xl sm:text-3xl font-bold mb-6">Checkout</h1>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          <div className="lg:col-span-7 order-2 lg:order-1">
-            <div className="bg-white rounded-lg shadow-md p-6 sticky top-24">
-              <h2 className="text-xl font-semibold mb-4 pb-2 border-b">
-                Order Summary
-              </h2>
-
-              {isLoading ? (
-                <div className="py-8 text-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-gray-900 mx-auto mb-4"></div>
-                  <p>Loading your order...</p>
-                </div>
-              ) : cart && cart.length > 0 ? (
-                <div className="mb-6 pr-2">
-                  {cart.map((item: CartItem, index: number) => (
-                    <div
-                      key={`${item.id}-${item.size}-${item.color}-${index}`}
-                      className="flex items-start gap-4 border-b border-gray-100 py-4"
-                    >
-                      <div className="w-20 h-20 bg-gray-50 rounded flex-shrink-0 overflow-hidden">
-                        <img
-                          src={getValidImageUrl(item.image)}
-                          alt={item.name}
-                          className="w-full h-full object-contain"
-                          onError={handleImageError}
-                        />
-                      </div>
-                      <div className="flex-grow">
-                        <p className="font-medium text-gray-900">{item.name}</p>
-                        <div className="mt-1 text-sm text-gray-500 space-y-1">
-                          {item.color && (
-                            <p>Color: {getDisplayColorName(item.color)}</p>
-                          )}
-                          {item.size && <p>Size: {item.size}</p>}
-                          <p>Quantity: {item.quantity}</p>
-                        </div>
-                      </div>
-                      <div className="font-medium text-gray-900">
-                        {item.discountedPrice !== undefined ? (
-                          <div className="flex items-center gap-2">
-                            <p className="text-xs text-gray-500 line-through">
-                              ${(item.price * item.quantity).toFixed(2)}
-                            </p>
-                            <span className="text-gray-900">
-                              $
-                              {(item.discountedPrice * item.quantity).toFixed(
-                                2
-                              )}
-                            </span>
-                          </div>
-                        ) : (
-                          <>${(item.price * item.quantity).toFixed(2)}</>
-                        )}{" "}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="py-8 text-center">
-                  <p className="text-gray-500">Your cart is empty</p>
-                  <Link
-                    href="/cart"
-                    className="text-black underline mt-2 inline-block"
-                  >
-                    Return to cart
-                  </Link>
-                </div>
-              )}
-
-              <div className="mt-4 mb-6">
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    placeholder="Coupon code"
-                    className="flex-1 p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-black focus:outline-none"
-                    value={couponCode}
-                    onChange={(e) => setCouponCode(e.target.value)}
-                    disabled={!!couponData || isApplyingCoupon}
-                  />
-                  {couponData ? (
-                    <button 
-                      onClick={removeCoupon}
-                      type="button"
-                      className="px-4 py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium rounded-md transition"
-                    >
-                      Remove
-                    </button>
-                  ) : (
-                    <button 
-                      onClick={validateCoupon}
-                      type="button"
-                      disabled={isApplyingCoupon}
-                      className="px-4 py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium rounded-md transition"
-                    >
-                      {isApplyingCoupon ? "Applying..." : "Apply"}
-                    </button>
-                  )}
-                </div>
-                {couponError && (
-                  <p className="mt-2 text-sm text-red-600">{couponError}</p>
-                )}
-                {couponData && (
-                  <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-md">
-                    <p className="text-sm text-green-700">
-                      <span className="font-medium">{couponData.code}</span>: {couponData.description}
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              <div className="space-y-3 text-sm">
-                <div className="flex justify-between py-1">
-                  <span className="text-gray-600">Subtotal</span>
-                  <span className="font-medium">
-                    ${getCartTotal().toFixed(2)}
-                  </span>
-                </div>
-                {couponData && (
-                  <div className="flex justify-between py-1">
-                    <span className="text-gray-600">Discount ({couponData.discount}%)</span>
-                    <span className="font-medium text-green-600">
-                      -${couponData.discountAmount.toFixed(2)}
-                    </span>
-                  </div>
-                )}
-                {shipping === "ship" ? (
-                  <>
-                    <div className="flex justify-between py-1">
-                      <span className="text-gray-600">Shipping</span>
-                      <span className="font-medium">$10.00</span>
-                    </div>
-                    <div className="flex justify-between py-3 text-lg font-semibold border-t border-gray-200 mt-2">
-                      <span>Total</span>
-                      <span>${calculateTotal().toFixed(2)}</span>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="flex justify-between py-3 text-lg font-semibold border-t border-gray-200 mt-2">
-                      <span>Total</span>
-                      <span>${calculateTotal().toFixed(2)}</span>
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="lg:col-span-5 order-1 lg:order-2">
-            <div className="bg-white rounded-lg shadow-md p-6">
+        <div className="flex flex-col-reverse lg:grid lg:grid-cols-12 gap-4 sm:gap-8">
+          {/* Checkout Form - left, 50% width on desktop */}
+          <div className="lg:col-span-6 order-1 lg:order-1 w-full">
+            <div className="bg-white rounded-lg shadow-md p-3 sm:p-6 h-full flex flex-col">
               <form onSubmit={handleSubmit}>
+                {/* ... (form sections remain unchanged) ... */}
                 <section className="mb-8">
-                  <h2 className="text-xl font-semibold mb-4">
+                  <h2 className="text-lg sm:text-xl font-semibold mb-4">
                     Contact Information
                   </h2>
                   <div className="space-y-4">
@@ -446,7 +301,7 @@ function Checkout() {
 
                 {/* Delivery Method */}
                 <section className="mb-8">
-                  <h2 className="text-xl font-semibold mb-4">
+                  <h2 className="text-lg sm:text-xl font-semibold mb-4">
                     Delivery Method
                   </h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
@@ -467,7 +322,7 @@ function Checkout() {
                       />
                       <div>
                         <p className="font-medium">Ship to Address</p>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-xs sm:text-sm text-gray-500">
                           Delivery in 3-5 business days
                         </p>
                       </div>
@@ -489,7 +344,7 @@ function Checkout() {
                       />
                       <div>
                         <p className="font-medium">Pickup in Store</p>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-xs sm:text-sm text-gray-500">
                           Usually ready in 24 hours
                         </p>
                       </div>
@@ -500,7 +355,7 @@ function Checkout() {
                 {/* Shipping Address */}
                 {shipping === "ship" && (
                   <section className="mb-8">
-                    <h2 className="text-xl font-semibold mb-4">
+                    <h2 className="text-lg sm:text-xl font-semibold mb-4">
                       Shipping Address
                     </h2>
                     <div className="space-y-4">
@@ -643,7 +498,7 @@ function Checkout() {
                 {/* Pickup Information */}
                 {shipping === "pickup" && (
                   <section className="mb-8">
-                    <h2 className="text-xl font-semibold mb-4">
+                    <h2 className="text-lg sm:text-xl font-semibold mb-4">
                       Pickup Information
                     </h2>
                     <div className="space-y-4">
@@ -701,7 +556,7 @@ function Checkout() {
                           placeholder="We'll contact you when your order is ready"
                         />
                         <p className="mt-1 text-xs text-gray-500">
-                          We'll send you a text message when your order is ready
+                          We'll send you a email when your order is ready
                           for pickup
                         </p>
                       </div>
@@ -711,7 +566,7 @@ function Checkout() {
 
                 {/* Shipping Method */}
                 <section className="mb-8">
-                  <h2 className="text-xl font-semibold mb-4">
+                  <h2 className="text-lg sm:text-xl font-semibold mb-4">
                     Shipping Method
                   </h2>
 
@@ -745,12 +600,12 @@ function Checkout() {
                         </div>
                         <span className="font-medium text-green-600">Free</span>
                       </div>
-                      <p className="text-sm text-gray-500 ml-6">
-                        Pick up your order at our flagship store. Please bring a
-                        valid ID for verification.
+                      <p className="text-xs sm:text-sm text-gray-500 ml-6">
+                        Pick up your order at our flagship store. Please bring 
+                        valid e-receipt ,we sent to your e-mail for verification.
                       </p>
                       <div className="mt-3 ml-6 p-3 bg-gray-100 rounded-md">
-                        <p className="text-sm font-medium">
+                        <p className="text-xs sm:text-sm font-medium">
                           Pinnacle Flagship Store
                         </p>
                         <p className="text-xs text-gray-500">
@@ -780,6 +635,154 @@ function Checkout() {
                   </Link>
                 </div>
               </form>
+            </div>
+          </div>
+
+          {/* Order Summary - right, 50% width on desktop */}
+          <div className="lg:col-span-6 order-2 lg:order-2 w-full">
+            <div className="bg-white rounded-lg shadow-md p-3 sm:p-6 mb-4 lg:mb-0 h-full flex flex-col">
+              <h2 className="text-lg sm:text-xl font-semibold mb-4 pb-2 border-b">
+                Order Summary
+              </h2>
+
+              {isLoading ? (
+                <div className="py-8 text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-gray-900 mx-auto mb-4"></div>
+                  <p>Loading your order...</p>
+                </div>
+              ) : cart && cart.length > 0 ? (
+                <div className="mb-6 pr-2">
+                  {cart.map((item: CartItem, index: number) => (
+                    <div
+                      key={`${item.id}-${item.size}-${item.color}-${index}`}
+                      className="flex items-start gap-3 sm:gap-4 border-b border-gray-100 py-3 sm:py-4"
+                    >
+                      <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-50 rounded flex-shrink-0 overflow-hidden">
+                        <img
+                          src={getValidImageUrl(item.image)}
+                          alt={item.name}
+                          className="w-full h-full object-contain"
+                          onError={handleImageError}
+                        />
+                      </div>
+                      <div className="flex-grow min-w-0">
+                        <p className="font-medium text-gray-900 truncate">{item.name}</p>
+                        <div className="mt-1 text-xs sm:text-sm text-gray-500 space-y-1 break-words">
+                          {item.color && (
+                            <p>Color: {getDisplayColorName(item.color)}</p>
+                          )}
+                          {item.size && <p>Size: {item.size}</p>}
+                          <p>Quantity: {item.quantity}</p>
+                        </div>
+                      </div>
+                      <div className="font-medium text-gray-900 text-xs sm:text-base whitespace-nowrap">
+                        {item.discountedPrice !== undefined ? (
+                          <div className="flex items-center gap-1 sm:gap-2">
+                            <p className="text-xs text-gray-500 line-through">
+                              ${(item.price * item.quantity).toFixed(2)}
+                            </p>
+                            <span className="text-gray-900">
+                              $
+                              {(item.discountedPrice * item.quantity).toFixed(
+                                2
+                              )}
+                            </span>
+                          </div>
+                        ) : (
+                          <>${(item.price * item.quantity).toFixed(2)}</>
+                        )}{" "}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="py-8 text-center">
+                  <p className="text-gray-500">Your cart is empty</p>
+                  <Link
+                    href="/cart"
+                    className="text-black underline mt-2 inline-block"
+                  >
+                    Return to cart
+                  </Link>
+                </div>
+              )}
+
+              <div className="mt-4 mb-6">
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <input
+                    type="text"
+                    placeholder="Coupon code"
+                    className="flex-1 p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-black focus:outline-none"
+                    value={couponCode}
+                    onChange={(e) => setCouponCode(e.target.value)}
+                    disabled={!!couponData || isApplyingCoupon}
+                  />
+                  {couponData ? (
+                    <button 
+                      onClick={removeCoupon}
+                      type="button"
+                      className="px-4 py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium rounded-md transition"
+                    >
+                      Remove
+                    </button>
+                  ) : (
+                    <button 
+                      onClick={validateCoupon}
+                      type="button"
+                      disabled={isApplyingCoupon}
+                      className="px-4 py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium rounded-md transition"
+                    >
+                      {isApplyingCoupon ? "Applying..." : "Apply"}
+                    </button>
+                  )}
+                </div>
+                {couponError && (
+                  <p className="mt-2 text-sm text-red-600">{couponError}</p>
+                )}
+                {couponData && (
+                  <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-md">
+                    <p className="text-sm text-green-700">
+                      <span className="font-medium">{couponData.code}</span>: {couponData.description}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between py-1">
+                  <span className="text-gray-600">Subtotal</span>
+                  <span className="font-medium">
+                    ${getCartTotal().toFixed(2)}
+                  </span>
+                </div>
+                {couponData && (
+                  <div className="flex justify-between py-1">
+                    <span className="text-gray-600">Discount ({couponData.discount}%)</span>
+                    <span className="font-medium text-green-600">
+                      -${couponData.discountAmount.toFixed(2)}
+                    </span>
+                  </div>
+                )}
+                {shipping === "ship" ? (
+                  <>
+                    <div className="flex justify-between py-1">
+                      <span className="text-gray-600">Shipping</span>
+                      <span className="font-medium">$10.00</span>
+                    </div>
+                    <div className="flex justify-between py-3 text-base sm:text-lg font-semibold border-t border-gray-200 mt-2">
+                      <span>Total</span>
+                      <span>${calculateTotal().toFixed(2)}</span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex justify-between py-3 text-base sm:text-lg font-semibold border-t border-gray-200 mt-2">
+                      <span>Total</span>
+                      <span>${calculateTotal().toFixed(2)}</span>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           </div>
         </div>
