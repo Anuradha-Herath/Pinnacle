@@ -123,6 +123,8 @@ const AdminLoginPage: React.FC = () => {
               {isLoading ? "Signing in..." : "Sign In"}
             </button>
           </form>
+          
+          {/* No Google login button for admin access */}
         </div>
       </div>
     </div>

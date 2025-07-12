@@ -29,6 +29,7 @@ export interface IUser extends Document {
   passwordResetToken?: string; // Add password reset token field
   passwordResetExpires?: Date; // Add password reset expires field
   stripeCustomerId: string | null; // Add this field for Stripe customer ID
+  provider?: string; // Add provider field for social logins
   createdAt: Date;
   updatedAt: Date;
   comparePassword: (candidatePassword: string) => Promise<boolean>;
@@ -56,8 +57,20 @@ const UserSchema = new Schema<IUser>(
     },
     password: {
       type: String,
-      required: [true, 'Password is required'],
+      required: function(this: any) {
+        return this.provider ? false : true;
+      },
       minlength: 6,
+      // Fix the validator to return only boolean
+      validate: {
+        validator: function(this: any, v: string | undefined): boolean {
+          // Skip validation if using social login
+          if (this.provider) return true;
+          // Otherwise enforce minlength
+          return v !== undefined && v.length >= 6;
+        },
+        message: 'Password must be at least 6 characters'
+      }
     },
     stripeCustomerId: { type: String, default: null },
     role: {
@@ -130,6 +143,12 @@ const UserSchema = new Schema<IUser>(
     passwordResetExpires: {
       type: Date,
     },
+    
+    // Add provider field (optional)
+    provider: {
+      type: String,
+      required: false,
+    },
   },
   { timestamps: true }
 );
@@ -147,9 +166,18 @@ UserSchema.pre('save', async function (next) {
   }
 });
 
-// Method to compare password
-UserSchema.methods.comparePassword = async function (candidatePassword: string): Promise<boolean> {
-  return bcrypt.compare(candidatePassword, this.password);
+// Method to compare password - with proper error handling for potential undefined passwords
+UserSchema.methods.comparePassword = async function(this: any, candidatePassword: string): Promise<boolean> {
+  try {
+    // Handle case where password might not exist (social logins)
+    if (!this.password) {
+      return false;
+    }
+    return await bcrypt.compare(candidatePassword, this.password);
+  } catch (error) {
+    console.error('Password comparison error:', error);
+    return false;
+  }
 };
 
 // Create or get User model
