@@ -35,18 +35,31 @@ const ProductsPage = () => {
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
   const router = useRouter();
-const [filter, setFilter] = useState('All'); // Add state for filter
+  const [filter, setFilter] = useState('All'); // Add state for filter
   const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
+  
+  // Add a ref to track if a request is in progress to prevent multiple simultaneous calls
+  const requestInProgress = useRef(false);
+  const lastPageChangeTime = useRef(0);
 
   const fetchProducts = async (page = 1, query = searchQuery, category = filter) => {
+    // Prevent multiple simultaneous requests
+    if (requestInProgress.current) {
+      console.log(`Skipping duplicate request for page ${page}`);
+      return;
+    }
+    
     try {
+      requestInProgress.current = true;
       setLoading(true);
       // Include the search query in the API call if it exists
       const queryParam = query ? `&q=${encodeURIComponent(query)}` : '';
       const categoryParam = category && category !== 'All' ? `&category=${encodeURIComponent(category)}` : '';
       const url = `/api/products?page=${page}&limit=${itemsPerPage}${queryParam}${categoryParam}`;
+      
+      console.log(`Fetching products for page ${page} with URL: ${url}`);
       
       // Use deduplicated request to prevent duplicate API calls
       const data: any = await deduplicateRequest(url);
@@ -58,12 +71,16 @@ const [filter, setFilter] = useState('All'); // Add state for filter
       console.error('Error fetching products:', err);
     } finally {
       setLoading(false);
+      requestInProgress.current = false;
     }
   };
 
   useEffect(() => {
-    fetchProducts(currentPage);
-  }, [currentPage, itemsPerPage]);
+    // Only fetch if the page is valid and no request is in progress
+    if (currentPage > 0 && !requestInProgress.current) {
+      fetchProducts(currentPage);
+    }
+  }, [currentPage]);
 
   // Close suggestions when clicking outside
   useEffect(() => {
@@ -141,7 +158,8 @@ const [filter, setFilter] = useState('All'); // Add state for filter
     const newValue = e.target.value;
     setSearchQuery(newValue);
     
-    // If search input is cleared, fetch all products
+    // Only fetch if search input is completely cleared
+    // For other cases, let the search suggestions handle it or wait for form submission
     if (newValue === '') {
       setCurrentPage(1);
       fetchProducts(1, '');
@@ -158,13 +176,17 @@ const [filter, setFilter] = useState('All'); // Add state for filter
 
   // Handle pagination navigation
   const handlePreviousPage = () => {
-    if (currentPage > 1) {
+    const now = Date.now();
+    if (currentPage > 1 && !requestInProgress.current && (now - lastPageChangeTime.current) > 300) {
+      lastPageChangeTime.current = now;
       setCurrentPage(currentPage - 1);
     }
   };
 
   const handleNextPage = () => {
-    if (currentPage < totalPages) {
+    const now = Date.now();
+    if (currentPage < totalPages && !requestInProgress.current && (now - lastPageChangeTime.current) > 300) {
+      lastPageChangeTime.current = now;
       setCurrentPage(currentPage + 1);
     }
   };
