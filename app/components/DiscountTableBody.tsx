@@ -1,5 +1,8 @@
 import React from "react";
 import { EyeIcon, PencilIcon, TrashIcon } from "@heroicons/react/24/solid";
+import { PLACEHOLDER_IMAGE, handleImageError } from "@/lib/imageUtils";
+
+// Remove the duplicate constant since we're importing it
 
 interface Discount {
   _id: string;
@@ -64,12 +67,10 @@ const DiscountTableBody: React.FC<DiscountTableBodyProps> = ({
               </div>
             ) : (
               <img
-                src={itemDetails[discount.product]?.image || '/placeholder.png'}
+                src={itemDetails[discount.product]?.image || PLACEHOLDER_IMAGE}
                 alt={itemDetails[discount.product]?.name || 'Product Image'}
                 className="h-full w-full object-cover"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = '/placeholder.png';
-                }}
+                onError={handleImageError}
                 loading="eager"
               />
             )}

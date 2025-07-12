@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { BellIcon, Cog6ToothIcon, ClockIcon } from "@heroicons/react/24/solid";
 import Sidebar from "../../components/Sidebar";
 import { useRouter, useSearchParams } from "next/navigation";
+import { PLACEHOLDER_IMAGE } from "@/lib/imageUtils";
 
 interface ItemDetails {
   id: string;
@@ -73,7 +74,7 @@ export default function DiscountView() {
               if (productData.product) {
                 const galleryImage = productData.product.gallery && productData.product.gallery.length > 0
                   ? productData.product.gallery[0].src
-                  : "/placeholder.png";
+                  : PLACEHOLDER_IMAGE;
                 
                 setItemDetails({
                   id: productData.product._id,
@@ -91,7 +92,7 @@ export default function DiscountView() {
                 setItemDetails({
                   id: categoryData.category._id,
                   name: categoryData.category.title,
-                  image: categoryData.category.thumbnailImage || "/placeholder.png"
+                  image: categoryData.category.thumbnailImage || PLACEHOLDER_IMAGE
                 });
               }
             }

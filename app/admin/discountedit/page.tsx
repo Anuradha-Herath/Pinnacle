@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { BellIcon, Cog6ToothIcon, ClockIcon, MagnifyingGlassIcon } from "@heroicons/react/24/solid";
 import Sidebar from "../../components/Sidebar";
 import { useRouter, useSearchParams } from "next/navigation";
+import { PLACEHOLDER_IMAGE } from "@/lib/imageUtils";
 
 interface Product {
   _id: string;
@@ -150,7 +151,7 @@ export default function DiscountEdit() {
   const getProductImage = (product: Product) => {
     return product.gallery && product.gallery.length > 0 
       ? product.gallery[0].src 
-      : "/placeholder.png";
+      : PLACEHOLDER_IMAGE;
   };
   
   // Calculate discount status based on dates
