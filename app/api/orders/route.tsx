@@ -6,76 +6,12 @@ import { getOrCreateStripeCustomer } from "@/lib/stripeHelpers";
 
 const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
-export async function GET(request: NextRequest) {
+export async function GET(request: Request) {
   try {
     await connectDB();
-    
-    // Get URL parameters
-    const { searchParams } = new URL(request.url);
-    const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : undefined;
-    const startDate = searchParams.get('startDate');
-    const endDate = searchParams.get('endDate');
-    const count = searchParams.get('count') === 'true';
-    const fields = searchParams.get('fields')?.split(',').join(' ');
-    
-    // Build query object
-    const query: any = {};
-    
-    // Add date filter if both dates are provided
-    if (startDate && endDate) {
-      query.createdAt = {
-        $gte: new Date(startDate),
-        $lte: new Date(new Date(endDate).setHours(23, 59, 59, 999))
-      };
-    }
-    
-    console.log("Query for orders:", JSON.stringify(query));
-    
-    // If count parameter is true, just return the count
-    if (count) {
-      const totalCount = await Order.countDocuments();
-      const filteredCount = Object.keys(query).length ? await Order.countDocuments(query) : totalCount;
-      return NextResponse.json({ totalCount, filteredCount }, { status: 200 });
-    }
-    
-    // Build the query
-    let ordersQuery = Order.find(query);
-    
-    // Add field selection if specified, but always include critical fields
-    if (fields) {
-      // Make sure critical fields are always included
-      const criticalFields = '_id orderNumber createdAt customer amount status paymentStatus';
-      const allFields = `${fields} ${criticalFields}`.split(' ').filter((v, i, a) => a.indexOf(v) === i).join(' ');
-      ordersQuery = ordersQuery.select(allFields);
-    }
-    
-    // Add sorting
-    ordersQuery = ordersQuery.sort({ createdAt: -1 });
-    
-    // Add limit if specified
-    if (limit) {
-      ordersQuery = ordersQuery.limit(limit);
-    }
-    
-    // Execute query
-    const orders = await ordersQuery.exec();
-    
-    // Validate the orders data
-    if (!orders || !Array.isArray(orders)) {
-      console.error("Orders is not an array:", orders);
-      return NextResponse.json({ error: "Invalid order data returned" }, { status: 500 });
-    }
-    
-    // Log the first order structure for debugging
-    if (orders.length > 0) {
-      console.log("Sample order structure:", JSON.stringify(orders[0], null, 2));
-    }
-    
-    console.log(`Successfully retrieved ${orders.length} orders`);
-    
+    const orders = await Order.find().sort({ createdAt: -1 });
     return NextResponse.json(orders, { status: 200 });
   } catch (error) {
-    console.error("Error fetching orders:", error);
     return NextResponse.json(
       { error: "Failed to fetch orders" },
       { status: 500 }
