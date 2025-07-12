@@ -50,10 +50,32 @@ export const deduplicateRequest = async <T>(
     },
   }).then(async (response) => {
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Network error' }));
-      throw new Error(errorData.error || `HTTP ${response.status}: Request failed`);
+      let errorMessage = `HTTP ${response.status}: Request failed`;
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.error || errorMessage;
+        
+        // Include additional details for debugging
+        if (errorData.details) {
+          console.error('API Error Details:', errorData.details);
+        }
+      } catch (parseError) {
+        console.error('Failed to parse error response:', parseError);
+        errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+      }
+      throw new Error(errorMessage);
     }
     return response.json();
+  }).catch((error) => {
+    // Enhanced error handling
+    if (error.name === 'TypeError' && error.message.includes('fetch')) {
+      throw new Error('Network error: Please check your internet connection');
+    }
+    if (error.name === 'AbortError') {
+      throw new Error('Request timed out: The server is taking too long to respond');
+    }
+    // Re-throw the original error if it's already a proper error
+    throw error;
   }).finally(() => {
     // Remove from cache when request completes
     requestCache.delete(cacheKey);

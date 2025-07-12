@@ -8,10 +8,11 @@ import Link from "next/link";
 import HeaderPlaceholder from "./components/HeaderPlaceholder";
 import { getBrowserInfo, logBrowserInfo } from "@/lib/browserUtils";
 import { logPerformanceMetrics, measureApiCallTime } from "@/lib/performanceUtils";
+import { fetchCustomerProducts, fetchTrendingProducts } from "@/lib/apiUtils";
 
 const HomePage = () => {
-  const [products, setProducts] = useState([]);
-  const [trendingProducts, setTrendingProducts] = useState([]);
+  const [products, setProducts] = useState<any[]>([]);
+  const [trendingProducts, setTrendingProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [genderLoading, setGenderLoading] = useState(false);
   const [accessoriesLoading, setAccessoriesLoading] = useState(false);
@@ -64,21 +65,10 @@ const HomePage = () => {
       setLoading(true);
       setError(null);
       
-      // Fetch all products with timeout and proper error handling for Edge
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000); // Reduced timeout
+      console.log(`Fetching all products (attempt ${attempt}/${maxRetries})`);
       
-      const response = await edgeCompatibleFetch('/api/customer/products', {
-        signal: controller.signal,
-      });
-      
-      clearTimeout(timeoutId);
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch products: ${response.status} ${response.statusText}`);
-      }
-      
-      const data = await response.json();
+      // Fetch all products using the improved API utilities
+      const data = await fetchCustomerProducts({}) as { products: any[] };
       
       if (data.products && data.products.length > 0) {
         setProducts(data.products);
@@ -111,21 +101,23 @@ const HomePage = () => {
         });
         
         setCategoryProducts(productsByCategory);
+      } else {
+        console.warn('No products returned from API');
+        setCategoryProducts({
+          mens: [],
+          womens: [],
+          accessories: []
+        });
       }
       
-      // Fetch trending products (newly created + recently stocked)
-      const trendingController = new AbortController();
-      const trendingTimeoutId = setTimeout(() => trendingController.abort(), 8000); // Reduced timeout
-      
-      const trendingResponse = await edgeCompatibleFetch('/api/customer/trending', {
-        signal: trendingController.signal,
-      });
-      
-      clearTimeout(trendingTimeoutId);
-      
-      if (trendingResponse.ok) {
-        const trendingData = await trendingResponse.json();
+      // Fetch trending products using the improved API utilities
+      try {
+        const trendingData = await fetchTrendingProducts() as { products: any[] };
         setTrendingProducts(trendingData.products || []);
+      } catch (trendingError) {
+        console.error('Error fetching trending products:', trendingError);
+        // Continue without trending products rather than failing completely
+        setTrendingProducts([]);
       }
       
       setRetryCount(0); // Reset retry count on success
@@ -134,9 +126,10 @@ const HomePage = () => {
       console.error('Error fetching products:', err);
       
       if (err instanceof Error) {
-        if (err.name === 'AbortError') {
+        if (err.message.includes('timeout') || err.name === 'AbortError') {
           if (attempt < maxRetries) {
             console.log(`Request timed out, retrying... (${attempt}/${maxRetries})`);
+            setRetryCount(attempt);
             setTimeout(() => fetchProducts(attempt + 1), 2000); // Retry after 2 seconds
             return;
           } else {
@@ -145,10 +138,11 @@ const HomePage = () => {
         } else {
           if (attempt < maxRetries) {
             console.log(`Request failed, retrying... (${attempt}/${maxRetries})`);
+            setRetryCount(attempt);
             setTimeout(() => fetchProducts(attempt + 1), 2000);
             return;
           } else {
-            setError(err.message);
+            setError(`Failed to load products after ${maxRetries} attempts: ${err.message}`);
           }
         }
       } else {
@@ -163,26 +157,17 @@ const HomePage = () => {
   const fetchProductsByCategory = async (category: string) => {
     try {
       setGenderLoading(true);
+      setError(null);
       
       // Convert 'men'/'women' to match API parameter ('Men'/'Women')
       const apiCategory = category === 'men' ? 'Men' : 'Women';
       
-      // Fetch products filtered by category with timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000); // Reduced timeout
+      console.log(`Fetching products for category: ${apiCategory}`);
       
-      const response = await edgeCompatibleFetch(`/api/customer/products?category=${apiCategory}`, {
-        signal: controller.signal,
-      });
+      // Use the improved API utilities for better caching and error handling
+      const data = await fetchCustomerProducts({ category: apiCategory }) as { products: any[] };
       
-      clearTimeout(timeoutId);
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch ${apiCategory} products: ${response.status} ${response.statusText}`);
-      }
-      
-      const data = await response.json();
-      console.log(`Fetched ${apiCategory} products:`, data.products?.length || 0);
+      console.log(`Fetched ${data.products?.length || 0} ${apiCategory} products`);
       
       // Update just the specific category in our state
       if (data.products) {
@@ -190,13 +175,40 @@ const HomePage = () => {
           ...prev,
           [category + 's']: data.products
         }));
+      } else {
+        console.warn(`No products returned for ${apiCategory}`);
+        setCategoryProducts(prev => ({
+          ...prev,
+          [category + 's']: []
+        }));
       }
       
     } catch (err) {
       console.error(`Error fetching ${category} products:`, err);
-      if (err instanceof Error && err.name === 'AbortError') {
-        console.error('Request timed out for category:', category);
+      
+      if (err instanceof Error) {
+        console.error('Error details:', {
+          message: err.message,
+          name: err.name,
+          stack: err.stack
+        });
+        
+        if (err.message.includes('500')) {
+          setError(`Server error while loading ${category} products. Please try refreshing the page.`);
+        } else if (err.message.includes('timeout') || err.name === 'AbortError') {
+          setError(`Request timed out while loading ${category} products. Please check your connection.`);
+        } else {
+          setError(`Failed to load ${category} products. Please try again.`);
+        }
+      } else {
+        setError(`Failed to load ${category} products`);
       }
+      
+      // Set empty array on error to prevent infinite loading state
+      setCategoryProducts(prev => ({
+        ...prev,
+        [category + 's']: []
+      }));
     } finally {
       setGenderLoading(false);
     }

@@ -38,8 +38,22 @@ export async function OPTIONS() {
 // GET method to fetch products for customers
 export async function GET(request: Request) {
   try {
-    // Connect to the database
-    await connectDB();
+    console.log('Starting product fetch request...');
+    
+    // Connect to the database with proper error handling
+    try {
+      await connectDB();
+      console.log('Database connection successful');
+    } catch (dbError) {
+      console.error('Database connection failed:', dbError);
+      return NextResponse.json({ 
+        error: "Database connection failed",
+        details: dbError instanceof Error ? dbError.message : String(dbError)
+      }, { 
+        status: 500,
+        headers: corsHeaders,
+      });
+    }
     
     // Get URL parameters
     const url = new URL(request.url);
@@ -50,7 +64,20 @@ export async function GET(request: Request) {
     console.log(`API Request - Category: ${category}, SubCategory: ${subCategory}, Limit: ${limit}`);
     
     // Find inventory items that are in stock
-    const inStockInventory = await Inventory.find({ status: 'In Stock' });
+    let inStockInventory;
+    try {
+      inStockInventory = await Inventory.find({ status: 'In Stock' });
+      console.log(`Found ${inStockInventory.length} inventory items in stock`);
+    } catch (inventoryError) {
+      console.error('Error fetching inventory:', inventoryError);
+      return NextResponse.json({ 
+        error: "Failed to fetch inventory data",
+        details: inventoryError instanceof Error ? inventoryError.message : String(inventoryError)
+      }, { 
+        status: 500,
+        headers: corsHeaders,
+      });
+    }
     
     // Extract product IDs from in-stock inventory
     const inStockProductIds = inStockInventory.map(item => item.productId);
@@ -58,6 +85,7 @@ export async function GET(request: Request) {
     console.log(`Found ${inStockProductIds.length} products in stock`);
     
     if (inStockProductIds.length === 0) {
+      console.log('No products in stock, returning empty array');
       return NextResponse.json({ products: [] }, {
         headers: corsHeaders,
       });
@@ -90,21 +118,58 @@ export async function GET(request: Request) {
     console.log('Query:', JSON.stringify(query));
     
     // Get active discounts to include in the response
-    const today = new Date().toISOString().split('T')[0];
-    const activeDiscounts = await Discount.find({
-      status: 'Active',
-      startDate: { $lte: today },
-      endDate: { $gte: today }
-    });
-    
-    console.log(`Found ${activeDiscounts.length} active discounts`);
+    let activeDiscounts;
+    try {
+      const today = new Date().toISOString().split('T')[0];
+      activeDiscounts = await Discount.find({
+        status: 'Active',
+        startDate: { $lte: today },
+        endDate: { $gte: today }
+      });
+      console.log(`Found ${activeDiscounts.length} active discounts`);
+    } catch (discountError) {
+      console.error('Error fetching discounts:', discountError);
+      // Continue without discounts rather than failing completely
+      activeDiscounts = [];
+    }
     
     // Get products from the database
-    const products = await Product.find(query)
-      .sort({ createdAt: -1 })
-      .limit(limit);
-    
-    console.log(`Found ${products.length} in-stock products with category: ${category || 'All'}, subCategory: ${subCategory || 'All'}`);
+    let products;
+    try {
+      products = await Product.find(query)
+        .sort({ createdAt: -1 })
+        .limit(limit);
+      
+      console.log(`Found ${products.length} in-stock products with category: ${category || 'All'}, subCategory: ${subCategory || 'All'}`);
+      
+      // Debug: Log some product details if we found any
+      if (products.length > 0) {
+        console.log('Sample products found:', products.slice(0, 3).map(p => ({
+          id: p._id,
+          name: p.productName,
+          category: p.category,
+          price: p.regularPrice
+        })));
+      } else {
+        console.log('No products found with the given criteria');
+        // Debug: Let's check what products exist in the database
+        const allProducts = await Product.find({}).limit(5);
+        console.log('Sample of all products in database:', allProducts.map(p => ({
+          id: p._id,
+          name: p.productName,
+          category: p.category
+        })));
+      }
+    } catch (productError) {
+      console.error('Error fetching products from database:', productError);
+      return NextResponse.json({ 
+        error: "Failed to fetch products from database",
+        details: productError instanceof Error ? productError.message : String(productError)
+      }, { 
+        status: 500,
+        headers: corsHeaders,
+      });
+    }
     
     // Transform products to customer format with discount information
     const customerProducts = products.map((item: ProductItem) => {
@@ -162,9 +227,24 @@ export async function GET(request: Request) {
       headers: corsHeaders,
     });
   } catch (error) {
-    console.error("Error fetching products:", error);
+    console.error("DETAILED ERROR fetching products:", {
+      error: error,
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      name: error instanceof Error ? error.name : undefined
+    });
+    
+    // Return more detailed error information in development
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    
     return NextResponse.json({ 
-      error: error instanceof Error ? error.message : "Failed to fetch products" 
+      error: error instanceof Error ? error.message : "Failed to fetch products",
+      ...(isDevelopment && {
+        details: {
+          stack: error instanceof Error ? error.stack : undefined,
+          name: error instanceof Error ? error.name : undefined
+        }
+      })
     }, { 
       status: 500,
       headers: corsHeaders,
