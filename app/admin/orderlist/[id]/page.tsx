@@ -57,6 +57,11 @@ interface Order {
   };
   status: string;
   paymentStatus: string;
+  coupon?: {
+    code: string;
+    discount: number;
+    description: string;
+  };
   metadata: {
     customerId: string;
   };
@@ -398,6 +403,14 @@ export default function OrderPage() {
                   <span>Subtotal:</span>
                   <span>${order.amount.subtotal.toFixed(2)}</span>
                 </div>
+              {order.coupon && order.coupon.code != null ? (
+                <div className="flex justify-between py-1">
+                  <span className="text-gray-600">Coupon (-{order.coupon?.discount}%)</span>
+                  <span className="text-gray-600">
+                    -${(order.amount.subtotal * (order.coupon?.discount ?? 0) / 100).toFixed(2)}
+                  </span>
+                </div>
+              ) : null}
                 <div className="flex justify-between text-sm md:text-base">
                   <span>Shipping Cost:</span>
                   <span>${order.amount.shippingCost}</span>
