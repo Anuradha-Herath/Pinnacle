@@ -2,19 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import Category from '@/models/Category';
 import cloudinary from '@/lib/cloudinary';
-
-// Connect to MongoDB using Mongoose
-const connectDB = async () => {
-  try {
-    if (mongoose.connection.readyState === 0) {
-      await mongoose.connect(process.env.MONGODB_URI!);
-      console.log('Connected to MongoDB via Mongoose');
-    }
-  } catch (error) {
-    console.error('MongoDB connection error:', error);
-    throw new Error('Failed to connect to database');
-  }
-};
+import connectDB from '@/lib/optimizedDB'; // Use optimized connection
 
 // Helper function to upload image to Cloudinary
 const uploadToCloudinary = async (imageData: string) => {

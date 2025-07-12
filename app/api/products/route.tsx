@@ -4,18 +4,7 @@ import Product from '@/models/Product';
 import Inventory from '@/models/Inventory';
 import Discount from '@/models/Discount'; // Add this import
 import cloudinary from "@/lib/cloudinary"; // Uncomment this for image uploads
-
-// Connect to MongoDB
-const connectDB = async () => {
-  try {
-    if (mongoose.connection.readyState === 0) {
-      await mongoose.connect(process.env.MONGODB_URI!);
-    }
-  } catch (error) {
-    console.error('MongoDB connection error:', error);
-    throw new Error('Failed to connect to database');
-  }
-};
+import connectDB from '@/lib/optimizedDB'; // Use optimized connection
 
 // Helper function to escape regex special characters
 const escapeRegex = (string: string) => {
