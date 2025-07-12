@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import Sidebar from "../../../components/Sidebar";
 import TopBar from "../../../components/TopBar";
 import { PhotoIcon } from "@heroicons/react/24/solid";
+import { adminCategoryCache } from "@/lib/adminCategoryCache";
+import { useRequestDeduplication } from "@/hooks/useRequestDeduplication";
 
 interface Category {
   _id: string;
@@ -21,6 +23,7 @@ export default function CategoryEdit() {
   const params = useParams();
   const id = params?.id as string;
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { deduplicatedFetch } = useRequestDeduplication();
   
   // Form state
   const [categoryTitle, setCategoryTitle] = useState("");
@@ -33,39 +36,56 @@ export default function CategoryEdit() {
   const [error, setError] = useState<string | null>(null);
   const [mainCategory, setMainCategory] = useState<string>("");
 
+  // Optimized fetch category data with caching
+  const fetchCategory = useCallback(async () => {
+    if (!id) return;
+    
+    const cacheKey = `admin_category_${id}`;
+    
+    try {
+      setLoading(true);
+      
+      // Check cache first
+      const cachedData = adminCategoryCache.get<Category>(cacheKey);
+      if (cachedData) {
+        populateForm(cachedData);
+        setLoading(false);
+        return;
+      }
+
+      const data = await deduplicatedFetch(`/api/categories/${id}`);
+      const category = data.category;
+      
+      // Cache the data
+      adminCategoryCache.set(cacheKey, category, 10 * 60 * 1000); // 10 minutes for individual categories
+      
+      populateForm(category);
+      
+    } catch (error) {
+      console.error("Error fetching category:", error);
+      setError(error instanceof Error ? error.message : "Failed to load category");
+    } finally {
+      setLoading(false);
+    }
+  }, [id, deduplicatedFetch]);
+
+  // Helper function to populate form with category data
+  const populateForm = useCallback((category: Category) => {
+    setCategoryTitle(category.title);
+    setDescription(category.description || "");
+    setPriceRange(category.priceRange || "");
+    // Handle mainCategory - convert array to string for select element
+    const mainCategoryValue = Array.isArray(category.mainCategory) 
+      ? category.mainCategory[0] || "" 
+      : category.mainCategory || "";
+    setMainCategory(mainCategoryValue);
+    setOriginalThumbnailUrl(category.thumbnailImage || null);
+  }, []);
+
   // Fetch category data
   useEffect(() => {
-    const fetchCategory = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch(`/api/categories/${id}`);
-        
-        if (!response.ok) {
-          throw new Error("Failed to fetch category");
-        }
-        
-        const data = await response.json();
-        const category = data.category;
-        
-        // Set form fields
-        setCategoryTitle(category.title);
-        setDescription(category.description || "");
-        setPriceRange(category.priceRange || "");
-        setMainCategory(category.mainCategory || "");
-        setOriginalThumbnailUrl(category.thumbnailImage || null);
-        
-      } catch (error) {
-        console.error("Error fetching category:", error);
-        setError(error instanceof Error ? error.message : "Failed to load category");
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    if (id) {
-      fetchCategory();
-    }
-  }, [id]);
+    fetchCategory();
+  }, [fetchCategory]);
 
   // Handle thumbnail image upload
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -110,6 +130,11 @@ export default function CategoryEdit() {
       
       // Success - redirect to category list
       alert('Category updated successfully!');
+      
+      // Invalidate relevant caches
+      adminCategoryCache.invalidate("admin_categories");
+      adminCategoryCache.invalidate(`admin_category_${id}`);
+      
       router.push("/admin/categorylist");
       
     } catch (error) {
@@ -140,6 +165,11 @@ export default function CategoryEdit() {
       
       // Success - redirect to category list
       alert('Category deleted successfully!');
+      
+      // Invalidate relevant caches
+      adminCategoryCache.invalidate("admin_categories");
+      adminCategoryCache.invalidate(`admin_category_${id}`);
+      
       router.push("/admin/categorylist");
       
     } catch (error) {

@@ -1,10 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar from "../../components/Sidebar";
 import TopBar from "../../components/TopBar";
 import { PencilIcon, TrashIcon, EyeIcon } from "@heroicons/react/24/solid";
+import { adminCategoryCache } from "@/lib/adminCategoryCache";
+import { useRequestDeduplication } from "@/hooks/useRequestDeduplication";
+import { usePerformanceMonitor } from "@/hooks/usePerformanceMonitor";
 
 interface Category {
   _id: string;
@@ -18,62 +21,81 @@ interface Category {
 
 export default function CategoryList() {
   const router = useRouter();
+  const { deduplicatedFetch } = useRequestDeduplication();
+  usePerformanceMonitor('CategoryList');
+  
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>("All"); // Add filter state
 
+  // Optimized fetch with caching and deduplication
+  const fetchCategories = useCallback(async (forceRefresh = false) => {
+    const cacheKey = "admin_categories";
+    
+    try {
+      setLoading(true);
+      
+      // Check cache first (unless force refresh)
+      if (!forceRefresh) {
+        const cachedData = adminCategoryCache.get<Category[]>(cacheKey);
+        if (cachedData) {
+          setCategories(cachedData);
+          setLoading(false);
+          
+          // If data is stale, fetch in background
+          if (adminCategoryCache.isStale(cacheKey)) {
+            fetchCategories(true).catch(console.error);
+          }
+          return;
+        }
+      }
+
+      const data = await deduplicatedFetch("/api/categories");
+      
+      if (data.categories) {
+        setCategories(data.categories);
+        // Cache the data
+        adminCategoryCache.set(cacheKey, data.categories, 5 * 60 * 1000); // 5 minutes
+      }
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+      setError(error instanceof Error ? error.message : "An unknown error occurred");
+    } finally {
+      setLoading(false);
+    }
+  }, [deduplicatedFetch]);
+
   // Fetch categories on component mount
   useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch("/api/categories");
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch categories");
-        }
-
-        const data = await response.json();
-        setCategories(data.categories);
-      } catch (error) {
-        console.error("Error fetching categories:", error);
-        setError(error instanceof Error ? error.message : "An unknown error occurred");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchCategories();
-  }, []);
+  }, [fetchCategories]);
+
+  // Memoized filtered categories to prevent unnecessary recalculations
+  const filteredCategories = useMemo(() => {
+    return filter === "All"
+      ? categories
+      : categories.filter(category => category.mainCategory.includes(filter));
+  }, [categories, filter]);
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10); // Show 10 inventory items per page
-  const [totalPages, setTotalPages] = useState(1);
-
-  // Update useEffect to calculate total pages when categories or filter changes
-  useEffect(() => {
-    // Calculate total pages based on filtered categories
-    const filtered = filter === "All" 
-      ? categories 
-      : categories.filter(category => category.mainCategory.includes(filter));
-    
-    setTotalPages(Math.ceil(filtered.length / itemsPerPage));
-  }, [categories, filter, itemsPerPage]);
-
-  // Get paginated categories
-  const getPaginatedCategories = () => {
-    // First filter the categories
-    const filtered = filter === "All"
-      ? categories
-      : categories.filter(category => category.mainCategory.includes(filter));
-    
-    // Then apply pagination
+  
+  // Memoized pagination calculations
+  const { totalPages, paginatedCategories } = useMemo(() => {
+    const totalPages = Math.ceil(filteredCategories.length / itemsPerPage);
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
-    return filtered.slice(startIndex, endIndex);
-  };
+    const paginatedCategories = filteredCategories.slice(startIndex, endIndex);
+    
+    return { totalPages, paginatedCategories };
+  }, [filteredCategories, currentPage, itemsPerPage]);
+
+  // Reset to first page when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter]);
 
   // Pagination control handlers
   const handlePreviousPage = () => {
@@ -102,6 +124,8 @@ export default function CategoryList() {
 
         // Remove the category from the list
         setCategories(categories.filter((category) => category._id !== id));
+        // Invalidate cache after deletion
+        adminCategoryCache.invalidate("admin_categories");
 
         alert("Category deleted successfully");
       } catch (error) {
@@ -110,14 +134,6 @@ export default function CategoryList() {
       }
     }
   };
-
-  // Get filtered categories - updated to handle array of categories
-  const filteredCategories = filter === "All"
-    ? categories
-    : categories.filter(category => category.mainCategory.includes(filter));
-
-  // Get the current page's categories
-  const paginatedCategories = getPaginatedCategories();
 
   return (
     <div className="flex">
