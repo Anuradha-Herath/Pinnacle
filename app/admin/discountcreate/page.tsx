@@ -6,6 +6,7 @@ import Sidebar from "../../components/Sidebar";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import TopBar from "@/app/components/TopBar";
+import { PLACEHOLDER_IMAGE, handleImageError } from "@/lib/imageUtils";
 
 interface Product {
   _id: string;
@@ -376,9 +377,7 @@ export default function DiscountCreate() {
                                       src={getProductImage(product)}
                                       alt={product.productName}
                                       className="object-cover h-full w-full"
-                                      onError={(e) => {
-                                        (e.target as HTMLImageElement).src = '/placeholder.png';
-                                      }}
+                                      onError={handleImageError}
                                     />
                                     {/* Add discount badge if product already has a discount */}
                                     {product.discountedPrice && (
@@ -514,7 +513,7 @@ export default function DiscountCreate() {
                                   const productImage =
                                     product.gallery && product.gallery.length > 0
                                       ? product.gallery[0].src
-                                      : "/placeholder.png";
+                                      : PLACEHOLDER_IMAGE;
 
                                   return (
                                     <div
@@ -531,9 +530,7 @@ export default function DiscountCreate() {
                                           src={productImage}
                                           alt={product.productName}
                                           className="h-full w-full object-contain"
-                                          onError={(e) => {
-                                            (e.target as HTMLImageElement).src = "/placeholder.png";
-                                          }}
+                                          onError={handleImageError}
                                         />
                                         {product.discountedPrice && (
                                           <div className="absolute top-0 right-0 bg-red-500 text-white text-xs px-2 py-1">
@@ -669,5 +666,5 @@ export default function DiscountCreate() {
 function getProductImage(product: Product): string {
   return product.gallery && product.gallery.length > 0
     ? product.gallery[0].src
-    : "/placeholder.png";
+    : PLACEHOLDER_IMAGE;
 }

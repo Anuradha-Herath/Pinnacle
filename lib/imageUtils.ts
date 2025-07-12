@@ -2,8 +2,8 @@
  * Utility functions for handling images and URLs
  */
 
-// Default placeholder image to use when images fail to load
-export const PLACEHOLDER_IMAGE = '/placeholder.png';
+// Default placeholder image to use when images fail to load (SVG data URL to avoid 404s)
+export const PLACEHOLDER_IMAGE = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="100" height="100" viewBox="0 0 100 100"%3E%3Crect width="100" height="100" fill="%23f3f4f6"/%3E%3Ctext x="50" y="50" text-anchor="middle" dy="0.3em" fill="%236b7280" font-family="Arial, sans-serif" font-size="12"%3ENo Image%3C/text%3E%3C/svg%3E';
 
 /**
  * Validates an image URL
@@ -16,10 +16,12 @@ export const isValidImageUrl = (url: string): boolean => {
   
   // Check for known valid image paths
   const validBasePaths = ['/p1.webp', '/p2.webp', '/p3.webp', '/p4.webp', 
-                        '/p5.webp', '/p6.webp', '/p7.webp', '/p8.webp', '/p9.webp',
-                        '/placeholder.png'];
+                        '/p5.webp', '/p6.webp', '/p7.webp', '/p8.webp', '/p9.webp'];
   
   if (validBasePaths.includes(url)) return true;
+  
+  // Allow data URLs for SVG placeholders
+  if (url.startsWith('data:image/svg+xml')) return true;
   
   // Path starts with '/' and has a valid image extension
   if (url.startsWith('/') && 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { 
   PlusIcon, 
@@ -13,6 +13,9 @@ import TopBar from "../../components/TopBar";
 import Pagination from "@/app/components/Pagination";
 import Card from "@/app/components/Card";
 import DiscountTableBody from "@/app/components/DiscountTableBody";
+import { PLACEHOLDER_IMAGE } from "@/lib/imageUtils";
+
+// Remove the duplicate constant since we're importing it
 
 
 export default function DiscountList() {
@@ -203,255 +206,235 @@ export default function DiscountList() {
   }, []);
 
   // Optimized fetch for product/category details - with rate limiting and error handling
-  useEffect(() => {
+  const fetchItemDetails = useCallback(async () => {
     if (!discounts || discounts.length === 0) return;
     
-    // Use a ref to track if component is still mounted
-    let isMounted = true;
+    // Set a maximum number of items to fetch at once to prevent too many requests
+    const MAX_CONCURRENT_FETCHES = 5;
     
-    const fetchItemDetails = async () => {
-      // Set a maximum number of items to fetch at once to prevent too many requests
-      const MAX_CONCURRENT_FETCHES = 5;
+    // Ensure we have a valid cache object
+    const safeCache = itemDetailsCache || {};
+    
+    try {
+      // Filter to only fetch items we don't already have in cache
+      const uncachedProductIds = discounts
+        .filter((discount: Discount) => 
+          discount.type === 'Product' && 
+          discount.product && 
+          discount.product !== 'undefined' &&
+          discount.product !== 'null' &&
+          !safeCache[discount.product]
+        )
+        .map((discount: Discount) => discount.product)
+        // Remove duplicates
+        .filter((id: string, index: number, self: string[]) => self.indexOf(id) === index);
       
-      // Ensure we have a valid cache object
-      const safeCache = itemDetailsCache || {};
+      const uncachedCategoryIds = discounts
+        .filter((discount: Discount) => 
+          discount.type === 'Category' && 
+          discount.product && 
+          discount.product !== 'undefined' &&
+          discount.product !== 'null' &&
+          !safeCache[discount.product]
+        )
+        .map((discount: Discount) => discount.product)
+        // Remove duplicates
+        .filter((id: string, index: number, self: string[]) => self.indexOf(id) === index);
       
-      try {
-        // Filter to only fetch items we don't already have in cache
-        const uncachedProductIds = discounts
-          .filter((discount: Discount) => 
-            discount.type === 'Product' && 
-            discount.product && 
-            discount.product !== 'undefined' &&
-            discount.product !== 'null' &&
-            !safeCache[discount.product]
-          )
-          .map((discount: Discount) => discount.product)
-          // Remove duplicates
-          .filter((id: string, index: number, self: string[]) => self.indexOf(id) === index);
+      // If nothing new to fetch, exit early
+      if (uncachedProductIds.length === 0 && uncachedCategoryIds.length === 0) {
+        setItemDetails(safeCache);
+        return;
+      }
+      
+      // Limit the number of IDs we fetch at once
+      const limitedProductIds = uncachedProductIds.slice(0, MAX_CONCURRENT_FETCHES);
+      const limitedCategoryIds = uncachedCategoryIds.slice(0, MAX_CONCURRENT_FETCHES);
+      
+      // Mark items as loading
+      setLoadingItems(new Set([...limitedProductIds, ...limitedCategoryIds]));
+      
+      // Helper function to fetch with timeout
+      const fetchWithTimeout = async (url: string, options = {}) => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
         
-        const uncachedCategoryIds = discounts
-          .filter((discount: Discount) => 
-            discount.type === 'Category' && 
-            discount.product && 
-            discount.product !== 'undefined' &&
-            discount.product !== 'null' &&
-            !safeCache[discount.product]
-          )
-          .map((discount: Discount) => discount.product)
-          // Remove duplicates
-          .filter((id: string, index: number, self: string[]) => self.indexOf(id) === index);
-        
-        // If nothing new to fetch, exit early
-        if (uncachedProductIds.length === 0 && uncachedCategoryIds.length === 0) {
-          if (isMounted) {
-            setItemDetails(safeCache);
-          }
-          return;
+        try {
+          const response = await fetch(url, { 
+            ...options,
+            signal: controller.signal 
+          });
+          clearTimeout(timeoutId);
+          return response;
+        } catch (err) {
+          clearTimeout(timeoutId);
+          throw err;
         }
-        
-        // Limit the number of IDs we fetch at once
-        const limitedProductIds = uncachedProductIds.slice(0, MAX_CONCURRENT_FETCHES);
-        const limitedCategoryIds = uncachedCategoryIds.slice(0, MAX_CONCURRENT_FETCHES);
-        
-        // Mark items as loading
-        if (isMounted) {
-          setLoadingItems(new Set([...limitedProductIds, ...limitedCategoryIds]));
-        }
-        
-        // Helper function to fetch with timeout
-        const fetchWithTimeout = async (url: string, options = {}) => {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 5000);
+      };
+      
+      // Fetch product details with rate limiting
+      let newProductDetails = {} as Record<string, ItemDetails>;
+      if (limitedProductIds.length > 0) {
+        // Process in batches of 2 to prevent overwhelming the server
+        for (let i = 0; i < limitedProductIds.length; i += 2) {
+          const batchIds = limitedProductIds.slice(i, i + 2);
           
-          try {
-            const response = await fetch(url, { 
-              ...options,
-              signal: controller.signal 
-            });
-            clearTimeout(timeoutId);
-            return response;
-          } catch (err) {
-            clearTimeout(timeoutId);
-            throw err;
-          }
-        };
-        
-        // Fetch product details with rate limiting
-        let newProductDetails = {} as Record<string, ItemDetails>;
-        if (limitedProductIds.length > 0) {
-          // Process in batches of 2 to prevent overwhelming the server
-          for (let i = 0; i < limitedProductIds.length; i += 2) {
-            const batchIds = limitedProductIds.slice(i, i + 2);
+          const productPromises = batchIds.map(async (productId: string) => {
+            if (!productId) return null;
             
-            const productPromises = batchIds.map(async (productId: string) => {
-              if (!productId) return null;
+            try {
+              const response = await fetchWithTimeout(`/api/products/${productId}`);
               
-              try {
-                const response = await fetchWithTimeout(`/api/products/${productId}`);
-                
-                if (response.ok) {
-                  const data = await response.json();
-                  if (data.product) {
-                    const galleryImage = data.product.gallery && data.product.gallery.length > 0
-                      ? data.product.gallery[0].src
-                      : "/placeholder.png";
-                      
-                    return {
-                      id: productId,
-                      details: {
-                        id: data.product._id || productId,
-                        name: data.product.productName || 'Unknown Product',
-                        image: galleryImage
-                      }
-                    };
-                  }
-                } else {
-                  // Create placeholder data for failed fetches
+              if (response.ok) {
+                const data = await response.json();
+                if (data.product) {
+                  const galleryImage = data.product.gallery && data.product.gallery.length > 0
+                    ? data.product.gallery[0].src
+                    : PLACEHOLDER_IMAGE;
+                    
                   return {
                     id: productId,
                     details: {
-                      id: productId,
-                      name: 'Product ID: ' + productId.substring(0, 8) + '...',
-                      image: "/placeholder.png"
+                      id: data.product._id || productId,
+                      name: data.product.productName || 'Unknown Product',
+                      image: galleryImage
                     }
                   };
                 }
-                return null;
-              } catch (err) {
-                console.warn(`Error fetching product ${productId}:`, err);
-                // Return placeholder data to avoid continually trying to fetch
+              } else {
+                // Create placeholder data for failed fetches
                 return {
                   id: productId,
                   details: {
                     id: productId,
                     name: 'Product ID: ' + productId.substring(0, 8) + '...',
-                    image: "/placeholder.png"
+                    image: PLACEHOLDER_IMAGE
                   }
                 };
               }
-            });
-            
-            const batchResults = await Promise.all(productPromises);
-            const batchDetails = batchResults
-              .filter(result => result !== null)
-              .reduce((acc, result) => {
-                if (result) acc[result.id] = result.details;
-                return acc;
-              }, {} as Record<string, ItemDetails>);
-              
-            newProductDetails = { ...newProductDetails, ...batchDetails };
-            
-            // Add small delay between batches
-            if (i + 2 < limitedProductIds.length) {
-              await new Promise(resolve => setTimeout(resolve, 300));
+              return null;
+            } catch (err) {
+              console.warn(`Error fetching product ${productId}:`, err);
+              // Return placeholder data to avoid continually trying to fetch
+              return {
+                id: productId,
+                details: {
+                  id: productId,
+                  name: 'Product ID: ' + productId.substring(0, 8) + '...',
+                  image: PLACEHOLDER_IMAGE
+                }
+              };
             }
-          }
+          });
           
-          // Update cache with new product details if component still mounted
-          if (isMounted) {
-            setItemDetailsCache(prev => ({...prev, ...newProductDetails}));
+          const batchResults = await Promise.all(productPromises);
+          const batchDetails = batchResults
+            .filter(result => result !== null)
+            .reduce((acc, result) => {
+              if (result) acc[result.id] = result.details;
+              return acc;
+            }, {} as Record<string, ItemDetails>);
+            
+          newProductDetails = { ...newProductDetails, ...batchDetails };
+          
+          // Add small delay between batches
+          if (i + 2 < limitedProductIds.length) {
+            await new Promise(resolve => setTimeout(resolve, 300));
           }
         }
         
-        // Fetch category details with rate limiting
-        let newCategoryDetails = {} as Record<string, ItemDetails>;
-        if (limitedCategoryIds.length > 0) {
-          // Process in batches of 2
-          for (let i = 0; i < limitedCategoryIds.length; i += 2) {
-            const batchIds = limitedCategoryIds.slice(i, i + 2);
+        // Update cache with new product details
+        setItemDetailsCache(prev => ({...prev, ...newProductDetails}));
+      }
+      
+      // Fetch category details with rate limiting
+      let newCategoryDetails = {} as Record<string, ItemDetails>;
+      if (limitedCategoryIds.length > 0) {
+        // Process in batches of 2
+        for (let i = 0; i < limitedCategoryIds.length; i += 2) {
+          const batchIds = limitedCategoryIds.slice(i, i + 2);
+          
+          const categoryPromises = batchIds.map(async (categoryId: string) => {
+            if (!categoryId) return null;
             
-            const categoryPromises = batchIds.map(async (categoryId: string) => {
-              if (!categoryId) return null;
+            try {
+              const response = await fetchWithTimeout(`/api/categories/${categoryId}`);
               
-              try {
-                const response = await fetchWithTimeout(`/api/categories/${categoryId}`);
-                
-                if (response.ok) {
-                  const data = await response.json();
-                  if (data.category) {
-                    return {
-                      id: categoryId,
-                      details: {
-                        id: data.category._id || categoryId,
-                        name: data.category.title || 'Unknown Category',
-                        image: data.category.thumbnailImage || "/placeholder.png"
-                      }
-                    };
-                  }
-                } else {
-                  // Create placeholder data for failed fetches
+              if (response.ok) {
+                const data = await response.json();
+                if (data.category) {
                   return {
                     id: categoryId,
                     details: {
-                      id: categoryId,
-                      name: 'Category ID: ' + categoryId.substring(0, 8) + '...',
-                      image: "/placeholder.png"
+                      id: data.category._id || categoryId,
+                      name: data.category.title || 'Unknown Category',
+                      image: data.category.thumbnailImage || PLACEHOLDER_IMAGE
                     }
                   };
                 }
-                return null;
-              } catch (err) {
-                console.warn(`Error fetching category ${categoryId}:`, err);
-                // Return placeholder data to avoid continually trying to fetch
+              } else {
+                // Create placeholder data for failed fetches
                 return {
                   id: categoryId,
                   details: {
                     id: categoryId,
                     name: 'Category ID: ' + categoryId.substring(0, 8) + '...',
-                    image: "/placeholder.png"
+                    image: PLACEHOLDER_IMAGE
                   }
                 };
               }
-            });
-            
-            const batchResults = await Promise.all(categoryPromises);
-            const batchDetails = batchResults
-              .filter(result => result !== null)
-              .reduce((acc, result) => {
-                if (result) acc[result.id] = result.details;
-                return acc;
-              }, {} as Record<string, ItemDetails>);
-              
-            newCategoryDetails = { ...newCategoryDetails, ...batchDetails };
-            
-            // Add small delay between batches
-            if (i + 2 < limitedCategoryIds.length) {
-              await new Promise(resolve => setTimeout(resolve, 300));
+              return null;
+            } catch (err) {
+              console.warn(`Error fetching category ${categoryId}:`, err);
+              // Return placeholder data to avoid continually trying to fetch
+              return {
+                id: categoryId,
+                details: {
+                  id: categoryId,
+                  name: 'Category ID: ' + categoryId.substring(0, 8) + '...',
+                  image: PLACEHOLDER_IMAGE
+                }
+              };
             }
-          }
+          });
           
-          // Update cache with new category details if component still mounted
-          if (isMounted) {
-            setItemDetailsCache(prev => ({...prev, ...newCategoryDetails}));
+          const batchResults = await Promise.all(categoryPromises);
+          const batchDetails = batchResults
+            .filter(result => result !== null)
+            .reduce((acc, result) => {
+              if (result) acc[result.id] = result.details;
+              return acc;
+            }, {} as Record<string, ItemDetails>);
+            
+          newCategoryDetails = { ...newCategoryDetails, ...batchDetails };
+          
+          // Add small delay between batches
+          if (i + 2 < limitedCategoryIds.length) {
+            await new Promise(resolve => setTimeout(resolve, 300));
           }
         }
         
-        // Combine all fetched details and update the main state if component still mounted
-        if (isMounted) {
-          const allNewDetails = { ...newProductDetails, ...newCategoryDetails };
-          setItemDetails(prev => ({...prev, ...allNewDetails}));
-          setLoadingItems(new Set());
-        }
-      } catch (error) {
-        console.error("Error in fetchItemDetails:", error);
-        if (isMounted) {
-          setLoadingItems(new Set());
-        }
+        // Update cache with new category details
+        setItemDetailsCache(prev => ({...prev, ...newCategoryDetails}));
       }
-    };
-    
-    // Set itemDetails from cache immediately while we fetch new data
+      
+      // Combine all fetched details and update the main state
+      const allNewDetails = { ...newProductDetails, ...newCategoryDetails };
+      setItemDetails(prev => ({...prev, ...allNewDetails}));
+      setLoadingItems(new Set());
+    } catch (error) {
+      console.error("Error in fetchItemDetails:", error);
+      setLoadingItems(new Set());
+    }
+  }, [discounts, itemDetailsCache]);
+
+  useEffect(() => {
+    // Set itemDetails from cache immediately
     setItemDetails(itemDetailsCache);
     
     // Then fetch any missing details
     fetchItemDetails();
-    
-    // Cleanup function to handle unmounting
-    return () => {
-      isMounted = false;
-    };
-  }, [discounts, itemDetailsCache, setItemDetailsCache, setItemDetails, setLoadingItems]);
+  }, [itemDetailsCache, fetchItemDetails]);
 
   // Apply pagination when filtered discounts or page changes
   useEffect(() => {
