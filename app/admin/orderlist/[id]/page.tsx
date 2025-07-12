@@ -43,7 +43,7 @@ interface Order {
   shipping: {
     deliveryMethod: string;
     address?: {
-      country: string;
+      district: string;
       address: string;
       city: string;
       postalCode: string;
@@ -446,7 +446,7 @@ export default function OrderPage() {
                     {order.shipping.address.city},{" "}
                     {order.shipping.address.postalCode}
                     <br />
-                    {order.shipping.address.country}
+                    {order.shipping.address.district}
                   </p>
                 </>
               ) : (

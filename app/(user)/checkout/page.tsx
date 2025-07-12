@@ -32,7 +32,7 @@ function Checkout() {
     email: "",
     emailOffers: false,
     deliveryMethod: "ship",
-    country: "",
+    district: "",
     firstName: "",
     lastName: "",
     address: "",
@@ -361,24 +361,49 @@ function Checkout() {
                     <div className="space-y-4">
                       <div>
                         <label
-                          htmlFor="country"
+                          htmlFor="district"
                           className="block text-sm font-medium text-gray-700 mb-1"
                         >
-                          Country/Region
+                          District
                         </label>
                         <select
-                          id="country"
-                          name="country"
-                          value={formData.country}
+                          id="district"
+                          name="district"
+                          value={formData.district}
                           onChange={handleInputChange}
                           className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-black focus:outline-none"
                           required={shipping === "ship"}
                         >
-                          <option value="">Select Country</option>
-                          <option value="IN">India</option>
+                          <option value="">Select District</option>
+                          {/* <option value="IN">India</option>
                           <option value="US">United States</option>
                           <option value="UK">United Kingdom</option>
-                          <option value="CA">Canada</option>
+                          <option value="CA">Canada</option> */}
+                          <option value="Jaffna">Jaffna</option>
+                          <option value="Kilinochchi">Kilinochchi</option>
+                          <option value="Mannar">Mannar</option>
+                          <option value="Mullaitivu">Mullaitivu</option>
+                          <option value="Vavuniya">Vavuniya</option>
+                          <option value="Kurunegala">Kurunegala</option>
+                          <option value="Puttalam">Puttalam</option>
+                          <option value="Colombo">Colombo</option>
+                          <option value="Gampaha">Gampaha</option>
+                          <option value="Kalutara">Kalutara</option>
+                          <option value="Anuradhapura">Anuradhapura</option>
+                          <option value="Polonnaruwa">Polonnaruwa</option>
+                          <option value="Kandy">Kandy</option>
+                          <option value="Matale">Matale</option>
+                          <option value="Nuwara Eliya">Nuwara Eliya</option>
+                          <option value="Kegalle">Kegalle</option>
+                          <option value="Ratnapura">Ratnapura</option>
+                          <option value="Ampara">Ampara</option>
+                          <option value="Batticaloa">Batticaloa</option>
+                          <option value="Trincomalee">Trincomalee</option>
+                          <option value="Badulla">Badulla</option>
+                          <option value="Monaragala">Monaragala</option>
+                          <option value="Galle">Galle</option>
+                          <option value="Hambantota">Hambantota</option>
+                          <option value="Matara">Matara</option>
                         </select>
                       </div>
 
@@ -556,8 +581,8 @@ function Checkout() {
                           placeholder="We'll contact you when your order is ready"
                         />
                         <p className="mt-1 text-xs text-gray-500">
-                          We'll send you a email when your order is ready
-                          for pickup
+                          We'll send you a email when your order is ready for
+                          pickup
                         </p>
                       </div>
                     </div>
@@ -601,8 +626,9 @@ function Checkout() {
                         <span className="font-medium text-green-600">Free</span>
                       </div>
                       <p className="text-xs sm:text-sm text-gray-500 ml-6">
-                        Pick up your order at our flagship store. Please bring 
-                        valid e-receipt ,we sent to your e-mail for verification.
+                        Pick up your order at our flagship store. Please bring
+                        valid e-receipt ,we sent to your e-mail for
+                        verification.
                       </p>
                       <div className="mt-3 ml-6 p-3 bg-gray-100 rounded-md">
                         <p className="text-xs sm:text-sm font-medium">
@@ -666,7 +692,9 @@ function Checkout() {
                         />
                       </div>
                       <div className="flex-grow min-w-0">
-                        <p className="font-medium text-gray-900 truncate">{item.name}</p>
+                        <p className="font-medium text-gray-900 truncate">
+                          {item.name}
+                        </p>
                         <div className="mt-1 text-xs sm:text-sm text-gray-500 space-y-1 break-words">
                           {item.color && (
                             <p>Color: {getDisplayColorName(item.color)}</p>
@@ -718,7 +746,7 @@ function Checkout() {
                     disabled={!!couponData || isApplyingCoupon}
                   />
                   {couponData ? (
-                    <button 
+                    <button
                       onClick={removeCoupon}
                       type="button"
                       className="px-4 py-3 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium rounded-md transition"
@@ -726,7 +754,7 @@ function Checkout() {
                       Remove
                     </button>
                   ) : (
-                    <button 
+                    <button
                       onClick={validateCoupon}
                       type="button"
                       disabled={isApplyingCoupon}
@@ -742,7 +770,8 @@ function Checkout() {
                 {couponData && (
                   <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded-md">
                     <p className="text-sm text-green-700">
-                      <span className="font-medium">{couponData.code}</span>: {couponData.description}
+                      <span className="font-medium">{couponData.code}</span>:{" "}
+                      {couponData.description}
                     </p>
                   </div>
                 )}
@@ -757,7 +786,9 @@ function Checkout() {
                 </div>
                 {couponData && (
                   <div className="flex justify-between py-1">
-                    <span className="text-gray-600">Discount ({couponData.discount}%)</span>
+                    <span className="text-gray-600">
+                      Discount ({couponData.discount}%)
+                    </span>
                     <span className="font-medium text-green-600">
                       -${couponData.discountAmount.toFixed(2)}
                     </span>

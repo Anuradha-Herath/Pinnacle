@@ -71,7 +71,7 @@ const OrderSchema = new Schema({
       required: true,
     },
     address: {
-      country: String,
+      district: String,
       address: String,
       city: String,
       postalCode: String,
