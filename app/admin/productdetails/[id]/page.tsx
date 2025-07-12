@@ -5,6 +5,8 @@ import TopBar from "../../../components/TopBar";
 import Sidebar from "../../../components/Sidebar";
 import { XIcon } from "lucide-react";
 
+import { deduplicateRequest } from '@/lib/apiUtils';
+
 interface ProductData {
   _id: string;
   productName: string;
@@ -56,20 +58,24 @@ export default function ProductDetails() {
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        // Fetch product data
-        const productResponse = await fetch(`/api/products/${id}`);
-        if (!productResponse.ok) {
+        
+        // Use Promise.all to fetch both data in parallel with deduplication
+        const [productData, inventoryData] = await Promise.all([
+          deduplicateRequest(`/api/products/${id}`),
+          deduplicateRequest(`/api/inventory/product/${id}`).catch(() => null) // Don't fail if inventory doesn't exist
+        ]);
+
+        const productResult = productData as any;
+        const inventoryResult = inventoryData as any;
+
+        if (!productResult?.product) {
           throw new Error("Failed to fetch product");
         }
-        const productData = await productResponse.json();
 
-        setProduct(productData.product);
-
-        // Fetch inventory data using product ID
-        const inventoryResponse = await fetch(`/api/inventory/product/${productData.product._id}`);
-        if (inventoryResponse.ok) {
-          const inventoryData = await inventoryResponse.json();
-          setInventory(inventoryData.inventory);
+        setProduct(productResult.product);
+        
+        if (inventoryResult?.inventory) {
+          setInventory(inventoryResult.inventory);
         }
       } catch (err) {
         console.error("Error fetching data:", err);

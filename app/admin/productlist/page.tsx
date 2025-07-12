@@ -6,6 +6,8 @@ import TopBar from '../../components/TopBar';
 import { useRouter } from 'next/navigation';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/solid';
 
+import { deduplicateRequest } from '@/lib/apiUtils';
+
 interface Product {
   _id: string;
   productName: string;
@@ -43,14 +45,12 @@ const [filter, setFilter] = useState('All'); // Add state for filter
       setLoading(true);
       // Include the search query in the API call if it exists
       const queryParam = query ? `&q=${encodeURIComponent(query)}` : '';
-const categoryParam = category && category !== 'All' ? `&category=${encodeURIComponent(category)}` : '';
-      const response = await fetch(`/api/products?page=${page}&limit=${itemsPerPage}${queryParam}${categoryParam}`);
+      const categoryParam = category && category !== 'All' ? `&category=${encodeURIComponent(category)}` : '';
+      const url = `/api/products?page=${page}&limit=${itemsPerPage}${queryParam}${categoryParam}`;
       
-      if (!response.ok) {
-        throw new Error('Failed to fetch products');
-      }
+      // Use deduplicated request to prevent duplicate API calls
+      const data: any = await deduplicateRequest(url);
       
-      const data = await response.json();
       setProducts(data.products);
       setTotalPages(data.pagination.pages);
     } catch (err) {
@@ -84,12 +84,10 @@ const categoryParam = category && category !== 'All' ? `&category=${encodeURICom
     const fetchSuggestions = async () => {
       if (searchQuery.length >= 2) {
         try {
-          const response = await fetch(`/api/search/suggestions?q=${encodeURIComponent(searchQuery)}&limit=5`);
-          if (response.ok) {
-            const data = await response.json();
-            setSuggestions(data.suggestions);
-            setShowSuggestions(true);
-          }
+          const url = `/api/search/suggestions?q=${encodeURIComponent(searchQuery)}&limit=5`;
+          const data: any = await deduplicateRequest(url);
+          setSuggestions(data.suggestions);
+          setShowSuggestions(true);
         } catch (error) {
           console.error('Error fetching suggestions:', error);
         }

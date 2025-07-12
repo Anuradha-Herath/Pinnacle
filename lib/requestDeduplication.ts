@@ -6,7 +6,7 @@ interface PendingRequest {
 
 class RequestDeduplicator {
   private pendingRequests = new Map<string, PendingRequest>();
-  private readonly REQUEST_TIMEOUT = 2000; // 2 seconds
+  private readonly REQUEST_TIMEOUT = 5000; // Increased to 5 seconds for better deduplication
 
   async deduplicate<T>(key: string, requestFn: () => Promise<T>): Promise<T> {
     // Clean up expired requests

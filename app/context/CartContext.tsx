@@ -5,7 +5,8 @@ import { useAuth } from "./AuthContext";
 import { toast } from "react-hot-toast";
 import { getValidImageUrl } from "@/lib/imageUtils"; 
 import { trackProductAction } from '@/lib/userPreferenceService';
-import { deduplicatedFetch } from '@/lib/requestDeduplication';
+import { deduplicateRequest } from '@/lib/apiUtils';
+import { usePathname } from 'next/navigation';
 
 // Define types
 export interface CartItem {
@@ -51,9 +52,19 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isLoading, setIsLoading] = useState(false);
   const [isClearing, setIsClearing] = useState(false); // New flag to track clearing state
   const { user } = useAuth();
+  const pathname = usePathname();
+  
+  // Check if we're on an admin page - avoid cart loading for admin pages
+  const isAdminPage = pathname?.startsWith('/admin');
   
   // Load cart from localStorage or API when component mounts or user changes
   useEffect(() => {
+    // Skip cart loading for admin pages to improve performance
+    if (isAdminPage) {
+      setInitialized(true);
+      return;
+    }
+    
     // Don't reload cart if we're in the process of clearing it
     if (isClearing) {
       console.log("Skipping cart reload because cart is being cleared");
@@ -67,7 +78,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           // User is logged in, fetch cart from API with deduplication
           console.log("Fetching cart from server for user:", user.id);
           try {
-            const data = await deduplicatedFetch('/api/user/cart');
+            const data: any = await deduplicateRequest('/api/user/cart');
             if (data.success && data.cart) {
               console.log("Successfully loaded cart from server with", data.cart.length, "items");
               // Convert API cart format to our CartItem format with validated images
@@ -128,11 +139,14 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     loadCart();
-  }, [user, isClearing]);
+  }, [user, isClearing, isAdminPage]);
 
   // Save cart to localStorage and API when it changes - DEBOUNCED
   useEffect(() => {
     if (!initialized) return;
+    
+    // Skip API calls for admin pages
+    if (isAdminPage) return;
     
     // Always save to localStorage (for guest users and as backup)
     localStorage.setItem('cart', JSON.stringify(cart));
@@ -168,7 +182,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       return () => clearTimeout(timeoutId);
     }
-  }, [cart, user, initialized]);
+  }, [cart, user, initialized, isAdminPage]);
 
   // Helper function to generate a unique key for cart items
   const getItemKey = (id: string, size?: string, color?: string): string => {

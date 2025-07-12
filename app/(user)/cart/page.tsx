@@ -171,17 +171,17 @@ const CartPage = () => {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm text-gray-900">
-                              {item.discountedPrice !== undefined ? (
+                              {item.discountedPrice !== undefined && item.discountedPrice !== null ? (
                                 <>
                                   <span className="line-through text-gray-500 mr-2">
-                                    ${item.price.toFixed(2)}
+                                    ${(item.price || 0).toFixed(2)}
                                   </span>
                                   <span className="text-red-600 font-medium">
-                                    ${item.discountedPrice.toFixed(2)}
+                                    ${(item.discountedPrice || 0).toFixed(2)}
                                   </span>
                                 </>
                               ) : (
-                                <>${item.price.toFixed(2)}</>
+                                <>${(item.price || 0).toFixed(2)}</>
                               )}
                             </div>
                           </td>
@@ -220,10 +220,10 @@ const CartPage = () => {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="text-sm text-gray-900">
-                              {item.discountedPrice !== undefined ? (
-                                <>${(item.discountedPrice * item.quantity).toFixed(2)}</>
+                              {item.discountedPrice !== undefined && item.discountedPrice !== null ? (
+                                <>${((item.discountedPrice || 0) * item.quantity).toFixed(2)}</>
                               ) : (
-                                <>${(item.price * item.quantity).toFixed(2)}</>
+                                <>${((item.price || 0) * item.quantity).toFixed(2)}</>
                               )}
                             </div>
                           </td>
@@ -254,7 +254,7 @@ const CartPage = () => {
                 <div className="space-y-4">
                   <div className="flex justify-between">
                     <span>Subtotal</span>
-                    <span>${cartTotal.toFixed(2)}</span>
+                    <span>${(cartTotal || 0).toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span>Shipping</span>
@@ -266,7 +266,7 @@ const CartPage = () => {
                   </div>
                   <div className="border-t pt-4 flex justify-between font-medium">
                     <span>Total</span>
-                    <span>${cartTotal.toFixed(2)}</span>
+                    <span>${(cartTotal || 0).toFixed(2)}</span>
                   </div>
                 </div>
                 

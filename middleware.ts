@@ -2,8 +2,10 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+  
   // Handle CORS for all API routes to fix Edge browser issues
-  if (request.nextUrl.pathname.startsWith('/api/')) {
+  if (pathname.startsWith('/api/')) {
     // Handle preflight requests
     if (request.method === 'OPTIONS') {
       return new NextResponse(null, {
@@ -18,13 +20,13 @@ export function middleware(request: NextRequest) {
     }
 
     // Special handling for webhook routes
-    if (request.nextUrl.pathname === '/api/webhook') {
+    if (pathname === '/api/webhook') {
       // Pass through the request without any modifications
       // This ensures the raw body is preserved for Stripe signature verification
       return NextResponse.next();
     }
 
-    // Add CORS headers to API responses
+    // Add performance headers for API responses
     const response = NextResponse.next();
     response.headers.set('Access-Control-Allow-Origin', '*');
     response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
