@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import Sidebar from "../../../components/Sidebar";
 import TopBar from "../../../components/TopBar";
 import AdminProductCart from "../../../components/AdminProductCard";
 import { PencilIcon, EyeIcon, TrashIcon } from "@heroicons/react/24/solid";
+import { adminCategoryCache } from "@/lib/adminCategoryCache";
+import { useRequestDeduplication } from "@/hooks/useRequestDeduplication";
 
 interface Category {
   _id: string;

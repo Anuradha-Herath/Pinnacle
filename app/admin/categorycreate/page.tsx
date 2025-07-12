@@ -81,6 +81,13 @@ export default function CategoryCreate() {
       
       // Success - redirect to category list
       alert('Category created successfully!');
+      
+      // Invalidate cache to refresh category list
+      if (typeof window !== 'undefined') {
+        const { adminCategoryCache } = await import("@/lib/adminCategoryCache");
+        adminCategoryCache.invalidate("admin_categories");
+      }
+      
       router.push("/admin/categorylist");
       
     } catch (error) {
