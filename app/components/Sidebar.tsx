@@ -15,6 +15,7 @@ import { BiCategoryAlt } from "react-icons/bi";
 import { RiCoupon3Line } from "react-icons/ri";
 import { CgProfile } from "react-icons/cg";
 import { TbDiscount } from "react-icons/tb";
+import { BarChartIcon } from "lucide-react";
 
 const Sidebar: React.FC = () => {
     // Use useState with an explicit boolean type to avoid hydration issues
@@ -129,6 +130,12 @@ const Sidebar: React.FC = () => {
                         <NavLink href="/admin/adminprofile">
                             <CgProfile className="text-xl w-6 flex-shrink-0" />
                             {!collapsed && <span className="ml-2">Profile</span>}
+                        </NavLink>
+                    </li>
+                    <li>
+                        <NavLink href="/admin/salesreport">
+                            <BarChartIcon className="text-xl w-6 flex-shrink-0" />
+                            {!collapsed && <span className="ml-2">Sales Report</span>}
                         </NavLink>
                     </li>
                     <li>
