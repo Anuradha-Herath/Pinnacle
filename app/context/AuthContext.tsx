@@ -46,7 +46,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [error, setError] = useState<string | null>(null);
   const [lastSyncTime, setLastSyncTime] = useState<number>(0);
   const pathname = usePathname();
-  const { data: session } = useSession();
+  const { data: session, status: sessionStatus } = useSession();
   
   // Check if we're on an admin page
   const isAdminPage = pathname?.startsWith('/admin');
@@ -57,25 +57,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     checkAuth();
   }, []);
 
-  // Check for NextAuth session on component mount
+  // Effect to sync NextAuth session with Auth context
   useEffect(() => {
-    if (session && session.user) {
-      // If we have a NextAuth session but no JWT login
-      if (!user) {
-        // Use the session to set our user state
+    const syncNextAuthSession = async () => {
+      if (sessionStatus === 'authenticated' && session?.user && !user) {
+        console.log('NextAuth session detected, syncing with Auth context', session.user);
+        
+        // Set user state from NextAuth session
         setUser({
-          id: session.user.id,
+          id: session.user.id || '',
           firstName: session.user.name?.split(' ')[0] || '',
           lastName: session.user.name?.split(' ').slice(1).join(' ') || '',
           email: session.user.email || '',
           role: session.user.role || 'user',
         });
         
-        // Set loading false
         setLoading(false);
       }
-    }
-  }, [session, user]);
+    };
+    
+    syncNextAuthSession();
+  }, [session, sessionStatus, user]);
   
   // Sync user data from local storage to server on login
   const syncUserData = async (): Promise<void> => {
