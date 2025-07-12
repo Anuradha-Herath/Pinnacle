@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
         !requestBody.address ||
         !requestBody.city ||
         !requestBody.postalCode ||
-        !requestBody.country
+        !requestBody.district
       ) {
         return NextResponse.json(
           { error: "Missing required shipping information" },
@@ -203,7 +203,7 @@ export async function POST(request: NextRequest) {
         address:
           requestBody.deliveryMethod === "ship"
             ? {
-                country: requestBody.country,
+                district: requestBody.district,
                 address: requestBody.address,
                 city: requestBody.city,
                 postalCode: requestBody.postalCode,
