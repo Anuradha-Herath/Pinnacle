@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { EyeIcon, PencilIcon, TrashIcon, BellIcon, Cog6ToothIcon, ClockIcon, PlusIcon } from "@heroicons/react/24/solid";
+import { EyeIcon, PencilIcon, TrashIcon, BellIcon, Cog6ToothIcon, ClockIcon, PlusIcon, ArrowPathIcon } from "@heroicons/react/24/solid";
 import Sidebar from "../../components/Sidebar";
 import TopBar from "../../components/TopBar";
+import CouponStatusNotification from "../components/CouponStatusNotification";
+import { useCouponStatusUpdater } from "@/hooks/useCouponStatusUpdater";
 
 export default function CouponsList() {
   const router = useRouter();
@@ -24,34 +26,62 @@ export default function CouponsList() {
   const [error, setError] = useState<string | null>(null);
   const [activeCount, setActiveCount] = useState(0);
   const [expiredCount, setExpiredCount] = useState(0);
+  const [futureCount, setFutureCount] = useState(0);
+  const [updating, setUpdating] = useState(false);
+  
+  // Use the coupon status updater hook
+  const { triggerManualUpdate } = useCouponStatusUpdater(true);
 
   // Fetch coupons from API
-  useEffect(() => {
-    const fetchCoupons = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch('/api/coupons');
-        if (!response.ok) {
-          throw new Error('Failed to fetch coupons');
-        }
-        const data = await response.json();
-        setCoupons(data.coupons);
-        
-        // Count active and expired coupons
-        const active = data.coupons.filter((coupon: Coupon) => coupon.status === 'Active').length;
-        const expired = data.coupons.filter((coupon: Coupon) => coupon.status === 'Expired').length;
-        setActiveCount(active);
-        setExpiredCount(expired);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'An unknown error occurred');
-        console.error('Error fetching coupons:', err);
-      } finally {
-        setLoading(false);
+  const fetchCoupons = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/coupons');
+      if (!response.ok) {
+        throw new Error('Failed to fetch coupons');
       }
-    };
+      const data = await response.json();
+      setCoupons(data.coupons);
+      
+      // Count active, expired, and future coupons
+      const active = data.coupons.filter((coupon: Coupon) => coupon.status === 'Active').length;
+      const expired = data.coupons.filter((coupon: Coupon) => coupon.status === 'Expired').length;
+      const future = data.coupons.filter((coupon: Coupon) => coupon.status === 'Future').length;
+      setActiveCount(active);
+      setExpiredCount(expired);
+      setFutureCount(future);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An unknown error occurred');
+      console.error('Error fetching coupons:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  // Use effect to fetch coupons on component mount
+  useEffect(() => {
     fetchCoupons();
   }, []);
+
+  // Handle manual coupon status update
+  const handleManualUpdate = async () => {
+    setUpdating(true);
+    try {
+      const result = await triggerManualUpdate();
+      if (result.updatedCount > 0) {
+        alert(`Successfully updated ${result.updatedCount} coupon statuses`);
+        // Refresh the coupon list
+        await fetchCoupons();
+      } else {
+        alert('No coupons needed status updates');
+      }
+    } catch (error) {
+      console.error('Error updating coupon statuses:', error);
+      alert('Failed to update coupon statuses');
+    } finally {
+      setUpdating(false);
+    }
+  };
 
   // Handle view coupon
   const handleView = (id: string) => {
@@ -90,9 +120,20 @@ export default function CouponsList() {
       <Sidebar />
       <div className="min-h-screen bg-gray-50 p-4 flex-1">
         <TopBar title="Coupons List" />
+        
+        {/* Coupon Status Notification */}
+        <CouponStatusNotification onUpdateCoupons={fetchCoupons} />
 
-        {/* Add Coupon Button */}
-        <div className="flex justify-end mb-6">
+        {/* Add Coupon Button and Manual Update Button */}
+        <div className="flex justify-end mb-6 gap-2">
+          <button
+            onClick={handleManualUpdate}
+            disabled={updating}
+            className="bg-blue-500 text-white px-4 py-2 rounded-md flex items-center gap-2 shadow-md hover:bg-blue-600 disabled:bg-blue-300"
+          >
+            <ArrowPathIcon className={`h-5 w-5 ${updating ? 'animate-spin' : ''}`} />
+            {updating ? 'Updating...' : 'Update Status'}
+          </button>
           <button
             onClick={() => router.push("/admin/couponcreate")}
             className="bg-orange-500 text-white px-4 py-2 rounded-md flex items-center gap-2 shadow-md hover:bg-orange-600"
@@ -102,16 +143,16 @@ export default function CouponsList() {
         </div>
 
         {/* Coupon Stats */}
-        <div className="grid grid-cols-2 gap-1 mb-6 justify-center">
+        <div className="grid grid-cols-3 gap-4 mb-6">
           {/* Active Coupons */}
-          <div className="bg-white p-6 rounded-lg shadow-lg flex items-center justify-between w-1/2 mx-auto">
+          <div className="bg-white p-6 rounded-lg shadow-lg flex items-center justify-between">
             <div>
               <p className="text-gray-700 text-lg font-semibold">
                 Active Coupons
               </p>
               <p className="text-gray-900 text-2xl font-bold">{activeCount}</p>
             </div>
-            <div className="bg-orange-100 p-4 rounded-xl">
+            <div className="bg-green-100 p-4 rounded-xl">
               <img
                 src="/active coupon.png"
                 alt="Active Coupons"
@@ -120,8 +161,21 @@ export default function CouponsList() {
             </div>
           </div>
 
+          {/* Future Coupons */}
+          <div className="bg-white p-6 rounded-lg shadow-lg flex items-center justify-between">
+            <div>
+              <p className="text-gray-700 text-lg font-semibold">
+                Future Coupons
+              </p>
+              <p className="text-gray-900 text-2xl font-bold">{futureCount}</p>
+            </div>
+            <div className="bg-blue-100 p-4 rounded-xl">
+              <ClockIcon className="h-10 w-10 text-blue-600" />
+            </div>
+          </div>
+
           {/* Expired Coupons */}
-          <div className="bg-white p-6 rounded-lg shadow-lg flex items-center justify-between w-1/2 mx-auto">
+          <div className="bg-white p-6 rounded-lg shadow-lg flex items-center justify-between">
             <div>
               <p className="text-gray-700 text-lg font-semibold">
                 Expired Coupons
@@ -187,12 +241,14 @@ export default function CouponsList() {
                         <span
                           className={`inline-block px-3 py-1 rounded-full text-sm font-semibold text-center align-middle ${
                             coupon.status === "Future"
-                              ? "bg-blue-300 text-blue-800"
+                              ? "bg-blue-100 text-blue-800"
                               : coupon.status === "Active"
-                              ? "bg-green-300 text-green-800"
+                              ? "bg-green-100 text-green-800"
                               : coupon.status === "Expired"
-                              ? "bg-orange-300 text-orange-800"
-                              : ""
+                              ? "bg-red-100 text-red-800"
+                              : coupon.status === "Inactive"
+                              ? "bg-gray-100 text-gray-800"
+                              : "bg-gray-100 text-gray-800"
                           }`}
                         >
                           {coupon.status}
