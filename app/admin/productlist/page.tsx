@@ -6,7 +6,7 @@ import TopBar from '../../components/TopBar';
 import { useRouter } from 'next/navigation';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/solid';
 
-import { deduplicateRequest } from '@/lib/apiUtils';
+import { deduplicateRequest, invalidateProductCaches } from '@/lib/apiUtils';
 
 interface Product {
   _id: string;
@@ -40,16 +40,26 @@ const [filter, setFilter] = useState('All'); // Add state for filter
   const [showSuggestions, setShowSuggestions] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
 
-  const fetchProducts = async (page = 1, query = searchQuery, category = filter) => {
+  const fetchProducts = async (page = 1, query = searchQuery, category = filter, forceFresh = false) => {
     try {
       setLoading(true);
       // Include the search query in the API call if it exists
       const queryParam = query ? `&q=${encodeURIComponent(query)}` : '';
       const categoryParam = category && category !== 'All' ? `&category=${encodeURIComponent(category)}` : '';
-      const url = `/api/products?page=${page}&limit=${itemsPerPage}${queryParam}${categoryParam}`;
+      // Add cache busting parameter if forced fresh or if coming from product creation
+      const cacheBustParam = forceFresh || window.location.search.includes('_t=') ? `&_t=${Date.now()}` : '';
+      const url = `/api/products?page=${page}&limit=${itemsPerPage}${queryParam}${categoryParam}${cacheBustParam}`;
       
-      // Use deduplicated request to prevent duplicate API calls
-      const data: any = await deduplicateRequest(url);
+      // Use deduplicated request to prevent duplicate API calls, but bypass cache if forced fresh
+      const data: any = forceFresh 
+        ? await fetch(url, { 
+            cache: 'no-store',
+            headers: {
+              'Cache-Control': 'no-cache, no-store, must-revalidate',
+              'Pragma': 'no-cache'
+            }
+          }).then(res => res.json())
+        : await deduplicateRequest(url);
       
       setProducts(data.products);
       setTotalPages(data.pagination.pages);
@@ -62,7 +72,16 @@ const [filter, setFilter] = useState('All'); // Add state for filter
   };
 
   useEffect(() => {
-    fetchProducts(currentPage);
+    // Check if we're coming from product creation/edit (cache bust parameter)
+    const shouldForceFresh = window.location.search.includes('_t=');
+    fetchProducts(currentPage, searchQuery, filter, shouldForceFresh);
+    
+    // Clean up the URL if we had cache bust parameter
+    if (shouldForceFresh) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('_t');
+      window.history.replaceState({}, '', url.toString());
+    }
   }, [currentPage, itemsPerPage]);
 
   // Close suggestions when clicking outside
@@ -118,8 +137,8 @@ const [filter, setFilter] = useState('All'); // Add state for filter
     if (products.length === 1 && currentPage > 1) {
       setCurrentPage(currentPage - 1);
     } else {
-      // Otherwise just refresh the current page
-      fetchProducts(currentPage, searchQuery);
+      // Otherwise just refresh the current page with forced fresh data
+      fetchProducts(currentPage, searchQuery, filter, true);
     }
   };
 
@@ -194,12 +213,24 @@ discountedPrice: product.discountedPrice, // Pass discounted price if it exists
           <header className="mb-6">
             <div className="flex justify-between items-center mb-4">
               <h1 className="text-2xl font-bold">All Products</h1>
-              <button 
-                onClick={() => router.push('/admin/productcreate')} 
-                className="bg-orange-500 text-white px-4 py-2 rounded-lg"
-              >
-                Add New Product
-              </button>
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => {
+                    invalidateProductCaches();
+                    fetchProducts(currentPage, searchQuery, filter, true);
+                  }} 
+                  className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
+                  disabled={loading}
+                >
+                  {loading ? 'Refreshing...' : 'Refresh'}
+                </button>
+                <button 
+                  onClick={() => router.push('/admin/productcreate')} 
+                  className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors"
+                >
+                  Add New Product
+                </button>
+              </div>
             </div>
             
             {/* Search bar with suggestions */}
@@ -299,7 +330,13 @@ discountedPrice: product.discountedPrice, // Pass discounted price if it exists
           {/* Loading state */}
           {loading && (
             <div className="text-center py-10">
-              <p>Loading products...</p>
+              <div className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-gray-500 bg-gray-100">
+                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Loading products...
+              </div>
             </div>
           )}
 

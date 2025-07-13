@@ -98,6 +98,12 @@ export async function GET(
       relatedProducts: filteredRelatedProducts,
       rating: Math.round(averageRating * 10) / 10, // Round to 1 decimal
       reviewCount: reviews.length
+    }, {
+      headers: {
+        'Cache-Control': 'public, max-age=300, stale-while-revalidate=120', // 5 minutes cache, 2 minutes stale
+        'CDN-Cache-Control': 'public, max-age=600', // 10 minutes for CDN
+        'Vary': 'Accept-Encoding',
+      },
     });
     
   } catch (error) {

@@ -20,30 +20,41 @@ export const deduplicateRequest = async <T>(
   url: string,
   fetchOptions?: RequestInit
 ): Promise<T> => {
+  // Check if this is a cache-busting request
+  const isCacheBusting = url.includes('_t=') || fetchOptions?.cache === 'no-store';
+  
   const cacheKey = `${url}:${JSON.stringify(fetchOptions || {})}`;
   
-  // Check if we have a pending request for this URL
-  const cached = requestCache.get(cacheKey);
-  if (cached) {
-    // Check if cache is still valid
-    if (Date.now() - cached.timestamp < CACHE_TIMEOUT) {
-      console.log(`⚡ Using cached request for: ${url}`);
-      performanceMonitor.countRequest(`${url} (cached)`);
-      return cached.promise;
-    } else {
-      // Remove expired cache entry
-      requestCache.delete(cacheKey);
+  // Skip cache for cache-busting requests
+  if (!isCacheBusting) {
+    // Check if we have a pending request for this URL
+    const cached = requestCache.get(cacheKey);
+    if (cached) {
+      // Check if cache is still valid
+      if (Date.now() - cached.timestamp < CACHE_TIMEOUT) {
+        console.log(`⚡ Using cached request for: ${url}`);
+        performanceMonitor.countRequest(`${url} (cached)`);
+        return cached.promise;
+      } else {
+        // Remove expired cache entry
+        requestCache.delete(cacheKey);
+      }
     }
   }
   
-  console.log(`🚀 Making new request to: ${url}`);
+  console.log(`🚀 Making ${isCacheBusting ? 'fresh' : 'new'} request to: ${url}`);
   performanceMonitor.countRequest(url);
   
   // Create new request with optimized headers
   const promise = fetch(url, {
     ...fetchOptions,
     headers: {
-      'Cache-Control': 'max-age=180, stale-while-revalidate=60', // 3 minutes cache with stale-while-revalidate
+      ...(isCacheBusting ? {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache'
+      } : {
+        'Cache-Control': 'max-age=60, stale-while-revalidate=30', // Reduced cache time for freshness
+      }),
       'Accept': 'application/json',
       'Connection': 'keep-alive',
       ...fetchOptions?.headers,
@@ -77,17 +88,21 @@ export const deduplicateRequest = async <T>(
     // Re-throw the original error if it's already a proper error
     throw error;
   }).finally(() => {
-    // Remove from cache when request completes
-    requestCache.delete(cacheKey);
+    // Remove from cache when request completes (only if it was cached)
+    if (!isCacheBusting) {
+      requestCache.delete(cacheKey);
+    }
   });
   
-  // Cache the promise
-  requestCache.set(cacheKey, {
-    promise,
-    timestamp: Date.now(),
-  });
+  // Cache the promise only if not cache-busting
+  if (!isCacheBusting) {
+    requestCache.set(cacheKey, {
+      promise,
+      timestamp: Date.now(),
+    });
+  }
   
-  console.log(`Making new request for: ${url}`);
+  console.log(`Making ${isCacheBusting ? 'fresh' : 'new'} request for: ${url}`);
   return promise;
 };
 
@@ -180,4 +195,33 @@ export const fetchAuthUser = async () => {
 export const clearRequestCache = () => {
   requestCache.clear();
   console.log('Request cache cleared');
+};
+
+/**
+ * Clears all cached requests that match a given pattern
+ * Useful for cache invalidation after product operations
+ */
+export const invalidateCache = (pattern?: string) => {
+  if (!pattern) {
+    // Clear all cache
+    requestCache.clear();
+    console.log('🧹 Cleared all request cache');
+    return;
+  }
+  
+  const keysToDelete = Array.from(requestCache.keys()).filter(key => 
+    key.includes(pattern)
+  );
+  
+  keysToDelete.forEach(key => requestCache.delete(key));
+  console.log(`🧹 Cleared ${keysToDelete.length} cached requests matching: ${pattern}`);
+};
+
+/**
+ * Clear product-related caches
+ */
+export const invalidateProductCaches = () => {
+  invalidateCache('/api/products');
+  invalidateCache('/api/categories');
+  invalidateCache('/api/search');
 };
