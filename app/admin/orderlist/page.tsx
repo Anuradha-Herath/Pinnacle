@@ -1,16 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { CubeIcon, EyeIcon } from "@heroicons/react/24/solid";
 import Sidebar from "../../components/Sidebar";
-import {
-  ShoppingCartIcon,
-  CheckCircleIcon,
-  TruckIcon,
-  ShieldCheckIcon,
-} from "lucide-react";
+import { ShoppingCartIcon, CheckCircleIcon, TruckIcon } from "lucide-react";
 import TopBar from "@/app/components/admin/TopBar";
-import { useRouter } from "next/navigation";
 
 // Define the Order type according to your data structure
 interface Order {
@@ -29,6 +24,7 @@ interface Order {
 export default function OrdersPage() {
   const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
 
   // State for filtering orders by status
   const [filterStatus, setFilterStatus] = useState("");
@@ -47,22 +43,44 @@ export default function OrdersPage() {
     return orders.filter((order) => order.status === status).length;
   };
 
-  useEffect(() => {
-    // Fetch orders from the API
-    const fetchOrders = async () => {
-      try {
-        const response = await fetch("/api/orders");
-        if (!response.ok) {
-          throw new Error("Failed to fetch orders");
-        }
-        const data = await response.json();
-        setOrders(data);
-      } catch (error) {
-        console.error("Error fetching orders:", error);
+  // Simple fetch orders function
+  const fetchOrders = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("/api/orders", {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache",
+        },
+      });
+      if (!response.ok) {
+        throw new Error("Failed to fetch orders");
       }
+      const data = await response.json();
+      setOrders(data);
+    } catch (error) {
+      console.error("Error fetching orders:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchOrders(); // Initial fetch
+  }, []);
+
+  // Simple auto-refresh on window focus
+  useEffect(() => {
+    const handleFocus = () => {
+      fetchOrders();
     };
 
-    fetchOrders();
+    // Listen for when the window gains focus (user comes back to tab/browser)
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+    };
   }, []);
 
   // Filter orders based on selected status and search query, then apply pagination
@@ -164,6 +182,17 @@ export default function OrdersPage() {
           </div>
           <div className="bg-white p-4 rounded-lg shadow-md flex items-center gap-4">
             <div className="p-3 bg-orange-100 rounded-lg">
+              <CubeIcon className="h-8 w-8 text-orange-500" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold">Orders Processed</h2>
+              <p className="text-2xl font-bold">
+                {getOrderCountByStatus("Processed")}
+              </p>
+            </div>
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow-md flex items-center gap-4">
+            <div className="p-3 bg-orange-100 rounded-lg">
               <TruckIcon className="h-8 w-8 text-orange-500" />
             </div>
             <div>
@@ -204,6 +233,7 @@ export default function OrdersPage() {
                 <option value="Paid">Paid</option>
                 <option value="Processing">Processing</option>
                 <option value="Shipped">Shipped</option>
+                <option value="Processed">Processed</option>
                 <option value="Delivered">Delivered</option>
                 <option value="Refunded">Refunded</option>
               </select>
@@ -223,59 +253,71 @@ export default function OrdersPage() {
               </tr>
             </thead>
             <tbody>
-              {displayedOrders.length > 0 ? (
-                displayedOrders.map(
-                  (
-                    order: Order
-                  ) => (
-                    <tr key={order._id} className="border-t">
-                      <td className="p-3">{order.orderNumber || "N/A"}</td>
-                      <td className="p-3">
-                        {order.createdAt
-                          ? new Date(order.createdAt).toLocaleString()
-                          : "N/A"}
-                      </td>
-                      <td className="p-3">
-                        {order.customer?.firstName || "N/A"}
-                      </td>
-                      <td className="p-3">
-                        <span className="text-orange-500">$</span>
-                        {order.amount?.total.toFixed(2) || "N/A"}
-                      </td>
-                      {/* <td className="p-3">{order.deliveryNumber}</td> */}
-                      <td className="p-3">
-                        <span
-                          className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${
-                            order.status === "Refunded"
-                              ? "bg-red-300 text-red-800"
-                              : order.status === "Delivered"
-                              ? "bg-orange-300 text-orange-800"
-                              : order.status === "Shipped"
-                              ? "bg-cyan-300 text-cyan-800"
-                              : order.status === "Processing"
-                              ? "bg-yellow-300 text-yellow-800"
-                              : order.status === "Paid"
-                              ? "bg-green-300 text-green-800"
-                              : order.status === "pending"
-                              ? "bg-gray-200 text-black-800"
-                              : "bg-gray-100 text-gray-800"
-                          }`}
-                        >
-                          {order.status || "pending"}
-                        </span>
-                      </td>
-                      <td className="p-3">
-                        <button className="p-2 bg-orange-500 text-white rounded-md shadow-md hover:bg-orange-600"
-                          onClick={() => {
-                            router.push(`/admin/orderlist/${order._id}`);
-                          }}>
-                          <EyeIcon className="h-5 w-5" />
-                        </button>
-                      </td>
-                    </tr>
-                  )
-                )
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="p-6 text-center">
+                    <div className="flex flex-col items-center justify-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-4 border-gray-300 border-t-orange-500 mb-2"></div>
+                      <span className="text-gray-700 text-base">
+                        Loading...
+                      </span>
+                    </div>
+                  </td>
+                </tr>
+              ) : displayedOrders.length > 0 ? (
+                displayedOrders.map((order: Order) => (
+                  <tr key={order._id} className="border-t">
+                    <td className="p-3">{order.orderNumber || "N/A"}</td>
+                    <td className="p-3">
+                      {order.createdAt
+                        ? new Date(order.createdAt).toLocaleString()
+                        : "N/A"}
+                    </td>
+                    <td className="p-3">
+                      {order.customer?.firstName || "N/A"}
+                    </td>
+                    <td className="p-3">
+                      <span className="text-orange-500">$</span>
+                      {order.amount?.total.toFixed(2) || "N/A"}
+                    </td>
+                    {/* <td className="p-3">{order.deliveryNumber}</td> */}
+                    <td className="p-3">
+                      <span
+                        className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${
+                          order.status === "Refunded"
+                            ? "bg-red-300 text-red-800"
+                            : order.status === "Delivered"
+                            ? "bg-orange-300 text-orange-800"
+                            : order.status === "Processed"
+                            ? "bg-blue-300 text-blue-800"
+                            : order.status === "Shipped"
+                            ? "bg-cyan-300 text-cyan-800"
+                            : order.status === "Processing"
+                            ? "bg-yellow-300 text-yellow-800"
+                            : order.status === "Paid"
+                            ? "bg-green-300 text-green-800"
+                            : order.status === "pending"
+                            ? "bg-gray-200 text-black-800"
+                            : "bg-gray-100 text-gray-800"
+                        }`}
+                      >
+                        {order.status || "pending"}
+                      </span>
+                    </td>
+                    <td className="p-3">
+                      <button
+                        className="p-2 bg-orange-500 text-white rounded-md shadow-md hover:bg-orange-600"
+                        onClick={() => {
+                          router.push(`/admin/orderlist/${order._id}`);
+                        }}
+                      >
+                        <EyeIcon className="h-5 w-5" />
+                      </button>
+                    </td>
+                  </tr>
+                ))
               ) : (
+                // Only show "No orders found" if not loading and no results
                 <tr>
                   <td colSpan={6} className="p-3 text-center text-gray-500">
                     No orders found
@@ -285,7 +327,7 @@ export default function OrdersPage() {
             </tbody>
           </table>
 
-          {/* Pagination - Updated */}
+          {/* Pagination */}
           {totalPages > 1 && (
             <div className="flex justify-center mt-6">
               <div className="flex items-center gap-2">

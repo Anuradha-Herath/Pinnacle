@@ -43,7 +43,7 @@ interface Order {
   shipping: {
     deliveryMethod: string;
     address?: {
-      country: string;
+      district: string;
       address: string;
       city: string;
       postalCode: string;
@@ -57,6 +57,11 @@ interface Order {
   };
   status: string;
   paymentStatus: string;
+  coupon?: {
+    code: string;
+    discount: number;
+    description: string;
+  };
   metadata: {
     customerId: string;
   };
@@ -158,6 +163,8 @@ export default function OrderPage() {
         return "bg-blue-100 text-blue-800 border-blue-200";
       case "Delivered":
         return "bg-orange-100 text-orange-800 border-orange-200";
+      case "Processed":
+        return "bg-blue-300 text-blue-800 border-blue-200";
       case "Refunded":
         return "bg-red-100 text-red-800 border-red-200";
       default:
@@ -205,7 +212,10 @@ export default function OrderPage() {
 
         {/* Back Button */}
         <button
-          onClick={() => router.back()}
+          onClick={() => {
+            // Force complete page refresh to ensure fresh data
+            window.location.href = "/admin/orderlist";
+          }}
           className="flex items-center gap-2 mb-6 text-orange-600 hover:text-orange-700 text-base md:text-lg"
         >
           <ArrowLeftIcon className="h-5 w-5" />
@@ -236,19 +246,35 @@ export default function OrderPage() {
                 {order.status}
               </div>
               <div className="mt-2">
-                <select
-                  value={order.status}
-                  onChange={(e) => handleStatusUpdate(e.target.value)}
-                  disabled={updatingStatus}
-                  className="border px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm md:text-base"
-                >
-                  <option value="pending">pending</option>
-                  <option value="Paid">Paid</option>
-                  <option value="Processing">Processing</option>
-                  <option value="Shipped">Shipped</option>
-                  <option value="Delivered">Delivered</option>
-                  <option value="Refunded">Refunded</option>
-                </select>
+                {order.shipping.deliveryMethod === "ship" ? (
+                  <select
+                    value={order.status}
+                    onChange={(e) => handleStatusUpdate(e.target.value)}
+                    disabled={updatingStatus}
+                    className="border px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm md:text-base"
+                  >
+                    <option value="pending">pending</option>
+                    <option value="Paid">Paid</option>
+                    <option value="Processing">Processing</option>
+                    <option value="Shipped">Shipped</option>
+                    <option value="Delivered">Delivered</option>
+                    <option value="Refunded">Refunded</option>
+                  </select>
+                ) : (
+                  <select
+                    value={order.status}
+                    onChange={(e) => handleStatusUpdate(e.target.value)}
+                    disabled={updatingStatus}
+                    className="border px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm md:text-base"
+                  >
+                    <option value="pending">pending</option>
+                    <option value="Paid">Paid</option>
+                    <option value="Processing">Processing</option>
+                    <option value="Processed">Processed</option>
+                    <option value="Delivered">Delivered</option>
+                    <option value="Refunded">Refunded</option>
+                  </select>
+                )}
               </div>
             </div>
           </div>
@@ -367,8 +393,11 @@ export default function OrderPage() {
                         Quantity: {item.quantity}
                       </p>
                       <p className="text-gray-600 text-sm md:text-base break-words max-w-xs md:max-w-sm">
-                        Color: {item.metadata?.color ? item.metadata.color.split('/').pop()?.split('.')[0] : "N/A"} | Size:{" "}
-                        {item.metadata?.size || "N/A"}
+                        Color:{" "}
+                        {item.metadata?.color
+                          ? item.metadata.color.split("/").pop()?.split(".")[0]
+                          : "N/A"}{" "}
+                        | Size: {item.metadata?.size || "N/A"}
                       </p>
                       <p className="text-orange-600 font-semibold text-sm md:text-base">
                         $
@@ -398,6 +427,21 @@ export default function OrderPage() {
                   <span>Subtotal:</span>
                   <span>${order.amount.subtotal.toFixed(2)}</span>
                 </div>
+                {order.coupon && order.coupon.code != null ? (
+                  <div className="flex justify-between py-1">
+                    <span className="text-gray-600">
+                      Coupon (-{order.coupon?.discount}%)
+                    </span>
+                    <span className="text-gray-600">
+                      -$
+                      {(
+                        (order.amount.subtotal *
+                          (order.coupon?.discount ?? 0)) /
+                        100
+                      ).toFixed(2)}
+                    </span>
+                  </div>
+                ) : null}
                 <div className="flex justify-between text-sm md:text-base">
                   <span>Shipping Cost:</span>
                   <span>${order.amount.shippingCost}</span>
@@ -433,7 +477,7 @@ export default function OrderPage() {
                     {order.shipping.address.city},{" "}
                     {order.shipping.address.postalCode}
                     <br />
-                    {order.shipping.address.country}
+                    {order.shipping.address.district}
                   </p>
                 </>
               ) : (

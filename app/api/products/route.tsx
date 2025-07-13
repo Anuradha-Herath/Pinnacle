@@ -39,10 +39,10 @@ const corsHeaders = {
   'Access-Control-Max-Age': '86400',
 };
 
-// Add cache headers for products
+// Add cache headers for products - reduced cache time for better freshness
 const cacheHeaders = {
-  'Cache-Control': 'public, max-age=180, stale-while-revalidate=60', // 3 minutes cache, 1 minute stale
-  'CDN-Cache-Control': 'public, max-age=300', // 5 minutes for CDN
+  'Cache-Control': 'public, max-age=60, stale-while-revalidate=30', // 1 minute cache, 30 seconds stale
+  'CDN-Cache-Control': 'public, max-age=120', // 2 minutes for CDN  
   'Vary': 'Accept-Encoding',
 };
 
@@ -66,11 +66,12 @@ export async function GET(request: NextRequest) {
     const category = searchParams.get('category') ? decodeURIComponent(searchParams.get('category')!) : null;
     const subCategory = searchParams.get('subCategory') ? decodeURIComponent(searchParams.get('subCategory')!) : null;
     const productId = searchParams.get('id'); // For fetching a single product
+    const cacheBust = searchParams.get('_t'); // Cache busting parameter
 
-    // Create cache key for this request
-    const cacheKey = `products:${JSON.stringify({ page, limit, searchQuery, category, subCategory, productId })}`;
+    // Create cache key for this request (include cache bust parameter)
+    const cacheKey = `products:${JSON.stringify({ page, limit, searchQuery, category, subCategory, productId, cacheBust })}`;
     
-    console.log(`API: Fetching products with filters:`, { category, subCategory, searchQuery, page, limit });
+    console.log(`API: Fetching products with filters:`, { category, subCategory, searchQuery, page, limit, cacheBust });
 
     // Get active discounts with caching
     const activeDiscounts = await Discount.find({
@@ -165,15 +166,16 @@ export async function GET(request: NextRequest) {
 
     console.log(`API: Final query:`, JSON.stringify(query, null, 2));
 
-    // Optimize database queries with parallel execution
+    // Optimize database queries with parallel execution and better indexing
     const [totalProducts, products] = await Promise.all([
       Product.countDocuments(query),
       Product.find(query)
-        .select('productName description category subCategory regularPrice gallery createdAt') // Only select needed fields
-        .sort({ createdAt: -1 })
+        .select('productName description category subCategory regularPrice gallery createdAt _id') // Only select needed fields, include _id explicitly
+        .sort({ createdAt: -1 }) // Most recent first
         .skip(skip)
         .limit(limit)
         .lean() // Use lean() for better performance
+        .exec() // Explicitly execute for better performance
     ]);
     
     // Calculate total pages
@@ -212,7 +214,12 @@ export async function GET(request: NextRequest) {
     }, {
       headers: {
         ...corsHeaders,
-        ...cacheHeaders,
+        // Use different cache headers based on whether this is a fresh request
+        ...(cacheBust ? {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        } : cacheHeaders),
       },
     });
 
@@ -341,7 +348,18 @@ export async function POST(request: Request) {
       message: "Product created and added to inventory", 
       product: newProduct,
       inventory: newInventory
-    }, { status: 201 });
+    }, { 
+      status: 201,
+      headers: {
+        ...corsHeaders,
+        // Add cache invalidation headers
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+        // Add a timestamp to help with cache busting
+        'X-Cache-Bust': Date.now().toString(),
+      }
+    });
   } catch (error) {
     console.error("Server error:", error);
     return NextResponse.json({ 
