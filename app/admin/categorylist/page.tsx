@@ -188,18 +188,6 @@ export default function CategoryList() {
         <TopBar title="Category List" />
 
         <div className="p-6">
-          {/* Debug Info - Remove in production */}
-          {process.env.NODE_ENV === 'development' && (
-            <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm">
-              <strong>Debug Info:</strong> 
-              <span className="ml-2">Categories: {categories.length}</span>
-              <span className="ml-4">Filtered: {filteredCategories.length}</span>
-              <span className="ml-4">Page: {currentPage}/{totalPages}</span>
-              <span className="ml-4">Loading: {loading ? 'Yes' : 'No'}</span>
-              <span className="ml-4">Error: {error ? 'Yes' : 'No'}</span>
-            </div>
-          )}
-
           {/* Header with Filter */}
           <div className="flex justify-between items-center mb-6">
             <div className="flex items-center space-x-4">
