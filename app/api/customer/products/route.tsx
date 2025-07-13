@@ -101,16 +101,18 @@ export async function GET(request: Request) {
     
     // Add category filter if provided - use case-insensitive regex matching
     if (category) {
-      // Handle common variations like "Women" vs "Womens"
+      // Handle common variations like "Women" vs "Womens", and "accessories" vs "Accessories"
       let categoryPattern = category;
       if (category.toLowerCase() === 'women') {
         categoryPattern = '(women|womens)';
       } else if (category.toLowerCase() === 'men') {
         categoryPattern = '(men|mens)';
+      } else if (category.toLowerCase() === 'accessories') {
+        categoryPattern = '(accessories|accessory)';
       }
       
       query.category = { $regex: new RegExp(`^${categoryPattern}$`, 'i') };
-      console.log(`Filtering products by category pattern: ${categoryPattern}`);
+      console.log(`Filtering products by category pattern: ${categoryPattern} (original: ${category})`);
     }
     
     // Add subcategory filter if provided

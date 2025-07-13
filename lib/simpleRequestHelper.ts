@@ -305,6 +305,38 @@ export const debugApiHelpers = async () => {
     console.error('❌ Database Test:', error);
   }
   
+  // Test specific product endpoints
+  const productTests = [
+    { name: 'Database Health', url: '/api/health' },
+    { name: 'Database Connection', url: '/api/db-test' },
+    { name: 'Category Debug', url: '/api/debug/categories' },
+    { name: 'All Products', url: '/api/customer/products' },
+    { name: 'Women Products', url: '/api/customer/products?category=Women' },
+    { name: 'women (lowercase)', url: '/api/customer/products?category=women' },
+    { name: 'Men Products', url: '/api/customer/products?category=Men' },
+    { name: 'men (lowercase)', url: '/api/customer/products?category=men' },
+    { name: 'Accessories Products', url: '/api/customer/products?category=Accessories' },
+    { name: 'accessories (lowercase)', url: '/api/customer/products?category=accessories' },
+    { name: 'Trending Products', url: '/api/customer/trending' },
+  ];
+  
+  for (const test of productTests) {
+    try {
+      console.log(`Testing ${test.name}...`);
+      const result = await simpleFetch(test.url);
+      console.log(`✅ ${test.name}:`, {
+        success: result.success !== false,
+        productCount: result.products?.length || 0,
+        firstProduct: result.products?.[0] ? {
+          name: result.products[0].name || result.products[0].productName,
+          category: result.products[0].category
+        } : null
+      });
+    } catch (error) {
+      console.error(`❌ ${test.name}:`, error);
+    }
+  }
+  
   const tests = [
     { name: 'Categories', fn: apiHelpers.getCategories },
     { name: 'User Cart', fn: apiHelpers.getUserCart },
