@@ -214,36 +214,58 @@ const HomePage = () => {
     }
   };
 
-  // Improved fetchAccessoriesProducts with better error handling
+  // Improved fetchAccessoriesProducts with better error handling and API consistency
   const fetchAccessoriesProducts = async () => {
     try {
       setAccessoriesLoading(true);
       
-      // Ensure consistent casing by using "Accessories" exactly
-      console.log('Fetching accessories products...');
+      console.log('Fetching accessories products using improved API...');
       
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000); // Reduced timeout
-      
-      const response = await edgeCompatibleFetch(`/api/customer/products?category=Accessories`, {
-        signal: controller.signal,
-      });
-      
-      clearTimeout(timeoutId);
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch accessories products: ${response.status} ${response.statusText}`);
+      // Try both capitalized and lowercase variations since there might be a case mismatch
+      let data;
+      try {
+        // First try lowercase
+        data = await fetchCustomerProducts({ category: 'accessories' }) as { products: any[] };
+        console.log(`Fetched ${data.products?.length || 0} accessories products (lowercase)`);
+      } catch (lowercaseError) {
+        console.log('Lowercase "accessories" failed, trying "Accessories"...', lowercaseError);
+        try {
+          data = await fetchCustomerProducts({ category: 'Accessories' }) as { products: any[] };
+          console.log(`Fetched ${data.products?.length || 0} accessories products (capitalized)`);
+        } catch (capitalizedError) {
+          console.log('Both lowercase and capitalized "accessories" failed, trying general filter...');
+          throw capitalizedError; // Re-throw to trigger fallback logic
+        }
       }
       
-      const data = await response.json();
+      // Use the same API utilities as other product fetching for consistency
+      // const data = await fetchCustomerProducts({ category: 'Accessories' }) as { products: any[] };
+      
       console.log(`Fetched ${data.products?.length || 0} accessories products`);
       
       // Debug the categories to make sure matching is working
       if (data.products?.length > 0) {
-        console.log('Accessories product categories:', 
-          data.products.map((p: any) => p.category));
+        console.log('Accessories product details:', 
+          data.products.map((p: any) => ({ 
+            name: p.name || p.productName, 
+            category: p.category,
+            id: p.id 
+          })));
       } else {
         console.log('No accessories products found in the API response');
+        
+        // Debug: Check if accessories exist in the general product list
+        const allAccessories = products.filter(p => 
+          p.category && p.category.toLowerCase().includes('accessor')
+        );
+        console.log('Accessories found in general products:', allAccessories.length);
+        if (allAccessories.length > 0) {
+          console.log('Sample accessories from general list:', 
+            allAccessories.slice(0, 3).map(p => ({ 
+              name: p.name || p.productName, 
+              category: p.category 
+            })));
+        }
       }
       
       // Update state only if we have products or an empty array
@@ -254,13 +276,36 @@ const HomePage = () => {
       
     } catch (err) {
       console.error(`Error fetching accessories products:`, err);
-      if (err instanceof Error && err.name === 'AbortError') {
-        console.error('Accessories request timed out');
+      
+      // Provide more detailed error information
+      if (err instanceof Error) {
+        console.error('Accessories error details:', {
+          message: err.message,
+          stack: err.stack,
+        });
+        
+        // Try to provide a fallback using the general products list
+        if (products.length > 0) {
+          console.log('Attempting fallback: filtering accessories from general products...');
+          const accessoriesFromGeneral = products.filter(p => 
+            p.category && p.category.toLowerCase().includes('accessor')
+          );
+          
+          if (accessoriesFromGeneral.length > 0) {
+            console.log(`Found ${accessoriesFromGeneral.length} accessories in fallback`);
+            setCategoryProducts(prev => ({
+              ...prev,
+              accessories: accessoriesFromGeneral.slice(0, 10) // Limit to 10 for performance
+            }));
+            return; // Don't set empty array if we found fallback items
+          }
+        }
       }
-      // On error, ensure we don't leave the carousel in a loading state
+      
+      // Only set empty array if no fallback worked
       setCategoryProducts(prev => ({
         ...prev,
-        accessories: [] // Reset to empty array on error
+        accessories: []
       }));
     } finally {
       setAccessoriesLoading(false);
