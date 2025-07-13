@@ -163,6 +163,8 @@ export default function OrderPage() {
         return "bg-blue-100 text-blue-800 border-blue-200";
       case "Delivered":
         return "bg-orange-100 text-orange-800 border-orange-200";
+      case "Processed":
+        return "bg-blue-300 text-blue-800 border-blue-200";
       case "Refunded":
         return "bg-red-100 text-red-800 border-red-200";
       default:
@@ -210,7 +212,7 @@ export default function OrderPage() {
 
         {/* Back Button */}
         <button
-          onClick={() => router.back()}
+          onClick={() => router.push("/admin/orderlist")}
           className="flex items-center gap-2 mb-6 text-orange-600 hover:text-orange-700 text-base md:text-lg"
         >
           <ArrowLeftIcon className="h-5 w-5" />
@@ -241,7 +243,8 @@ export default function OrderPage() {
                 {order.status}
               </div>
               <div className="mt-2">
-                <select
+                { order.shipping.deliveryMethod === "ship" ? (
+                  <select
                   value={order.status}
                   onChange={(e) => handleStatusUpdate(e.target.value)}
                   disabled={updatingStatus}
@@ -254,6 +257,21 @@ export default function OrderPage() {
                   <option value="Delivered">Delivered</option>
                   <option value="Refunded">Refunded</option>
                 </select>
+                ): (
+                  <select
+                  value={order.status}
+                  onChange={(e) => handleStatusUpdate(e.target.value)}
+                  disabled={updatingStatus}
+                  className="border px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm md:text-base"
+                >
+                  <option value="pending">pending</option>
+                  <option value="Paid">Paid</option>
+                  <option value="Processing">Processing</option>
+                  <option value="Processed">Processed</option>
+                  <option value="Delivered">Delivered</option>
+                  <option value="Refunded">Refunded</option>
+                </select>
+                )}
               </div>
             </div>
           </div>

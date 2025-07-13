@@ -167,6 +167,17 @@ export default function OrdersPage() {
           </div>
           <div className="bg-white p-4 rounded-lg shadow-md flex items-center gap-4">
             <div className="p-3 bg-orange-100 rounded-lg">
+              <CubeIcon className="h-8 w-8 text-orange-500" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold">Orders Processed</h2>
+              <p className="text-2xl font-bold">
+                {getOrderCountByStatus("Processed")}
+              </p>
+            </div>
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow-md flex items-center gap-4">
+            <div className="p-3 bg-orange-100 rounded-lg">
               <TruckIcon className="h-8 w-8 text-orange-500" />
             </div>
             <div>
@@ -207,6 +218,7 @@ export default function OrdersPage() {
                 <option value="Paid">Paid</option>
                 <option value="Processing">Processing</option>
                 <option value="Shipped">Shipped</option>
+                <option value="Processed">Processed</option>
                 <option value="Delivered">Delivered</option>
                 <option value="Refunded">Refunded</option>
               </select>
@@ -259,6 +271,8 @@ export default function OrdersPage() {
                             ? "bg-red-300 text-red-800"
                             : order.status === "Delivered"
                             ? "bg-orange-300 text-orange-800"
+                            : order.status === "Processed"
+                            ? "bg-blue-300 text-blue-800"
                             : order.status === "Shipped"
                             ? "bg-cyan-300 text-cyan-800"
                             : order.status === "Processing"
