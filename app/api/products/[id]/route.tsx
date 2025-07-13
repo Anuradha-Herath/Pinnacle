@@ -183,6 +183,14 @@ export async function PUT(
     return NextResponse.json({
       message: "Product updated successfully",
       product: updatedProduct
+    }, {
+      headers: {
+        // Add cache invalidation headers for updates
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+        'X-Cache-Bust': Date.now().toString(),
+      }
     });
   } catch (error) {
     console.error("Error updating product:", error);
@@ -265,6 +273,14 @@ export async function DELETE(
     
     return NextResponse.json({
       message: "Product and related inventory deleted successfully"
+    }, {
+      headers: {
+        // Add cache invalidation headers for deletions
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+        'X-Cache-Bust': Date.now().toString(),
+      }
     });
   } catch (error) {
     console.error("Error deleting product:", error);
