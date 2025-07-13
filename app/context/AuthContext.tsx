@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { toast } from 'react-hot-toast';
 import { usePathname } from 'next/navigation';
+import { useSession, signOut as nextAuthSignOut } from "next-auth/react";
 
 interface User {
   id: string;
@@ -45,6 +46,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [error, setError] = useState<string | null>(null);
   const [lastSyncTime, setLastSyncTime] = useState<number>(0);
   const pathname = usePathname();
+  const { data: session, status: sessionStatus } = useSession();
   
   // Check if we're on an admin page
   const isAdminPage = pathname?.startsWith('/admin');
@@ -55,6 +57,28 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     checkAuth();
   }, []);
 
+  // Effect to sync NextAuth session with Auth context
+  useEffect(() => {
+    const syncNextAuthSession = async () => {
+      if (sessionStatus === 'authenticated' && session?.user && !user) {
+        console.log('NextAuth session detected, syncing with Auth context', session.user);
+        
+        // Set user state from NextAuth session
+        setUser({
+          id: session.user.id || '',
+          firstName: session.user.name?.split(' ')[0] || '',
+          lastName: session.user.name?.split(' ').slice(1).join(' ') || '',
+          email: session.user.email || '',
+          role: session.user.role || 'user',
+        });
+        
+        setLoading(false);
+      }
+    };
+    
+    syncNextAuthSession();
+  }, [session, sessionStatus, user]);
+  
   // Sync user data from local storage to server on login
   const syncUserData = async (): Promise<void> => {
     try {
@@ -253,13 +277,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         await syncUserData();
       }
       
+      // Clear our JWT cookie
       await fetch('/api/auth/logout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' }
       });
       
-      // Clear user state but don't clear localStorage
-      // This allows the cart/wishlist to remain available in "guest mode"
+      // Also sign out from NextAuth
+      await nextAuthSignOut({ redirect: false });
+      
+      // Reset state
       setUser(null);
       
       // REMOVE THIS TOAST - will be handled in the component

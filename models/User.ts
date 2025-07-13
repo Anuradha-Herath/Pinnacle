@@ -29,9 +29,15 @@ export interface IUser extends Document {
   passwordResetToken?: string; // Add password reset token field
   passwordResetExpires?: Date; // Add password reset expires field
   stripeCustomerId: string | null; // Add this field for Stripe customer ID
+  provider?: string; // Add provider field for social logins
+  loginAttempts: number; // Add field for tracking login attempts
+  lockUntil: number | null; // Add field for account lockout timestamp
   createdAt: Date;
   updatedAt: Date;
   comparePassword: (candidatePassword: string) => Promise<boolean>;
+  isLocked: () => boolean; // Method to check if account is locked
+  incrementLoginAttempts: () => Promise<void>; // Method to increment failed attempts
+  resetLoginAttempts: () => Promise<void>; // Method to reset attempts after successful login
 }
 
 const UserSchema = new Schema<IUser>(
@@ -56,8 +62,20 @@ const UserSchema = new Schema<IUser>(
     },
     password: {
       type: String,
-      required: [true, 'Password is required'],
+      required: function(this: any) {
+        return this.provider ? false : true;
+      },
       minlength: 6,
+      // Fix the validator to return only boolean
+      validate: {
+        validator: function(this: any, v: string | undefined): boolean {
+          // Skip validation if using social login
+          if (this.provider) return true;
+          // Otherwise enforce minlength
+          return v !== undefined && v.length >= 6;
+        },
+        message: 'Password must be at least 6 characters'
+      }
     },
     stripeCustomerId: { type: String, default: null },
     role: {
@@ -130,6 +148,22 @@ const UserSchema = new Schema<IUser>(
     passwordResetExpires: {
       type: Date,
     },
+    
+    // Add provider field (optional)
+    provider: {
+      type: String,
+      required: false,
+    },
+    
+    // Add fields for account lockout
+    loginAttempts: {
+      type: Number,
+      default: 0
+    },
+    lockUntil: {
+      type: Number,
+      default: null
+    },
   },
   { timestamps: true }
 );
@@ -147,9 +181,53 @@ UserSchema.pre('save', async function (next) {
   }
 });
 
-// Method to compare password
-UserSchema.methods.comparePassword = async function (candidatePassword: string): Promise<boolean> {
-  return bcrypt.compare(candidatePassword, this.password);
+// Method to compare password - with proper error handling for potential undefined passwords
+UserSchema.methods.comparePassword = async function(this: any, candidatePassword: string): Promise<boolean> {
+  try {
+    // Handle case where password might not exist (social logins)
+    if (!this.password) {
+      return false;
+    }
+    return await bcrypt.compare(candidatePassword, this.password);
+  } catch (error) {
+    console.error('Password comparison error:', error);
+    return false;
+  }
+};
+
+// Add method to check if account is locked
+UserSchema.methods.isLocked = function(): boolean {
+  // Check if account is locked (lockUntil is in the future)
+  return !!(this.lockUntil && this.lockUntil > Date.now());
+};
+
+// Add method to increment login attempts
+UserSchema.methods.incrementLoginAttempts = async function(): Promise<void> {
+  // If lock has expired, reset attempts and remove lock
+  if (this.lockUntil && this.lockUntil < Date.now()) {
+    this.loginAttempts = 1;
+    this.lockUntil = null;
+    await this.save();
+    return;
+  }
+  
+  // Otherwise increment attempts
+  this.loginAttempts += 1;
+  
+  // Lock the account if too many attempts (5)
+  if (this.loginAttempts >= 5) {
+    // Lock for 30 minutes
+    this.lockUntil = Date.now() + (30 * 60 * 1000);
+  }
+  
+  await this.save();
+};
+
+// Add method to reset login attempts
+UserSchema.methods.resetLoginAttempts = async function(): Promise<void> {
+  this.loginAttempts = 0;
+  this.lockUntil = null;
+  await this.save();
 };
 
 // Create or get User model
