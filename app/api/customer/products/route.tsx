@@ -44,6 +44,11 @@ export async function GET(request: Request) {
     try {
       await connectDB();
       console.log('Database connection successful');
+      
+      // Verify connection is actually ready
+      if (mongoose.connection.readyState !== 1) {
+        throw new Error(`Database not ready. ReadyState: ${mongoose.connection.readyState}`);
+      }
     } catch (dbError) {
       console.error('Database connection failed:', dbError);
       return NextResponse.json({ 
@@ -63,36 +68,36 @@ export async function GET(request: Request) {
     
     console.log(`API Request - Category: ${category}, SubCategory: ${subCategory}, Limit: ${limit}`);
     
-    // Find inventory items that are in stock
-    let inStockInventory;
+    // Find inventory items that are in stock - with fallback to all products if inventory fails
+    let inStockProductIds: string[] = [];
+    let useInventoryFilter = true;
+    
     try {
-      inStockInventory = await Inventory.find({ status: 'In Stock' });
+      const inStockInventory = await Inventory.find({ status: 'In Stock' });
       console.log(`Found ${inStockInventory.length} inventory items in stock`);
+      
+      if (inStockInventory.length > 0) {
+        inStockProductIds = inStockInventory.map(item => item.productId);
+      } else {
+        // If no inventory found, fall back to all products
+        console.log('No inventory items found, falling back to all products');
+        useInventoryFilter = false;
+      }
     } catch (inventoryError) {
-      console.error('Error fetching inventory:', inventoryError);
-      return NextResponse.json({ 
-        error: "Failed to fetch inventory data",
-        details: inventoryError instanceof Error ? inventoryError.message : String(inventoryError)
-      }, { 
-        status: 500,
-        headers: corsHeaders,
-      });
+      console.error('Error fetching inventory, falling back to all products:', inventoryError);
+      useInventoryFilter = false;
     }
     
-    // Extract product IDs from in-stock inventory
-    const inStockProductIds = inStockInventory.map(item => item.productId);
+    console.log(`Using inventory filter: ${useInventoryFilter}, Product IDs: ${inStockProductIds.length}`);
     
-    console.log(`Found ${inStockProductIds.length} products in stock`);
+    // Build query - only filter by inventory if we successfully got inventory data
+    const query: any = {};
     
-    if (inStockProductIds.length === 0) {
-      console.log('No products in stock, returning empty array');
-      return NextResponse.json({ products: [] }, {
-        headers: corsHeaders,
-      });
+    if (useInventoryFilter && inStockProductIds.length > 0) {
+      query._id = { $in: inStockProductIds };
+    } else {
+      console.log('Fetching all products (inventory filter disabled)');
     }
-    
-    // Build query to find products that are in stock
-    const query: any = { _id: { $in: inStockProductIds } };
     
     // Add category filter if provided - use case-insensitive regex matching
     if (category) {
@@ -140,11 +145,11 @@ export async function GET(request: Request) {
         .sort({ createdAt: -1 })
         .limit(limit);
       
-      console.log(`Found ${products.length} in-stock products with category: ${category || 'All'}, subCategory: ${subCategory || 'All'}`);
+      console.log(`Found ${products.length} products with category: ${category || 'All'}, subCategory: ${subCategory || 'All'}`);
       
       // Debug: Log some product details if we found any
       if (products.length > 0) {
-        console.log('Sample products found:', products.slice(0, 3).map(p => ({
+        console.log('Sample products found:', products.slice(0, 3).map((p: any) => ({
           id: p._id,
           name: p.productName,
           category: p.category,
@@ -152,13 +157,17 @@ export async function GET(request: Request) {
         })));
       } else {
         console.log('No products found with the given criteria');
-        // Debug: Let's check what products exist in the database
-        const allProducts = await Product.find({}).limit(5);
-        console.log('Sample of all products in database:', allProducts.map(p => ({
-          id: p._id,
-          name: p.productName,
-          category: p.category
-        })));
+        // Debug: Check what products exist in the database
+        try {
+          const sampleProducts = await Product.find({}).limit(5);
+          console.log('Sample of all products in database:', sampleProducts.map((p: any) => ({
+            id: p._id,
+            name: p.productName,
+            category: p.category
+          })));
+        } catch (debugError) {
+          console.error('Error fetching sample products for debug:', debugError);
+        }
       }
     } catch (productError) {
       console.error('Error fetching products from database:', productError);

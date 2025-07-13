@@ -133,7 +133,10 @@ export const simpleFetch = async <T = any>(
             statusText: response.statusText,
             error: errorDetails,
             body: errorBody,
-            headers: Object.fromEntries(response.headers.entries())
+            headers: Object.fromEntries(response.headers.entries()),
+            url: url,
+            attempt: attempt + 1,
+            maxRetries: retries + 1
           });
           
           // For 5xx errors, we might want to retry
@@ -157,16 +160,26 @@ export const simpleFetch = async <T = any>(
         if (error instanceof TypeError && error.message.includes('fetch')) {
           console.error(`Network Error - ${url} (attempt ${attempt + 1}):`, error);
           if (attempt < retries) {
-            console.warn(`Network error, retrying in ${Math.pow(2, attempt) * 1000}ms...`);
-            await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+            const delay = Math.min(Math.pow(2, attempt) * 1000, 5000); // Cap at 5 seconds
+            console.warn(`Network error, retrying in ${delay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
             continue;
           }
         }
         
         // For timeout errors, retry
-        if (error instanceof Error && error.message.includes('timeout') && attempt < retries) {
-          console.warn(`Request timeout, retrying in ${Math.pow(2, attempt) * 1000}ms...`);
-          await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
+        if (error instanceof Error && (error.message.includes('timeout') || error.name === 'AbortError') && attempt < retries) {
+          const delay = Math.min(Math.pow(2, attempt) * 1000, 5000); // Cap at 5 seconds
+          console.warn(`Request timeout/abort, retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+        
+        // For ECONNRESET and connection errors, retry
+        if (error instanceof Error && (error.message.includes('ECONNRESET') || error.message.includes('ECONNREFUSED')) && attempt < retries) {
+          const delay = Math.min(Math.pow(2, attempt) * 1000, 5000); // Cap at 5 seconds
+          console.warn(`Connection error (${error.message}), retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
           continue;
         }
         
@@ -282,6 +295,15 @@ export const apiHelpers = {
 // Debug function to test all API helpers (can be called from browser console)
 export const debugApiHelpers = async () => {
   console.log('🔧 Testing all API helpers...');
+  
+  // First test database health
+  try {
+    console.log('Testing database health...');
+    const dbTest = await simpleFetch('/api/db-test');
+    console.log('✅ Database Test:', dbTest);
+  } catch (error) {
+    console.error('❌ Database Test:', error);
+  }
   
   const tests = [
     { name: 'Categories', fn: apiHelpers.getCategories },

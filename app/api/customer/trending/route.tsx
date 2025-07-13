@@ -26,76 +26,124 @@ export async function OPTIONS() {
 // GET method to fetch trending products (newly created + recently stocked) that are in stock
 export async function GET(request: Request) {
   try {
-    // Connect to the database
-    await connectDB();
+    console.log('Starting trending products fetch...');
     
-    // Hard limit to exactly 10 products
+    // Connect to the database with error handling
+    try {
+      await connectDB();
+      console.log('Database connected for trending products');
+      
+      // Verify connection is actually ready
+      if (mongoose.connection.readyState !== 1) {
+        throw new Error(`Database not ready for trending. ReadyState: ${mongoose.connection.readyState}`);
+      }
+    } catch (dbError) {
+      console.error('Database connection failed for trending:', dbError);
+      return NextResponse.json({ 
+        error: "Database connection failed",
+        details: dbError instanceof Error ? dbError.message : String(dbError)
+      }, { 
+        status: 500,
+        headers: corsHeaders,
+      });
+    }
+    
     const PRODUCT_LIMIT = 10;
     
     // Get date threshold for recent items (last 30 days)
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     
-    // Find all inventory items with "In Stock" status
-    const inStockInventory = await Inventory.find({
-      status: 'In Stock'
-    });
+    // Find all inventory items with "In Stock" status - with fallback
+    let inStockProductIds: string[] = [];
+    let useInventoryFilter = true;
     
-    // Extract the product IDs from in-stock inventory
-    const inStockProductIds = inStockInventory.map(item => item.productId);
+    try {
+      const inStockInventory = await Inventory.find({
+        status: 'In Stock'
+      });
+      
+      if (inStockInventory.length > 0) {
+        inStockProductIds = inStockInventory.map(item => item.productId);
+        console.log(`Found ${inStockProductIds.length} products in stock for trending`);
+      } else {
+        console.log('No inventory found, using all products for trending');
+        useInventoryFilter = false;
+      }
+    } catch (inventoryError) {
+      console.error('Inventory fetch failed for trending, using all products:', inventoryError);
+      useInventoryFilter = false;
+    }
     
-    if (inStockProductIds.length === 0) {
+    // Build the base query based on inventory availability
+    let baseQuery: any = {};
+    
+    if (useInventoryFilter && inStockProductIds.length > 0) {
+      baseQuery._id = { $in: inStockProductIds };
+      console.log(`Using inventory filter for ${inStockProductIds.length} products`);
+    } else {
+      console.log('Using all products for trending (no inventory filter)');
+    }
+    
+    // Find all products that match our criteria
+    const allProducts = await Product.find(baseQuery).sort({ createdAt: -1 });
+    
+    if (allProducts.length === 0) {
       return NextResponse.json({ products: [] }, {
         headers: corsHeaders,
       });
     }
     
-    // Find all products that are in stock
-    const allInStockProducts = await Product.find({
-      _id: { $in: inStockProductIds }
-    }).sort({ createdAt: -1 }); // Sort by creation date, newest first
+    // Process trending logic based on inventory availability
+    let productsWithTimestamp: { product: any; timestamp: number; }[];
     
-    // Separate into new products and recently updated products
-    const newProducts = allInStockProducts.filter(product => 
-      product.createdAt && product.createdAt >= thirtyDaysAgo
-    );
-    
-    // Get the IDs of new products
-    const newProductIds = newProducts.map(product => product._id.toString());
-    
-    // Get recently updated inventory items that are in stock
-    const recentlyUpdatedInventory = inStockInventory.filter(item => 
-      item.updatedAt && item.updatedAt >= thirtyDaysAgo
-    ).sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()); // Sort by update date, newest first
-    
-    // Get product IDs from recently updated inventory
-    const recentlyUpdatedProductIds = recentlyUpdatedInventory.map(item => 
-      item.productId.toString()
-    );
-    
-    // Find products that were recently updated but not newly created
-    const recentlyUpdatedProducts = allInStockProducts.filter(product => 
-      !newProducts.some(newProduct => newProduct._id.toString() === product._id.toString()) &&
-      recentlyUpdatedProductIds.includes(product._id.toString())
-    );
-    
-    // Identify products that are both newly created AND recently stocked
-    const newAndStockedIds = newProductIds.filter(id => recentlyUpdatedProductIds.includes(id));
-    
-    // Create a map of products with their most recent timestamp (either created or updated)
-    const productsWithTimestamp = [...newProducts, ...recentlyUpdatedProducts].map(product => {
-      // Find the matching inventory item to get its update timestamp
-      const inventoryItem = recentlyUpdatedInventory.find(item => 
-        item.productId.toString() === product._id.toString()
+    if (useInventoryFilter && inStockProductIds.length > 0) {
+      // Separate into new products and recently updated products
+      const newProducts = allProducts.filter(product => 
+        product.createdAt && product.createdAt >= thirtyDaysAgo
       );
       
-      // Use the more recent of the two timestamps
-      const createdAt = product.createdAt ? product.createdAt.getTime() : 0;
-      const updatedAt = inventoryItem?.updatedAt ? inventoryItem.updatedAt.getTime() : 0;
-      const timestamp = Math.max(createdAt, updatedAt);
+      // Get the IDs of new products
+      const newProductIds = newProducts.map(product => product._id.toString());
       
-      return { product, timestamp };
-    });
+      // Get recently updated inventory items that are in stock
+      const recentlyUpdatedInventory = await Inventory.find({
+        status: 'In Stock',
+        updatedAt: { $gte: thirtyDaysAgo }
+      }).sort({ updatedAt: -1 });
+      
+      // Get product IDs from recently updated inventory
+      const recentlyUpdatedProductIds = recentlyUpdatedInventory.map(item => 
+        item.productId.toString()
+      );
+      
+      // Find products that were recently updated but not newly created
+      const recentlyUpdatedProducts = allProducts.filter(product => 
+        !newProducts.some(newProduct => newProduct._id.toString() === product._id.toString()) &&
+        recentlyUpdatedProductIds.includes(product._id.toString())
+      );
+      
+      // Create a map of products with their most recent timestamp
+      productsWithTimestamp = [...newProducts, ...recentlyUpdatedProducts].map(product => {
+        const inventoryItem = recentlyUpdatedInventory.find(item => 
+          item.productId.toString() === product._id.toString()
+        );
+        
+        const createdAt = product.createdAt ? product.createdAt.getTime() : 0;
+        const updatedAt = inventoryItem?.updatedAt ? inventoryItem.updatedAt.getTime() : 0;
+        
+        return {
+          product,
+          timestamp: Math.max(createdAt, updatedAt)
+        };
+      });
+    } else {
+      // If no inventory filter, just use the newest products
+      productsWithTimestamp = allProducts.slice(0, PRODUCT_LIMIT).map(product => ({
+        product,
+        timestamp: product.createdAt ? product.createdAt.getTime() : 0
+      }));
+    }
     
     // Get active discounts
     const today = new Date().toISOString().split('T')[0];
@@ -113,8 +161,6 @@ export async function GET(request: Request) {
     
     // Transform products to customer format with discount information
     const customerProducts = sortedProducts.map(product => {
-      const isNewAndStocked = newAndStockedIds.includes(product._id.toString());
-      
       // Find applicable discount
       const discount = activeDiscounts.find(
         d => (d.type === 'Product' && d.product === product._id.toString()) ||
@@ -138,7 +184,7 @@ export async function GET(request: Request) {
           product.gallery[0].src : '/placeholder.png',
         colors: product.gallery?.map((item: any) => item.src) || [],
         sizes: product.sizes || [],
-        tag: isNewAndStocked ? "NEW" : null,
+        tag: "TRENDING",
         // Include discount info for immediate use
         discount: discount ? {
           percentage: discount.percentage,
