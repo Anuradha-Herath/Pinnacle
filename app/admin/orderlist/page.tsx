@@ -1,15 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { CubeIcon, EyeIcon } from "@heroicons/react/24/solid";
 import Sidebar from "../../components/Sidebar";
-import {
-  ShoppingCartIcon,
-  CheckCircleIcon,
-  TruckIcon,
-} from "lucide-react";
+import { ShoppingCartIcon, CheckCircleIcon, TruckIcon } from "lucide-react";
 import TopBar from "@/app/components/admin/TopBar";
-import { useRouter } from "next/navigation";
 
 // Define the Order type according to your data structure
 interface Order {
@@ -47,25 +43,44 @@ export default function OrdersPage() {
     return orders.filter((order) => order.status === status).length;
   };
 
-  useEffect(() => {
-    // Fetch orders from the API
-    const fetchOrders = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch("/api/orders");
-        if (!response.ok) {
-          throw new Error("Failed to fetch orders");
-        }
-        const data = await response.json();
-        setOrders(data);
-      } catch (error) {
-        console.error("Error fetching orders:", error);
-      } finally {
-        setLoading(false);
+  // Simple fetch orders function
+  const fetchOrders = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch("/api/orders", {
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache",
+        },
+      });
+      if (!response.ok) {
+        throw new Error("Failed to fetch orders");
       }
+      const data = await response.json();
+      setOrders(data);
+    } catch (error) {
+      console.error("Error fetching orders:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchOrders(); // Initial fetch
+  }, []);
+
+  // Simple auto-refresh on window focus
+  useEffect(() => {
+    const handleFocus = () => {
+      fetchOrders();
     };
 
-    fetchOrders();
+    // Listen for when the window gains focus (user comes back to tab/browser)
+    window.addEventListener("focus", handleFocus);
+
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+    };
   }, []);
 
   // Filter orders based on selected status and search query, then apply pagination
@@ -243,7 +258,9 @@ export default function OrdersPage() {
                   <td colSpan={6} className="p-6 text-center">
                     <div className="flex flex-col items-center justify-center">
                       <div className="animate-spin rounded-full h-8 w-8 border-4 border-gray-300 border-t-orange-500 mb-2"></div>
-                      <span className="text-gray-700 text-base">Loading...</span>
+                      <span className="text-gray-700 text-base">
+                        Loading...
+                      </span>
                     </div>
                   </td>
                 </tr>
@@ -288,10 +305,12 @@ export default function OrdersPage() {
                       </span>
                     </td>
                     <td className="p-3">
-                      <button className="p-2 bg-orange-500 text-white rounded-md shadow-md hover:bg-orange-600"
+                      <button
+                        className="p-2 bg-orange-500 text-white rounded-md shadow-md hover:bg-orange-600"
                         onClick={() => {
                           router.push(`/admin/orderlist/${order._id}`);
-                        }}>
+                        }}
+                      >
                         <EyeIcon className="h-5 w-5" />
                       </button>
                     </td>
