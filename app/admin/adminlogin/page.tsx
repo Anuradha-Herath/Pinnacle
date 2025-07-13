@@ -16,6 +16,14 @@ const AdminLoginPage: React.FC = () => {
   const { login, user } = useAuth();
   const router = useRouter();
   
+  // Add state to handle client-side rendering
+  const [isClient, setIsClient] = useState(false);
+  
+  // Set isClient to true after component mounts on client
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
   // Check user state changes to handle navigation
   useEffect(() => {
     if (user && isCheckingRole) {
@@ -38,16 +46,33 @@ const AdminLoginPage: React.FC = () => {
     setIsLoading(true);
     
     try {
-      // Directly attempt the login without checking if user exists first
-      const success = await login(email, password);
+      // Use the admin-specific endpoint instead of the regular login
+      const response = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
       
-      if (success) {
+      const data = await response.json();
+      
+      if (data.success) {
         // Login successful, let the useEffect handle admin check
         setIsCheckingRole(true);
       } else {
-        // Login failed
-        setError("Invalid credentials");
-        toast.error("Invalid credentials");
+        // Handle different error cases
+        if (data.accountLocked) {
+          const unlockTime = new Date(data.lockUntil).toLocaleTimeString();
+          setError(`Account temporarily locked. Try again after ${unlockTime}`);
+          toast.error(`Account temporarily locked. Try again after ${unlockTime}`);
+        } else if (data.remainingAttempts !== undefined) {
+          setError(`Invalid credentials. ${data.remainingAttempts} attempts remaining before lockout.`);
+          toast.error(`Invalid credentials. ${data.remainingAttempts} attempts remaining.`);
+        } else {
+          setError(data.error || "Invalid credentials");
+          toast.error(data.error || "Invalid credentials");
+        }
       }
     } catch (error) {
       setError("Authentication failed");
@@ -58,6 +83,25 @@ const AdminLoginPage: React.FC = () => {
     }
   };
 
+  // Only render the form on the client side to avoid hydration mismatches
+  if (!isClient) {
+    return (
+      <div className="flex h-screen">
+        <div className="bg-[#282C34] text-white flex items-center justify-center w-1/2">
+          <h1 className="text-4xl font-semibold italic">Pinnacle</h1>
+        </div>
+        <div className="flex flex-col justify-center items-center w-1/2 bg-gray-100">
+          <div className="w-96 p-8 bg-white rounded-lg shadow-md">
+            <h2 className="text-2xl font-semibold mb-4 text-center">Admin Sign in</h2>
+            <p className="text-sm text-gray-600 mb-6 text-center">
+              Loading...
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
   return (
     <div className="flex h-screen">
       {/* Left Section (Logo) */}

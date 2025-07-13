@@ -30,9 +30,14 @@ export interface IUser extends Document {
   passwordResetExpires?: Date; // Add password reset expires field
   stripeCustomerId: string | null; // Add this field for Stripe customer ID
   provider?: string; // Add provider field for social logins
+  loginAttempts: number; // Add field for tracking login attempts
+  lockUntil: number | null; // Add field for account lockout timestamp
   createdAt: Date;
   updatedAt: Date;
   comparePassword: (candidatePassword: string) => Promise<boolean>;
+  isLocked: () => boolean; // Method to check if account is locked
+  incrementLoginAttempts: () => Promise<void>; // Method to increment failed attempts
+  resetLoginAttempts: () => Promise<void>; // Method to reset attempts after successful login
 }
 
 const UserSchema = new Schema<IUser>(
@@ -149,6 +154,16 @@ const UserSchema = new Schema<IUser>(
       type: String,
       required: false,
     },
+    
+    // Add fields for account lockout
+    loginAttempts: {
+      type: Number,
+      default: 0
+    },
+    lockUntil: {
+      type: Number,
+      default: null
+    },
   },
   { timestamps: true }
 );
@@ -178,6 +193,41 @@ UserSchema.methods.comparePassword = async function(this: any, candidatePassword
     console.error('Password comparison error:', error);
     return false;
   }
+};
+
+// Add method to check if account is locked
+UserSchema.methods.isLocked = function(): boolean {
+  // Check if account is locked (lockUntil is in the future)
+  return !!(this.lockUntil && this.lockUntil > Date.now());
+};
+
+// Add method to increment login attempts
+UserSchema.methods.incrementLoginAttempts = async function(): Promise<void> {
+  // If lock has expired, reset attempts and remove lock
+  if (this.lockUntil && this.lockUntil < Date.now()) {
+    this.loginAttempts = 1;
+    this.lockUntil = null;
+    await this.save();
+    return;
+  }
+  
+  // Otherwise increment attempts
+  this.loginAttempts += 1;
+  
+  // Lock the account if too many attempts (5)
+  if (this.loginAttempts >= 5) {
+    // Lock for 30 minutes
+    this.lockUntil = Date.now() + (30 * 60 * 1000);
+  }
+  
+  await this.save();
+};
+
+// Add method to reset login attempts
+UserSchema.methods.resetLoginAttempts = async function(): Promise<void> {
+  this.loginAttempts = 0;
+  this.lockUntil = null;
+  await this.save();
 };
 
 // Create or get User model
