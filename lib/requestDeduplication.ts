@@ -66,3 +66,8 @@ export const deduplicatedFetch = async (url: string, options?: RequestInit) => {
     return response.json();
   });
 };
+
+// Helper function for API route deduplication
+export const deduplicateRequest = async <T>(key: string, requestFn: () => Promise<T>): Promise<T> => {
+  return requestDeduplicator.deduplicate(key, requestFn);
+};

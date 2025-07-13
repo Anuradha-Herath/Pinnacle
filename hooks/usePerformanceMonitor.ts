@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect } from 'react';
 
 interface PerformanceMetrics {
@@ -25,17 +27,22 @@ export function usePerformanceMonitor(componentName: string) {
   }, [componentName]);
 }
 
-export function logCachePerformance(operation: string, hit: boolean, key: string) {
+// Client-side performance utilities
+export function logClientPerformance(operation: string, duration: number, metadata?: Record<string, any>) {
   if (process.env.NODE_ENV === 'development') {
-    console.log(`🗄️ Cache ${operation}: ${hit ? 'HIT' : 'MISS'} for key: ${key}`);
+    console.log(`🎯 Client ${operation}: ${duration.toFixed(2)}ms`, metadata || '');
   }
 }
 
-export function logApiCall(url: string, duration?: number) {
-  if (process.env.NODE_ENV === 'development') {
-    const message = duration 
-      ? `🌐 API Call: ${url} (${duration.toFixed(2)}ms)`
-      : `🌐 API Call: ${url}`;
-    console.log(message);
-  }
+export function useClientTimer() {
+  const startTime = performance.now();
+  
+  return {
+    end: () => performance.now() - startTime,
+    endAndLog: (operation: string, metadata?: Record<string, any>) => {
+      const duration = performance.now() - startTime;
+      logClientPerformance(operation, duration, metadata);
+      return duration;
+    }
+  };
 }

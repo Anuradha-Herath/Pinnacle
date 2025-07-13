@@ -1,5 +1,5 @@
 // Simple in-memory cache for admin category data
-import { logCachePerformance } from '@/hooks/usePerformanceMonitor';
+import { logCachePerformance } from '@/lib/serverPerformanceLogger';
 
 export interface CacheEntry<T> {
   data: T;
@@ -17,7 +17,7 @@ class AdminCategoryCache {
       timestamp: Date.now(),
       expires: Date.now() + ttl
     });
-    logCachePerformance('SET', false, key);
+    logCachePerformance('SET', true, key);
   }
 
   get<T>(key: string): T | null {
