@@ -54,7 +54,11 @@ export default function ProfilePage() {
 
       try {
         // Fetch user profile
-        const profileRes = await fetch('/api/profile');
+        const profileRes = await fetch('/api/profile', {
+          headers: {
+            'Cache-Control': 'no-cache',
+          },
+        });
         if (!profileRes.ok) throw new Error('Failed to fetch profile data');
         
         const profileData = await profileRes.json();
@@ -69,7 +73,11 @@ export default function ProfilePage() {
         }
 
         // Fetch user orders from the new endpoint
-        const ordersRes = await fetch('/api/profile/user-orders');
+        const ordersRes = await fetch('/api/profile/user-orders', {
+          headers: {
+            'Cache-Control': 'no-cache',
+          },
+        });
         if (!ordersRes.ok) throw new Error('Failed to fetch orders');
         
         const ordersData = await ordersRes.json();
@@ -87,8 +95,11 @@ export default function ProfilePage() {
       }
     };
 
-    fetchProfileData();
-  }, [user, router]);
+    // Only fetch if we have a user and we haven't loaded the data yet
+    if (user && loading) {
+      fetchProfileData();
+    }
+  }, [user?.id, router]); // Only depend on user.id instead of the entire user object
 
   // Handle edit profile redirect
   const handleEditProfile = () => {
