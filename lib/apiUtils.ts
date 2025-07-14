@@ -1,6 +1,9 @@
 // API utilities for request management and caching
 import { performanceMonitor } from './performanceMonitor';
 
+// Add trending products specific cache timeout - longer since trending changes less frequently
+export const TRENDING_CACHE_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+
 export interface PendingRequest {
   promise: Promise<any>;
   timestamp: number;
@@ -162,10 +165,53 @@ export const fetchCustomerProducts = async (filters: {
 };
 
 /**
- * Fetches trending products with deduplication
+ * Fetches trending products with deduplication and extended caching
+ * Uses a longer cache timeout since trending products change less frequently
  */
 export const fetchTrendingProducts = async () => {
-  return deduplicateRequest('/api/customer/trending');
+  const url = '/api/customer/trending';
+  const cacheKey = url;
+  
+  // Check for cached trending data with extended timeout
+  const cached = requestCache.get(cacheKey);
+  if (cached) {
+    if (Date.now() - cached.timestamp < TRENDING_CACHE_TIMEOUT) {
+      console.log(`⚡ Using cached trending data (extended timeout)`);
+      performanceMonitor.countRequest(`${url} (cached trending)`);
+      return cached.promise;
+    } else {
+      requestCache.delete(cacheKey);
+    }
+  }
+  
+  // Create new request with optimized headers for trending
+  console.log(`🚀 Fetching fresh trending products data`);
+  performanceMonitor.countRequest(url);
+  
+  const promise = fetch(url, {
+    headers: {
+      'Cache-Control': 'max-age=300, stale-while-revalidate=60',
+      'Accept': 'application/json',
+    },
+  })
+    .then(async (response) => {
+      if (!response.ok) {
+        throw new Error(`Failed to fetch trending products: ${response.status}`);
+      }
+      return response.json();
+    })
+    .catch((error) => {
+      console.error('Trending products fetch error:', error);
+      return { products: [] }; // Return empty array on error for graceful degradation
+    });
+  
+  // Cache the promise with the extended timeout
+  requestCache.set(cacheKey, {
+    promise,
+    timestamp: Date.now(),
+  });
+  
+  return promise;
 };
 
 /**

@@ -3,16 +3,17 @@
 import React, { useState, useEffect } from "react";
 import Header from "./components/Header";
 import ProductCarousel from "./components/ProductCarousel";
+import TrendingCarousel from "./components/TrendingCarousel";
 import Footer from "./components/Footer";
 import Link from "next/link";
 import HeaderPlaceholder from "./components/HeaderPlaceholder";
 import { getBrowserInfo, logBrowserInfo } from "@/lib/browserUtils";
 import { logPerformanceMetrics, measureApiCallTime } from "@/lib/performanceUtils";
-import { fetchCustomerProducts, fetchTrendingProducts } from "@/lib/apiUtils";
+import { fetchCustomerProducts } from "@/lib/apiUtils";
+import { prefetchTrendingWhenIdle } from "@/lib/prefetching";
 
 const HomePage = () => {
   const [products, setProducts] = useState<any[]>([]);
-  const [trendingProducts, setTrendingProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [genderLoading, setGenderLoading] = useState(false);
   const [accessoriesLoading, setAccessoriesLoading] = useState(false);
@@ -110,15 +111,7 @@ const HomePage = () => {
         });
       }
       
-      // Fetch trending products using the improved API utilities
-      try {
-        const trendingData = await fetchTrendingProducts() as { products: any[] };
-        setTrendingProducts(trendingData.products || []);
-      } catch (trendingError) {
-        console.error('Error fetching trending products:', trendingError);
-        // Continue without trending products rather than failing completely
-        setTrendingProducts([]);
-      }
+      // Trending products are now handled by the TrendingCarousel component
       
       setRetryCount(0); // Reset retry count on success
       
@@ -320,6 +313,9 @@ const HomePage = () => {
     // Start performance monitoring
     logPerformanceMetrics();
     
+    // Prefetch trending products data when browser is idle for better performance
+    prefetchTrendingWhenIdle();
+    
     const loadAllData = async () => {
       // First fetch all products
       await fetchProducts();
@@ -371,12 +367,8 @@ const HomePage = () => {
           </div>
         )}
 
-        {/* Trending Products - Newly Created + Recently Stocked */}
-        <ProductCarousel
-          title="Trending Products"
-          products={trendingProducts.length > 0 ? trendingProducts : []}
-          loading={loading}
-        />
+        {/* Trending Products - Newly Created + Recently Stocked - Optimized Component */}
+        <TrendingCarousel />
 
         {/* Large Shop Now Images */}
         <div className="flex flex-col md:flex-row gap-6 md:gap-8 my-12 md:my-16 px-4 md:px-8 justify-center">
