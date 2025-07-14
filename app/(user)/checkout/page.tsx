@@ -226,11 +226,10 @@ function Checkout() {
       if (!response.ok) {
         throw new Error(data.error || "Failed to add points");
       }
-
     } catch (error) {
       console.error("Error adding points:", error);
     }
-  }
+  };
 
   // Fix for hydration issues - only render cart after component mounts
   useEffect(() => {
