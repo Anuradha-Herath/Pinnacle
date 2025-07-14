@@ -4,15 +4,18 @@ import Product from "@/models/Product";
 import Inventory from "@/models/Inventory";
 import Discount from "@/models/Discount";
 import connectDB from "@/lib/optimizedDB"; // Use optimized connection
+import { getTrendingFromCache, setTrendingCache } from "@/lib/trendingCache";
 
-// Add CORS headers helper with caching
+// Add CORS headers helper with enhanced caching for trending products
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Access-Control-Max-Age': '86400',
-  'Cache-Control': 'public, max-age=300, stale-while-revalidate=60',
-  'CDN-Cache-Control': 'max-age=300',
+  // Longer cache time for trending products since they don't change as frequently
+  'Cache-Control': 'public, max-age=600, stale-while-revalidate=120',
+  'CDN-Cache-Control': 'max-age=900', // 15 minutes CDN cache
+  'Surrogate-Control': 'max-age=1200', // 20 minutes for edge CDN if available
 };
 
 // Handle OPTIONS request for CORS
@@ -27,6 +30,21 @@ export async function OPTIONS() {
 export async function GET(request: Request) {
   try {
     console.log('Starting trending products fetch...');
+    
+    // Check cache first to avoid database queries
+    const cachedProducts = getTrendingFromCache();
+    if (cachedProducts) {
+      console.log('Serving trending products from cache');
+      return NextResponse.json({ products: cachedProducts }, {
+        headers: {
+          ...corsHeaders,
+          'X-Cache': 'HIT',
+          'X-Cache-Timestamp': new Date().toISOString(),
+        }
+      });
+    }
+    
+    console.log('Trending cache miss, fetching from database...');
     
     // Connect to the database with error handling
     try {
@@ -193,8 +211,15 @@ export async function GET(request: Request) {
       };
     });
     
+    // Store in cache before returning
+    setTrendingCache(customerProducts);
+    
     return NextResponse.json({ products: customerProducts }, {
-      headers: corsHeaders,
+      headers: {
+        ...corsHeaders,
+        'X-Cache': 'MISS',
+        'X-Cache-Timestamp': new Date().toISOString(),
+      }
     });
   } catch (error) {
     console.error("Error fetching trending products:", error);
