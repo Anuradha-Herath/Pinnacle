@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
     // Parse query parameters with proper URL decoding
     const searchParams = request.nextUrl.searchParams;
     const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '10');
+    const limit = Math.min(parseInt(searchParams.get('limit') || '10'), 50); // Cap limit at 50 for performance
     const searchQuery = searchParams.get('q');
     const category = searchParams.get('category') ? decodeURIComponent(searchParams.get('category')!) : null;
     const subCategory = searchParams.get('subCategory') ? decodeURIComponent(searchParams.get('subCategory')!) : null;
@@ -73,12 +73,12 @@ export async function GET(request: NextRequest) {
     
     console.log(`API: Fetching products with filters:`, { category, subCategory, searchQuery, page, limit, cacheBust });
 
-    // Get active discounts with caching
+    // Get active discounts with caching - using lean() for better performance
     const activeDiscounts = await Discount.find({
       status: 'Active',
       startDate: { $lte: new Date().toISOString().split('T')[0] },
       endDate: { $gte: new Date().toISOString().split('T')[0] }
-    }).lean(); // Use lean() for better performance
+    }).lean().exec(); // Use lean() and exec() for better performance
 
     // If fetching a single product by ID
     if (productId) {
@@ -181,8 +181,16 @@ export async function GET(request: NextRequest) {
     // Calculate total pages
     const totalPages = Math.ceil(totalProducts / limit);
     
-    // Calculate discounted prices for all fetched products
-    const productsWithDiscounts = products.map((product: any) => {
+    // Optimize gallery selection - only take first image for list view to reduce payload
+    const optimizedProducts = products.map((product: any) => ({
+      ...product,
+      gallery: product.gallery && product.gallery.length > 0 
+        ? [product.gallery[0]] // Only include first image for list performance
+        : []
+    }));
+    
+    // Calculate discounted prices for all fetched products efficiently
+    const productsWithDiscounts = optimizedProducts.map((product: any) => {
       const productObj = { ...product };
       
       // Find applicable discount
@@ -225,9 +233,21 @@ export async function GET(request: NextRequest) {
 
   } catch (error) {
     console.error('Error fetching products:', error);
+    
+    // Provide more specific error messages
+    let errorMessage = 'Failed to fetch products';
+    if (error instanceof mongoose.Error.ValidationError) {
+      errorMessage = 'Invalid query parameters';
+    } else if (error instanceof mongoose.Error.CastError) {
+      errorMessage = 'Invalid product ID format';
+    } else if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+    
     return NextResponse.json({ 
       success: false, 
-      error: 'Failed to fetch products' 
+      error: errorMessage,
+      timestamp: new Date().toISOString()
     }, { 
       status: 500,
       headers: corsHeaders,
