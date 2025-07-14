@@ -29,9 +29,9 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Find the coupon by code
+    // Find the coupon by code (case insensitive)
     const coupon = await Coupon.findOne({ 
-      code: code.toUpperCase(),
+      code: { $regex: new RegExp(`^${code}$`, 'i') },
       status: 'Active'
     });
 
@@ -45,6 +45,11 @@ export async function POST(request: NextRequest) {
     const now = new Date();
     const startDate = new Date(coupon.startDate);
     const endDate = new Date(coupon.endDate);
+    
+    // Set time to start of day for proper comparison
+    now.setHours(0, 0, 0, 0);
+    startDate.setHours(0, 0, 0, 0);
+    endDate.setHours(23, 59, 59, 999);
 
     if (now < startDate) {
       return NextResponse.json({ 
@@ -60,6 +65,14 @@ export async function POST(request: NextRequest) {
 
     // Calculate discount amount
     const discountPercentage = parseFloat(coupon.discount);
+    
+    // Validate discount percentage
+    if (discountPercentage <= 0 || discountPercentage > 100) {
+      return NextResponse.json({ 
+        error: "Invalid discount percentage" 
+      }, { status: 400 });
+    }
+    
     const discountAmount = (subtotal * discountPercentage) / 100;
 
     return NextResponse.json({
