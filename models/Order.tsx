@@ -141,6 +141,12 @@ const OrderSchema = new Schema({
     unique: true,
   },
 
+  // Loyalty points earned
+  pointsEarned: {
+    type: Number,
+    default: 0,
+  },
+
   // Timestamps
   createdAt: {
     type: Date,
