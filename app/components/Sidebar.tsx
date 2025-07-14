@@ -53,8 +53,9 @@ const Sidebar: React.FC = () => {
     }) => (
         <Link
             href={href}
-            className={`flex items-center p-2 rounded hover:bg-gray-700 ${mounted && isActive(href) ? 'bg-gray-700' : ''}`}
+            className={`flex items-center p-2 rounded hover:bg-gray-700 transition-colors duration-200 ${mounted && isActive(href) ? 'bg-gray-700' : ''}`}
             onClick={onClick}
+            prefetch={true} // Enable prefetching for faster navigation
         >
             {children}
         </Link>

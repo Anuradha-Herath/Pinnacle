@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import Image from 'next/image';
 import { Eye, Pencil, Trash2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -19,6 +19,8 @@ const AdminProductCard = ({ product, onDelete }: {
   onDelete?: (id: string) => void;  // Optional callback to refresh products list
 }) => {
     const router = useRouter();
+    const [isDeleting, setIsDeleting] = useState(false);
+    const [imageError, setImageError] = useState(false);
     
     // Calculate percentage for the progress bar with a safety check
     const total = product.sales + product.remaining;
@@ -43,11 +45,19 @@ const AdminProductCard = ({ product, onDelete }: {
     const handleDeleteClick = async () => {
       // Show confirmation dialog with improved message
       if (confirm(`Are you sure you want to delete "${product.name}"?\n\nThis will also remove the product from inventory.`)) {
+        setIsDeleting(true);
         try {
+          // Add timeout for delete request
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout for delete
+          
           // First delete the product
           const response = await fetch(`/api/products/${product.id}`, {
             method: 'DELETE',
+            signal: controller.signal,
           });
+          
+          clearTimeout(timeoutId);
           
           if (!response.ok) {
             const errorData = await response.json();
@@ -70,7 +80,13 @@ const AdminProductCard = ({ product, onDelete }: {
           }
         } catch (error) {
           console.error('Error deleting product:', error);
-          alert(`Failed to delete product: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          if (error instanceof Error && error.name === 'AbortError') {
+            alert('Delete request timed out. Please try again.');
+          } else {
+            alert(`Failed to delete product: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          }
+        } finally {
+          setIsDeleting(false);
         }
       }
     };
@@ -93,7 +109,8 @@ const AdminProductCard = ({ product, onDelete }: {
         </button>
         <button 
           onClick={handleDeleteClick}
-          className="bg-orange-500 text-white p-2 rounded-full"
+          disabled={isDeleting}
+          className={`bg-orange-500 text-white p-2 rounded-full ${isDeleting ? 'opacity-50 cursor-not-allowed' : 'hover:bg-orange-600'}`}
         >
           <Trash2 size={16} />
         </button>
@@ -102,15 +119,16 @@ const AdminProductCard = ({ product, onDelete }: {
       {/* Product Image */}
       <div className="flex justify-center">
         <Image 
-          src={product.image || '/placeholder.png'} 
+          src={imageError ? '/placeholder.png' : (product.image || '/placeholder.png')} 
           alt={product.name} 
           width={150} 
           height={150} 
           className="rounded-md object-cover"
-          onError={(e) => {
-            // Fallback if image fails to load
-            (e.target as HTMLImageElement).src = '/placeholder.png';
-          }}
+          loading="lazy"
+          sizes="(max-width: 768px) 150px, 150px"
+          onError={() => setImageError(true)}
+          placeholder="blur"
+          blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
         />
       </div>
 
