@@ -38,6 +38,7 @@ export async function GET(request: Request) {
     
     // Get all orders from MongoDB directly
     console.log("Direct orders API: Executing find query");
+    query.paymentStatus = "paid";
     const orders = await Order.find(query)
       .select('orderNumber createdAt amount status paymentStatus line_items customer')
       .sort({ createdAt: -1 })
