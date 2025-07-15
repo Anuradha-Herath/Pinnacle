@@ -2,13 +2,17 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter, useParams } from "next/navigation";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import { authNotifications } from "@/lib/notificationService";
 
 const TokenResetPage = () => {
   // Get token from URL parameter
   const params = useParams();
   const token = params.token as string;
+  const searchParams = useSearchParams();
+  
+  // Check if request is coming from admin
+  const isAdminRequest = searchParams.get('from') === 'admin';
   
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -88,8 +92,13 @@ const TokenResetPage = () => {
             <p className="text-sm text-gray-600">
               Your password has been updated. You will be redirected to the login page in a few seconds.
             </p>
-            <Link href="/login" className="mt-4 inline-block text-blue-600 hover:underline">
-              Go to login now
+            <Link 
+              href={isAdminRequest ? "/admin/adminlogin" : "/login"} 
+              className={`mt-4 inline-block ${
+                isAdminRequest ? 'text-orange-600 hover:text-orange-700' : 'text-blue-600'
+              } hover:underline`}
+            >
+              Go to {isAdminRequest ? 'admin login' : 'login'} now
             </Link>
           </div>
         ) : (
@@ -100,7 +109,9 @@ const TokenResetPage = () => {
               <input
                 type="password"
                 placeholder="New Password"
-                className="w-3/4 px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-gray-800"
+                className={`w-3/4 px-4 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                  isAdminRequest ? 'focus:ring-orange-500' : 'focus:ring-gray-800'
+                }`}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -110,7 +121,9 @@ const TokenResetPage = () => {
               <input
                 type="password"
                 placeholder="Confirm New Password"
-                className="w-3/4 px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-gray-800"
+                className={`w-3/4 px-4 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                  isAdminRequest ? 'focus:ring-orange-500' : 'focus:ring-gray-800'
+                }`}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
@@ -121,7 +134,11 @@ const TokenResetPage = () => {
 
               <button
                 type="submit"
-                className={`w-3/4 bg-gray-900 text-white font-semibold py-2 rounded-full hover:bg-gray-800 transition ${
+                className={`w-3/4 ${
+                  isAdminRequest 
+                    ? 'bg-orange-500 hover:bg-orange-600' 
+                    : 'bg-gray-900 hover:bg-gray-800'
+                } text-white font-semibold py-2 rounded-full transition ${
                   isLoading ? 'opacity-70 cursor-not-allowed' : ''
                 }`}
                 disabled={isLoading}

@@ -59,7 +59,8 @@ export async function POST(request: NextRequest) {
     // Create reset URL - Get base URL from request to match the correct port
     const host = request.headers.get('host') || 'localhost:3001';
     const protocol = host.includes('localhost') ? 'http' : 'https';
-    const resetURL = `${protocol}://${host}/password-reset/${resetToken}`;
+    const adminParam = user.role === 'admin' ? '?from=admin' : '';
+    const resetURL = `${protocol}://${host}/password-reset/${resetToken}${adminParam}`;
     
     // For development, log the reset URL to console
     if (process.env.NODE_ENV === 'development') {
