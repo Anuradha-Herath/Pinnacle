@@ -24,6 +24,7 @@ export default function CouponsList() {
   const [error, setError] = useState<string | null>(null);
   const [activeCount, setActiveCount] = useState(0);
   const [expiredCount, setExpiredCount] = useState(0);
+  const [futurePlanCount, setFuturePlanCount] = useState(0);
 
   // Fetch coupons from API
   useEffect(() => {
@@ -37,11 +38,13 @@ export default function CouponsList() {
         const data = await response.json();
         setCoupons(data.coupons);
         
-        // Count active and expired coupons
+        // Count active, expired, and future plan coupons
         const active = data.coupons.filter((coupon: Coupon) => coupon.status === 'Active').length;
-        const expired = data.coupons.filter((coupon: Coupon) => coupon.status === 'Expired').length;
+        const expired = data.coupons.filter((coupon: Coupon) => coupon.status === 'Expired' || coupon.status === 'Inactive').length;
+        const futurePlan = data.coupons.filter((coupon: Coupon) => coupon.status === 'Future Plan').length;
         setActiveCount(active);
         setExpiredCount(expired);
+        setFuturePlanCount(futurePlan);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An unknown error occurred');
         console.error('Error fetching coupons:', err);
@@ -102,16 +105,16 @@ export default function CouponsList() {
         </div>
 
         {/* Coupon Stats */}
-        <div className="grid grid-cols-2 gap-1 mb-6 justify-center">
+        <div className="grid grid-cols-3 gap-4 mb-6">
           {/* Active Coupons */}
-          <div className="bg-white p-6 rounded-lg shadow-lg flex items-center justify-between w-1/2 mx-auto">
+          <div className="bg-white p-6 rounded-lg shadow-lg flex items-center justify-between">
             <div>
               <p className="text-gray-700 text-lg font-semibold">
                 Active Coupons
               </p>
               <p className="text-gray-900 text-2xl font-bold">{activeCount}</p>
             </div>
-            <div className="bg-orange-100 p-4 rounded-xl">
+            <div className="bg-green-100 p-4 rounded-xl">
               <img
                 src="/active coupon.png"
                 alt="Active Coupons"
@@ -120,15 +123,32 @@ export default function CouponsList() {
             </div>
           </div>
 
+          {/* Future Plan Coupons */}
+          <div className="bg-white p-6 rounded-lg shadow-lg flex items-center justify-between">
+            <div>
+              <p className="text-gray-700 text-lg font-semibold">
+                Future Plan Coupons
+              </p>
+              <p className="text-gray-900 text-2xl font-bold">{futurePlanCount}</p>
+            </div>
+            <div className="bg-blue-100 p-4 rounded-xl">
+              <img
+                src="/active coupon.png"
+                alt="Future Plan Coupons"
+                className="h-10 w-10"
+              />
+            </div>
+          </div>
+
           {/* Expired Coupons */}
-          <div className="bg-white p-6 rounded-lg shadow-lg flex items-center justify-between w-1/2 mx-auto">
+          <div className="bg-white p-6 rounded-lg shadow-lg flex items-center justify-between">
             <div>
               <p className="text-gray-700 text-lg font-semibold">
                 Expired Coupons
               </p>
               <p className="text-gray-900 text-2xl font-bold">{expiredCount}</p>
             </div>
-            <div className="bg-orange-100 p-4 rounded-xl">
+            <div className="bg-red-100 p-4 rounded-xl">
               <img
                 src="/expired coupon.png"
                 alt="Expired Coupons"
@@ -186,12 +206,12 @@ export default function CouponsList() {
                       <td className="p-3">
                         <span
                           className={`inline-block px-3 py-1 rounded-full text-sm font-semibold text-center align-middle ${
-                            coupon.status === "Future"
+                            coupon.status === "Future Plan"
                               ? "bg-blue-300 text-blue-800"
                               : coupon.status === "Active"
                               ? "bg-green-300 text-green-800"
-                              : coupon.status === "Expired"
-                              ? "bg-orange-300 text-orange-800"
+                              : coupon.status === "Expired" || coupon.status === "Inactive"
+                              ? "bg-red-300 text-red-800"
                               : ""
                           }`}
                         >

@@ -49,7 +49,7 @@ export default function CouponEdit() {
         // Map API status to form status
         let couponStatus = "active";
         if (coupon.status === "Inactive") couponStatus = "inactive";
-        if (coupon.status === "Future") couponStatus = "future plan";
+        if (coupon.status === "Future Plan") couponStatus = "future plan";
         
         setFormData({
           code: coupon.code || "",
@@ -157,7 +157,7 @@ export default function CouponEdit() {
       const statusMap: StatusMap = {
         "active": "Active",
         "inactive": "Inactive",
-        "future plan": "Future"
+        "future plan": "Future Plan"
       };
       
       const couponData = {

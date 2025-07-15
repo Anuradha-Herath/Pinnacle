@@ -29,6 +29,32 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
+    // First, update coupon statuses based on current date - similar to discounts
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Update expired active coupons to Inactive
+    await Coupon.updateMany(
+      { 
+        status: 'Active', 
+        endDate: { $lt: today } 
+      },
+      { 
+        $set: { status: 'Inactive' } 
+      }
+    );
+    
+    // Update future coupons to Active when their start date has arrived
+    await Coupon.updateMany(
+      { 
+        status: 'Future Plan', 
+        startDate: { $lte: today },
+        endDate: { $gte: today }
+      },
+      { 
+        $set: { status: 'Active' } 
+      }
+    );
+
     // Find the coupon by code (case insensitive)
     const coupon = await Coupon.findOne({ 
       code: { $regex: new RegExp(`^${code}$`, 'i') },
