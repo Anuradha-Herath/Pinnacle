@@ -52,6 +52,18 @@ export async function PUT(
     const body = await request.json();
     console.log(`Updating coupon with ID: ${id}`);
     
+    // Calculate the status based on dates - similar to discounts
+    const currentDate = new Date().toISOString().split('T')[0]; // Get current date in YYYY-MM-DD format
+    let couponStatus;
+    
+    if (new Date(body.startDate) > new Date(currentDate)) {
+      couponStatus = 'Future Plan';
+    } else if (new Date(body.endDate) < new Date(currentDate)) {
+      couponStatus = 'Inactive';
+    } else {
+      couponStatus = 'Active';
+    }
+    
     // Extract specific fields with validation
     const updatedCoupon = await Coupon.findByIdAndUpdate(
       id, 
@@ -62,18 +74,21 @@ export async function PUT(
         code: body.code,
         startDate: body.startDate,
         endDate: body.endDate,
-        status: body.status,
+        status: couponStatus, // Use calculated status instead of body.status
         description: body.description || '',
         customerEligibility: body.customerEligibility,
         limit: body.limit,
-        oneTimeUse: body.oneTimeUse
+        oneTimeUse: body.oneTimeUse,
+        couponType: body.couponType,
+        discountType: body.discountType,
+        minOrderValue: body.minOrderValue
       }, 
       { new: true, runValidators: true });
     if (!updatedCoupon) {
       return NextResponse.json({ error: "Coupon not found" }, { status: 404 });
     }
     
-    console.log('Coupon updated successfully');
+    console.log('Coupon updated successfully with status:', couponStatus);
     return NextResponse.json({ 
       message: "Coupon updated successfully", 
       coupon: updatedCoupon 
