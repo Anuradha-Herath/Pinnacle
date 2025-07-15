@@ -28,6 +28,7 @@ interface UserProfile {
   email: string;
   phone: string;
   address: string;
+  points: number;
 }
 
 export default function ProfilePage() {
@@ -68,7 +69,8 @@ export default function ProfilePage() {
             lastName: profileData.user.lastName,
             email: profileData.user.email,
             phone: profileData.user.phone || '',
-            address: profileData.user.address || ''
+            address: profileData.user.address || '',
+            points: profileData.user.points || 0
           });
         }
 
@@ -178,6 +180,12 @@ export default function ProfilePage() {
             onClick={() => router.push('/profile/edit')}
             > Edit Details
           </button>
+          </div>
+        </div>
+
+        <div className="flex justify-center mt-6 mb-6">
+          <div className="bg-gray-200 rounded-lg p-6 text-center shadow-md">
+            <p className="text-black font-bold text-lg">Total points: {profile?.points || 0}</p>
           </div>
         </div>
         
