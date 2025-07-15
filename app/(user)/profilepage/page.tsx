@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { FiEdit } from "react-icons/fi";
+import { GiCrown } from "react-icons/gi";
 import { Button, CircularProgress } from "@mui/material";
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
@@ -18,6 +18,8 @@ interface Order {
   }[];
   createdAt: string;
   totalPrice: number;
+  subtotal: number;
+  shippingCost: number;
   pointsEarned: number;
   orderNumber: string;
 }
@@ -28,6 +30,7 @@ interface UserProfile {
   email: string;
   phone: string;
   address: string;
+  points: number;
 }
 
 export default function ProfilePage() {
@@ -42,6 +45,13 @@ export default function ProfilePage() {
   
   const { user } = useAuth();
   const router = useRouter();
+
+  // Function to get crown color based on points
+  const getCrownColor = (points: number) => {
+    if (points >= 1000) return "text-yellow-500"; // Gold/Yellow
+    if (points >= 500) return "text-gray-400"; // Silver
+    return "text-black"; // Black
+  };
 
   // Fetch user profile and orders
   useEffect(() => {
@@ -68,7 +78,8 @@ export default function ProfilePage() {
             lastName: profileData.user.lastName,
             email: profileData.user.email,
             phone: profileData.user.phone || '',
-            address: profileData.user.address || ''
+            address: profileData.user.address || '',
+            points: profileData.user.points || 0
           });
         }
 
@@ -156,6 +167,16 @@ export default function ProfilePage() {
           <div className="w-16 h-16 bg-gray-300 rounded-full"></div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
             {profile?.firstName} {profile?.lastName}
+            {profile && (
+              <GiCrown 
+                className={`ml-2 text-6xl ${getCrownColor(profile.points)}`}
+                title={`Points: ${profile.points} - ${
+                  profile.points >= 1000 ? 'Gold Crown' : 
+                  profile.points >= 500 ? 'Silver Crown' : 
+                  'Bronze Crown'
+                }`}
+              />
+            )}
           </h1>
         </div>
         
@@ -178,6 +199,12 @@ export default function ProfilePage() {
             onClick={() => router.push('/profile/edit')}
             > Edit Details
           </button>
+          </div>
+        </div>
+
+        <div className="flex justify-center mt-6 mb-6">
+          <div className="bg-gray-200 rounded-lg p-6 text-center shadow-md">
+            <p className="text-black font-bold text-lg">Total points: {profile?.points || 0}</p>
           </div>
         </div>
         
@@ -245,6 +272,36 @@ export default function ProfilePage() {
                   </div>
                 ))}
 
+                {/* Order Summary */}
+                <div className="mt-4 pt-4 border-t border-gray-300">
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <p className="text-sm text-gray-600">Subtotal:</p>
+                      <p className="text-sm font-semibold">
+                        Rs. {typeof order.subtotal === 'number' ? order.subtotal.toFixed(2) : '0.00'}
+                      </p>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <p className="text-sm text-gray-600">Shipping Cost:</p>
+                      <p className="text-sm font-semibold">
+                        Rs. {typeof order.shippingCost === 'number' ? order.shippingCost.toFixed(2) : '0.00'}
+                      </p>
+                    </div>
+                    <div className="flex justify-between items-center pt-2 border-t border-gray-200">
+                      <p className="text-lg font-bold text-black">Total:</p>
+                      <p className="text-lg font-bold text-black">
+                        Rs. {typeof order.totalPrice === 'number' ? order.totalPrice.toFixed(2) : '0.00'}
+                      </p>
+                    </div>
+                    {order.pointsEarned > 0 && (
+                      <div className="flex justify-between items-center pt-1">
+                        <p className="text-sm text-black font-semibold">Points Earned:</p>
+                        <p className="text-sm text-black font-semibold">{order.pointsEarned}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 
 
                 {/* Remove the ReviewButton component - customers will go directly to review page */}
@@ -254,7 +311,7 @@ export default function ProfilePage() {
             
             {/* Pagination controls */}
             {totalPages > 1 && (
-              <div className="flex justify-center mt-6 gap-2">
+              <div className="flex justify-center mt-6 gap-2 ">
                 <Button 
                   variant="outlined"
                   disabled={currentPage === 1}
