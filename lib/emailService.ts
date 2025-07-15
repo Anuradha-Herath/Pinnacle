@@ -15,9 +15,15 @@ export async function sendEmail({ to, subject, html }: EmailParams): Promise<boo
     // Create Gmail transporter
     const transporter = nodemailer.createTransport({
       service: 'gmail',
+      host: 'smtp.gmail.com',
+      port: 587,
+      secure: false, // true for 465, false for other ports
       auth: {
         user: process.env.GMAIL_USER, // Your Gmail address
         pass: process.env.GMAIL_APP_PASSWORD // Gmail App Password (not regular password)
+      },
+      tls: {
+        rejectUnauthorized: false // Allow self-signed certificates
       }
     });
 
