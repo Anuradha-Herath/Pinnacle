@@ -168,6 +168,16 @@ const AdminLoginPage: React.FC = () => {
             </button>
           </form>
           
+          {/* Forgot Password Link */}
+          <div className="mt-4 text-center">
+            <a 
+              href="/request-reset?from=admin" 
+              className="text-sm text-orange-500 hover:text-orange-600 hover:underline"
+            >
+              Forgot your password?
+            </a>
+          </div>
+          
           {/* No Google login button for admin access */}
         </div>
       </div>

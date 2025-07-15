@@ -22,6 +22,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   checkAuth: () => Promise<boolean>;
   syncUserData: () => Promise<void>; // New method to explicitly sync user data
+  refreshUser: () => Promise<void>; // Method to force refresh user data
 }
 
 // Create the context with a default value
@@ -34,6 +35,7 @@ const AuthContext = createContext<AuthContextType>({
   logout: async () => {},
   checkAuth: async () => false,
   syncUserData: async () => {}, // Default implementation
+  refreshUser: async () => {}, // Default implementation
 });
 
 // Custom hook to use the auth context
@@ -45,25 +47,78 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastSyncTime, setLastSyncTime] = useState<number>(0);
+  const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const pathname = usePathname();
   const { data: session, status: sessionStatus } = useSession();
   
   // Check if we're on an admin page
   const isAdminPage = pathname?.startsWith('/admin');
 
-  // Check authentication status on mount
+  // Check authentication status on mount - only once
   useEffect(() => {
+    let mounted = true;
+    const doInitialAuthCheck = async () => {
+      if (mounted && !isSyncing) {
+        await checkAuth();
+      }
+    };
+    
     // For admin pages, we still need auth but can skip sync
-    checkAuth();
-  }, []);
+    doInitialAuthCheck();
+    
+    return () => {
+      mounted = false;
+    };
+  }, []); // Empty dependency array - only run once on mount
 
   // Effect to sync NextAuth session with Auth context
   useEffect(() => {
     const syncNextAuthSession = async () => {
-      if (sessionStatus === 'authenticated' && session?.user && !user) {
+      // Prevent multiple concurrent sync operations
+      if (isSyncing) return;
+      
+      if (sessionStatus === 'authenticated' && session?.user) {
         console.log('NextAuth session detected, syncing with Auth context', session.user);
         
-        // Set user state from NextAuth session
+        // Check if we already have user data with the same email to avoid unnecessary syncs
+        if (user && user.email === session.user.email) {
+          setLoading(false);
+          return;
+        }
+        
+        setIsSyncing(true);
+        
+        // Clear any existing user data first to prevent stale data
+        setUser(null);
+        setLoading(true);
+        
+        // Always fetch fresh user data from database for Google logins
+        // to ensure we have the latest information
+        try {
+          const response = await fetch('/api/auth/me', {
+            method: 'GET',
+            headers: {
+              'Content-Type': 'application/json',
+              'Cache-Control': 'no-cache',
+            },
+            credentials: 'same-origin',
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            if (data.success && data.user) {
+              console.log('Successfully fetched fresh user data:', data.user);
+              setUser(data.user);
+              setLoading(false);
+              setIsSyncing(false);
+              return;
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching fresh user data:', error);
+        }
+        
+        // Fallback: Set user state from NextAuth session data
         setUser({
           id: session.user.id || '',
           firstName: session.user.name?.split(' ')[0] || '',
@@ -73,11 +128,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         });
         
         setLoading(false);
+        setIsSyncing(false);
+      } else if (sessionStatus === 'unauthenticated') {
+        // Clear user state when session is unauthenticated
+        console.log('NextAuth session unauthenticated, clearing user state');
+        setUser(null);
+        setLoading(false);
+        setIsSyncing(false);
       }
     };
     
     syncNextAuthSession();
-  }, [session, sessionStatus, user]);
+  }, [session?.user?.email, sessionStatus]); // Only depend on email and session status
   
   // Sync user data from local storage to server on login
   const syncUserData = async (): Promise<void> => {
@@ -141,6 +203,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Check if user is authenticated
   const checkAuth = async (): Promise<boolean> => {
+    // Prevent multiple concurrent auth checks
+    if (isSyncing) return user !== null;
+    
+    setIsSyncing(true);
     try {
       setLoading(true);
       setError(null);
@@ -189,6 +255,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return false;
     } finally {
       setLoading(false);
+      setIsSyncing(false);
     }
   };
 
@@ -298,6 +365,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  // Force refresh user data from the server
+  const refreshUser = async (): Promise<void> => {
+    // Prevent multiple concurrent refresh operations
+    if (isSyncing) return;
+    
+    setIsSyncing(true);
+    try {
+      const response = await fetch('/api/auth/me', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+        },
+        credentials: 'same-origin',
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.user) {
+          console.log('User data refreshed successfully:', data.user);
+          setUser(data.user);
+        }
+      }
+    } catch (error) {
+      console.error('Error refreshing user data:', error);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   // Context value
   const value = {
     user,
@@ -308,6 +405,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     logout,
     checkAuth,
     syncUserData,
+    refreshUser,
   };
 
   return (

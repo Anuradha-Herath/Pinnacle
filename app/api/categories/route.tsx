@@ -50,7 +50,26 @@ export async function OPTIONS() {
 // GET all categories
 export async function GET() {
   try {
-    await connectDB();
+    // Connect with proper error handling
+    try {
+      await connectDB();
+      console.log('Database connected for categories');
+      
+      // Verify connection is actually ready
+      if (mongoose.connection.readyState !== 1) {
+        throw new Error(`Database not ready for categories. ReadyState: ${mongoose.connection.readyState}`);
+      }
+    } catch (dbError) {
+      console.error('Database connection failed for categories:', dbError);
+      return NextResponse.json({ 
+        error: "Database connection failed",
+        details: dbError instanceof Error ? dbError.message : String(dbError)
+      }, { 
+        status: 500,
+        headers: corsHeaders,
+      });
+    }
+    
     const categories = await Category.find().sort({ createdAt: -1 });
     
     return NextResponse.json({ categories }, {
@@ -60,9 +79,15 @@ export async function GET() {
       },
     });
   } catch (error) {
-    console.error("Error fetching categories:", error);
+    console.error("DETAILED ERROR fetching categories:", {
+      error: error,
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    
     return NextResponse.json({ 
-      error: error instanceof Error ? error.message : "Failed to fetch categories" 
+      error: error instanceof Error ? error.message : "Failed to fetch categories",
+      details: process.env.NODE_ENV === 'development' && error instanceof Error ? error.stack : undefined
     }, { 
       status: 500,
       headers: corsHeaders,

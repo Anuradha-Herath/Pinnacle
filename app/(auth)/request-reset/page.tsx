@@ -1,14 +1,19 @@
 
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { authNotifications } from "@/lib/notificationService";
 
 const RequestResetPage = () => {
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const searchParams = useSearchParams();
+  
+  // Check if request is coming from admin login page
+  const isAdminRequest = searchParams.get('from') === 'admin';
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -56,8 +61,13 @@ const RequestResetPage = () => {
               If your email exists in our system, you will receive a password reset link shortly.
               Please check your inbox and spam folder.
             </p>
-            <Link href="/login" className="mt-4 inline-block text-blue-600 hover:underline">
-              Return to login
+            <Link 
+              href={isAdminRequest ? "/admin/adminlogin" : "/login"} 
+              className={`mt-4 inline-block ${
+                isAdminRequest ? 'text-orange-600 hover:text-orange-700' : 'text-blue-600'
+              } hover:underline`}
+            >
+              Return to {isAdminRequest ? 'admin login' : 'login'}
             </Link>
           </div>
         ) : (
@@ -65,7 +75,9 @@ const RequestResetPage = () => {
             <input
               type="email"
               placeholder="Email Address"
-              className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-gray-800"
+              className={`w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 ${
+                isAdminRequest ? 'focus:ring-orange-500' : 'focus:ring-gray-800'
+              }`}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -74,7 +86,11 @@ const RequestResetPage = () => {
 
             <button
               type="submit"
-              className={`w-full bg-gray-900 text-white font-semibold py-2 rounded-full hover:bg-gray-800 transition ${
+              className={`w-full ${
+                isAdminRequest 
+                  ? 'bg-orange-500 hover:bg-orange-600' 
+                  : 'bg-gray-900 hover:bg-gray-800'
+              } text-white font-semibold py-2 rounded-full transition ${
                 isLoading ? 'opacity-70 cursor-not-allowed' : ''
               }`}
               disabled={isLoading}
@@ -84,8 +100,13 @@ const RequestResetPage = () => {
             
             <p className="text-sm text-gray-600 mt-4">
               Remember your password?{" "}
-              <Link href="/login" className="font-semibold hover:underline">
-                Back to login
+              <Link 
+                href={isAdminRequest ? "/admin/adminlogin" : "/login"} 
+                className={`font-semibold hover:underline ${
+                  isAdminRequest ? 'text-orange-600' : 'text-gray-900'
+                }`}
+              >
+                Back to {isAdminRequest ? 'admin login' : 'login'}
               </Link>
             </p>
           </form>

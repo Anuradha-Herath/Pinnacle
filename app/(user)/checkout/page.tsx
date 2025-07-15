@@ -15,6 +15,7 @@ function Checkout() {
   const [isClient, setIsClient] = useState(false);
   const { cart, getCartTotal, isLoading, clearCart } = useCart();
   const cartClearedRef = useRef(false);
+  const pointsProcessedRef = useRef(false);
   const router = useRouter();
 
   // Coupon state
@@ -60,6 +61,20 @@ function Checkout() {
       }
     }
   }, [isClient, clearCart]);
+
+  // Handle points processing only once
+  useEffect(() => {
+    if (isClient && !pointsProcessedRef.current) {
+      const searchParams = new URLSearchParams(window.location.search);
+      if (searchParams.get("success") === "1") {
+        const orderNumber = searchParams.get("order");
+        if (orderNumber) {
+          pointsProcessedRef.current = true;
+          handlePoints(orderNumber);
+        }
+      }
+    }
+  }, [isClient]);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -194,6 +209,25 @@ function Checkout() {
       toast.error(
         "There was a problem processing your checkout. Please try again."
       );
+    }
+  };
+
+  const handlePoints = async (orderNumber: string | null) => {
+    try {
+      const response = await fetch("/api/orders/points", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ orderNumber: orderNumber }), // Replace with actual order number
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to add points");
+      }
+    } catch (error) {
+      console.error("Error adding points:", error);
     }
   };
 

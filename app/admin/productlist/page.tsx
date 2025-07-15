@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Sidebar from '../../components/Sidebar';
 import AdminProductCart from '../../components/AdminProductCard';
+import AdminProductListSkeleton from '../../components/AdminProductListSkeleton';
 import TopBar from '../../components/TopBar';
 import { useRouter } from 'next/navigation';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/solid';
@@ -34,6 +35,7 @@ const ProductsPage = () => {
   const [totalPages, setTotalPages] = useState(1);
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
+  const [navigating, setNavigating] = useState(false); // Add navigation loading state
   const router = useRouter();
 const [filter, setFilter] = useState('All'); // Add state for filter
   const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
@@ -43,6 +45,8 @@ const [filter, setFilter] = useState('All'); // Add state for filter
   const fetchProducts = async (page = 1, query = searchQuery, category = filter, forceFresh = false) => {
     try {
       setLoading(true);
+      setError(null); // Clear previous errors
+      
       // Include the search query in the API call if it exists
       const queryParam = query ? `&q=${encodeURIComponent(query)}` : '';
       const categoryParam = category && category !== 'All' ? `&category=${encodeURIComponent(category)}` : '';
@@ -50,21 +54,45 @@ const [filter, setFilter] = useState('All'); // Add state for filter
       const cacheBustParam = forceFresh || window.location.search.includes('_t=') ? `&_t=${Date.now()}` : '';
       const url = `/api/products?page=${page}&limit=${itemsPerPage}${queryParam}${categoryParam}${cacheBustParam}`;
       
-      // Use deduplicated request to prevent duplicate API calls, but bypass cache if forced fresh
-      const data: any = forceFresh 
-        ? await fetch(url, { 
-            cache: 'no-store',
-            headers: {
-              'Cache-Control': 'no-cache, no-store, must-revalidate',
-              'Pragma': 'no-cache'
-            }
-          }).then(res => res.json())
-        : await deduplicateRequest(url);
+      // Add timeout for faster failure detection
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
       
-      setProducts(data.products);
-      setTotalPages(data.pagination.pages);
+      try {
+        // Use deduplicated request to prevent duplicate API calls, but bypass cache if forced fresh
+        const data: any = forceFresh 
+          ? await fetch(url, { 
+              cache: 'no-store',
+              signal: controller.signal,
+              headers: {
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache'
+              }
+            }).then(res => {
+              if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+              return res.json();
+            })
+          : await deduplicateRequest(url, { signal: controller.signal });
+        
+        clearTimeout(timeoutId);
+        
+        if (data.success) {
+          setProducts(data.products || []);
+          setTotalPages(data.pagination?.pages || 1);
+        } else {
+          throw new Error(data.error || 'Failed to fetch products');
+        }
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        throw fetchError;
+      }
+      
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      if (err instanceof Error && err.name === 'AbortError') {
+        setError('Request timed out. Please try again.');
+      } else {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+      }
       console.error('Error fetching products:', err);
     } finally {
       setLoading(false);
@@ -225,10 +253,14 @@ discountedPrice: product.discountedPrice, // Pass discounted price if it exists
                   {loading ? 'Refreshing...' : 'Refresh'}
                 </button>
                 <button 
-                  onClick={() => router.push('/admin/productcreate')} 
+                  onClick={() => {
+                    setNavigating(true);
+                    router.push('/admin/productcreate');
+                  }} 
                   className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors"
+                  disabled={navigating}
                 >
-                  Add New Product
+                  {navigating ? 'Loading...' : 'Add New Product'}
                 </button>
               </div>
             </div>
@@ -327,26 +359,17 @@ discountedPrice: product.discountedPrice, // Pass discounted price if it exists
 
 
 
-          {/* Loading state */}
-          {loading && (
-            <div className="text-center py-10">
-              <div className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-gray-500 bg-gray-100">
-                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-gray-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                Loading products...
-              </div>
-            </div>
-          )}
+          {/* Loading State - Show skeleton instead of simple loading text */}
+          {loading && <AdminProductListSkeleton />}
 
           {/* Error state */}
           {error && (
-            <div className="text-center py-10">
-              <p className="text-red-500">Error: {error}</p>
+            <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+              <div className="text-red-600 font-semibold mb-2">Error Loading Products</div>
+              <div className="text-red-500 mb-4">{error}</div>
               <button 
-                onClick={() => window.location.reload()} 
-                className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-md"
+                onClick={() => fetchProducts(currentPage, searchQuery, filter, true)}
+                className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors"
               >
                 Try Again
               </button>
@@ -355,16 +378,21 @@ discountedPrice: product.discountedPrice, // Pass discounted price if it exists
 
           {/* Empty state */}
           {!loading && !error && formattedProducts.length === 0 && (
-            <div className="text-center py-10">
-              <p className="text-gray-500">
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
+              <div className="text-gray-600 font-semibold mb-2">No Products Found</div>
+              <div className="text-gray-500 mb-4">
                 {searchQuery ? `No products found matching "${searchQuery}"` : "No products found. Create your first product!"}
-              </p>
+              </div>
               {!searchQuery && (
                 <button 
-                  onClick={() => router.push('/admin/productcreate')} 
-                  className="mt-4 px-4 py-2 bg-orange-500 text-white rounded-md"
+                  onClick={() => {
+                    setNavigating(true);
+                    router.push('/admin/productcreate');
+                  }}
+                  className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors"
+                  disabled={navigating}
                 >
-                  Add New Product
+                  {navigating ? 'Loading...' : 'Add New Product'}
                 </button>
               )}
               {searchQuery && (

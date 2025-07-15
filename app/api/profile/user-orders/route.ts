@@ -54,7 +54,10 @@ export async function GET(req: NextRequest) {
                    image: item.metadata?.imageUrl || '/placeholder.jpg'
                  })) : []),
       createdAt: order.createdAt || new Date().toISOString(),
-      totalPrice: order.totalPrice || (order.amount?.total || 0),
+      totalPrice: order.amount?.total || 0,
+      subtotal: order.amount?.subtotal || 0,
+      shippingCost: order.amount?.shippingCost || 0,
+      pointsEarned: order.pointsEarned || 0,
     }));
     
     return NextResponse.json({

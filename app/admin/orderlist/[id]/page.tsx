@@ -31,6 +31,7 @@ interface Order {
   _id: string;
   userId: string;
   orderNumber: string;
+  pointsEarned: number;
   createdAt: string;
   updatedAt: string;
   customer: {
@@ -485,6 +486,9 @@ export default function OrderPage() {
               )}
               <p>
                 <strong>Phone:</strong> {order.customer.phone}
+              </p>
+              <p>
+                <strong>Points:</strong> {order.pointsEarned || 0}
               </p>
             </div>
 
