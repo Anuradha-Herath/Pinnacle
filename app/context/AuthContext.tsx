@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 import { toast } from 'react-hot-toast';
 import { usePathname } from 'next/navigation';
 import { useSession, signOut as nextAuthSignOut } from "next-auth/react";
+import { logger } from '@/lib/logger';
 
 interface User {
   id: string;
@@ -48,6 +49,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [error, setError] = useState<string | null>(null);
   const [lastSyncTime, setLastSyncTime] = useState<number>(0);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [hasInitialSync, setHasInitialSync] = useState<boolean>(false);
   const pathname = usePathname();
   const { data: session, status: sessionStatus } = useSession();
   
@@ -78,7 +80,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (isSyncing) return;
       
       if (sessionStatus === 'authenticated' && session?.user) {
-        console.log('NextAuth session detected, syncing with Auth context', session.user);
+        logger.info('NextAuth session detected, syncing with Auth context', session.user);
         
         // Check if we already have user data with the same email to avoid unnecessary syncs
         if (user && user.email === session.user.email) {
@@ -107,7 +109,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           if (response.ok) {
             const data = await response.json();
             if (data.success && data.user) {
-              console.log('Successfully fetched fresh user data:', data.user);
+              logger.info('Successfully fetched fresh user data:', data.user);
               setUser(data.user);
               setLoading(false);
               setIsSyncing(false);
@@ -115,7 +117,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             }
           }
         } catch (error) {
-          console.error('Error fetching fresh user data:', error);
+          logger.error('Error fetching fresh user data:', error);
         }
         
         // Fallback: Set user state from NextAuth session data
@@ -131,7 +133,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setIsSyncing(false);
       } else if (sessionStatus === 'unauthenticated') {
         // Clear user state when session is unauthenticated
-        console.log('NextAuth session unauthenticated, clearing user state');
+        logger.info('NextAuth session unauthenticated, clearing user state');
         setUser(null);
         setLoading(false);
         setIsSyncing(false);
@@ -149,9 +151,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Skip sync for admin pages to improve performance
       if (isAdminPage) return;
       
+      // Only sync once per session to prevent repeated calls
+      if (hasInitialSync) return;
+      
       // Don't sync too frequently (prevent excessive API calls)
       const now = Date.now();
-      if (now - lastSyncTime < 2000) { // 2 seconds minimum between syncs
+      if (now - lastSyncTime < 5000) { // 5 seconds minimum between syncs
         return;
       }
       setLastSyncTime(now);
@@ -195,9 +200,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       }
       
-      console.log('User data synchronized successfully');
+      // Mark as synced to prevent repeated calls
+      setHasInitialSync(true);
+      logger.info('User data synchronized successfully');
     } catch (error) {
-      console.error('Error syncing user data:', error);
+      logger.error('Error syncing user data:', error);
     }
   };
 
@@ -230,10 +237,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const data = await response.json();
         if (data.success && data.user) {
           setUser(data.user);
-          // After successful authentication check, sync local data with server only for non-admin pages
-          if (!isAdminPage) {
-            await syncUserData();
-          }
+          // Don't sync on every auth check - only sync on login/signup
           return true;
         } else {
           setUser(null);
@@ -244,9 +248,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return false;
       }
     } catch (err) {
-      console.error('Authentication check error:', err);
+      logger.error('Authentication check error:', err);
       if (err instanceof Error && err.name === 'AbortError') {
-        console.error('Auth request timed out');
+        logger.error('Auth request timed out');
         setError('Authentication request timed out');
       } else {
         setError(err instanceof Error ? err.message : 'Authentication failed');
@@ -355,10 +359,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Reset state
       setUser(null);
       
+      // Reset sync flag for next login
+      setHasInitialSync(false);
+      
       // REMOVE THIS TOAST - will be handled in the component
       // toast.success("Logged out successfully");
     } catch (err) {
-      console.error('Logout error:', err);
+      logger.error('Logout error:', err);
       toast.error("Error during logout");
     } finally {
       setLoading(false);
@@ -384,12 +391,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (response.ok) {
         const data = await response.json();
         if (data.success && data.user) {
-          console.log('User data refreshed successfully:', data.user);
+          logger.info('User data refreshed successfully:', data.user);
           setUser(data.user);
         }
       }
     } catch (error) {
-      console.error('Error refreshing user data:', error);
+      logger.error('Error refreshing user data:', error);
     } finally {
       setIsSyncing(false);
     }

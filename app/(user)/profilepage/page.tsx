@@ -6,6 +6,7 @@ import Header from "../../components/Header";
 import Footer from "../../components/Footer";
 import { useAuth } from "@/app/context/AuthContext";
 import { useRouter } from "next/navigation";
+import { logger } from "@/lib/logger";
 
 interface Order {
   _id: string;
@@ -38,6 +39,7 @@ export default function ProfilePage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [dataLoaded, setDataLoaded] = useState(false);
   
   // Add pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -92,7 +94,7 @@ export default function ProfilePage() {
         if (!ordersRes.ok) throw new Error('Failed to fetch orders');
         
         const ordersData = await ordersRes.json();
-        console.log("Orders data received:", ordersData); // For debugging
+        logger.debug("Orders data received:", ordersData); // For debugging
         
         if (ordersData.success) {
           // Orders are already formatted in the API response
@@ -100,17 +102,18 @@ export default function ProfilePage() {
         }
       } catch (err) {
         setError("Failed to load profile data");
-        console.error(err);
+        logger.error('Profile data fetch error:', err);
       } finally {
         setLoading(false);
+        setDataLoaded(true);
       }
     };
 
     // Only fetch if we have a user and we haven't loaded the data yet
-    if (user && loading) {
+    if (user && !dataLoaded) {
       fetchProfileData();
     }
-  }, [user?.id, router]); // Only depend on user.id instead of the entire user object
+  }, [user?.id, dataLoaded, router]); // Include dataLoaded to prevent re-fetching
 
   // Handle edit profile redirect
   const handleEditProfile = () => {

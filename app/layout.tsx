@@ -10,6 +10,7 @@ import { Toaster } from "react-hot-toast";
 import CloudinaryProvider from "./components/CloudinaryProvider";
 import ChatbotWrapper from "./components/ChatbotWrapper"; // Changed from Chatbot to ChatbotWrapper
 import AuthProviders from "./providers/AuthProviders";
+import ErrorSuppressor from "./components/ErrorSuppressor";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -59,6 +60,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <ErrorSuppressor />
         <AuthProviders>
           <AuthProvider>
             <DiscountProvider>
