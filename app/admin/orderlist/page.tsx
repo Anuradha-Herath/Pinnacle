@@ -6,7 +6,7 @@ import {
   CubeIcon,
   EyeIcon,
   MagnifyingGlassIcon,
-  CheckCircleIcon, 
+  CheckCircleIcon,
   TruckIcon,
   ArrowPathIcon,
   GiftIcon,
@@ -17,6 +17,7 @@ import TopBar from "@/app/components/admin/TopBar";
 
 // Define the Order type according to your data structure
 interface Order {
+  paymentStatus: string;
   _id: string;
   orderNumber: string;
   createdAt: string;
@@ -48,7 +49,9 @@ export default function OrdersPage() {
 
   // Function to get count of orders by status
   const getOrderCountByStatus = (status: string) => {
-    return orders.filter((order) => order.status === status).length;
+    return orders.filter(
+      (order) => order.status === status && order.paymentStatus === "paid"
+    ).length;
   };
 
   // Simple fetch orders function

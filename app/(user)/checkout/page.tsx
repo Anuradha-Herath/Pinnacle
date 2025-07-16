@@ -7,13 +7,16 @@ import { useCart, CartItem } from "../../context/CartContext";
 import { getValidImageUrl, handleImageError } from "@/lib/imageUtils";
 import Success from "@/app/components/checkout/Success";
 import Cancel from "@/app/components/checkout/Cancel";
+import CustomerInfoAutoFill from "@/app/components/checkout/CustomerInfoAutoFill";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/app/context/AuthContext";
 
 function Checkout() {
   const [shipping, setShipping] = useState("ship");
   const [isClient, setIsClient] = useState(false);
   const { cart, getCartTotal, isLoading } = useCart();
+  const { user } = useAuth();
   const router = useRouter();
   const [isProcessing, setIsProcessing] = useState(false);
 
@@ -40,6 +43,27 @@ function Checkout() {
     postalCode: "",
     phone: "",
   });
+
+  // Handle auto-filled customer information
+  const handleCustomerInfoLoaded = (info: any) => {
+    setFormData((prev) => ({
+      ...prev,
+      email: info.email || prev.email,
+      firstName: info.firstName || prev.firstName,
+      lastName: info.lastName || prev.lastName,
+      phone: info.phone || prev.phone,
+      district: info.district || prev.district,
+      address: info.address || prev.address,
+      city: info.city || prev.city,
+      postalCode: info.postalCode || prev.postalCode,
+      deliveryMethod: info.deliveryMethod || prev.deliveryMethod,
+    }));
+
+    // Update shipping method if delivery method was loaded
+    if (info.deliveryMethod) {
+      setShipping(info.deliveryMethod);
+    }
+  };
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -234,15 +258,17 @@ function Checkout() {
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Header />
 
+      {/* Auto-fill component - only render for logged-in users */}
+      {user && <CustomerInfoAutoFill onInfoLoaded={handleCustomerInfoLoaded} />}
+
       <main className="flex-grow container mx-auto px-2 sm:px-4 py-4 sm:py-8">
         <h1 className="text-2xl sm:text-3xl font-bold mb-6">Checkout</h1>
 
         <div className="flex flex-col-reverse lg:grid lg:grid-cols-12 gap-4 sm:gap-8">
-          {/* Checkout Form - left, 50% width on desktop */}
+          {/* Checkout Form - left*/}
           <div className="lg:col-span-6 order-1 lg:order-1 w-full">
             <div className="bg-white rounded-lg shadow-md p-3 sm:p-6 h-full flex flex-col">
               <form onSubmit={handleSubmit}>
-                {/* ... (form sections remain unchanged) ... */}
                 <section className="mb-8">
                   <h2 className="text-lg sm:text-xl font-semibold mb-4">
                     Contact Information
@@ -264,6 +290,7 @@ function Checkout() {
                         placeholder="your@email.com"
                         className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-black focus:outline-none"
                         required
+                        // disabled={!!user}
                       />
                     </div>
                     <label className="flex items-center gap-2 text-sm text-gray-600">
@@ -355,10 +382,6 @@ function Checkout() {
                           required={shipping === "ship"}
                         >
                           <option value="">Select District</option>
-                          {/* <option value="IN">India</option>
-                          <option value="US">United States</option>
-                          <option value="UK">United Kingdom</option>
-                          <option value="CA">Canada</option> */}
                           <option value="Jaffna">Jaffna</option>
                           <option value="Kilinochchi">Kilinochchi</option>
                           <option value="Mannar">Mannar</option>
