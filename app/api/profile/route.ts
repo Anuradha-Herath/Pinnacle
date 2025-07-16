@@ -49,6 +49,7 @@ export async function GET(req: NextRequest) {
         phone: user.phone || '',
         address: user.address || '',
         points: user.points || 0,
+        profilePicture: user.profilePicture || '/p9.webp',
         role: user.role,
         wishlist: user.wishlist || [],
         createdAt: user.createdAt,

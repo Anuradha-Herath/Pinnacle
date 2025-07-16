@@ -33,7 +33,7 @@ const RequestResetPage = () => {
         throw new Error(data.error || 'Failed to request password reset');
       }
     } catch (error) {
-      console.error('Error requesting password reset:', error);
+      console.log('Error requesting password reset:', error);
       authNotifications.loginError('Failed to request password reset. Please try again.');
     } finally {
       setIsLoading(false);
