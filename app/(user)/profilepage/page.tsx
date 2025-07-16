@@ -32,6 +32,7 @@ interface UserProfile {
   phone: string;
   address: string;
   points: number;
+  profilePicture: string;
 }
 
 export default function ProfilePage() {
@@ -39,7 +40,6 @@ export default function ProfilePage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [dataLoaded, setDataLoaded] = useState(false);
   
   // Add pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -64,13 +64,27 @@ export default function ProfilePage() {
         return;
       }
 
+      // If data is already loaded, don't fetch again
+      if (dataLoaded) {
+        setLoading(false);
+        return;
+      }
+
       try {
-        // Fetch user profile
+        // Add timeout to prevent hanging requests
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+        // Fetch user profile with caching headers
         const profileRes = await fetch('/api/profile', {
           headers: {
-            'Cache-Control': 'no-cache',
+            'Cache-Control': 'max-age=300', // Cache for 5 minutes
           },
+          signal: controller.signal,
         });
+        
+        clearTimeout(timeoutId);
+        
         if (!profileRes.ok) throw new Error('Failed to fetch profile data');
         
         const profileData = await profileRes.json();
@@ -81,16 +95,24 @@ export default function ProfilePage() {
             email: profileData.user.email,
             phone: profileData.user.phone || '',
             address: profileData.user.address || '',
-            points: profileData.user.points || 0
+            points: profileData.user.points || 0,
+            profilePicture: profileData.user.profilePicture || '/p9.webp'
           });
         }
 
-        // Fetch user orders from the new endpoint
+        // Fetch user orders from the new endpoint with caching
+        const ordersController = new AbortController();
+        const ordersTimeoutId = setTimeout(() => ordersController.abort(), 15000);
+        
         const ordersRes = await fetch('/api/profile/user-orders', {
           headers: {
-            'Cache-Control': 'no-cache',
+            'Cache-Control': 'max-age=300', // Cache for 5 minutes
           },
+          signal: ordersController.signal,
         });
+        
+        clearTimeout(ordersTimeoutId);
+        
         if (!ordersRes.ok) throw new Error('Failed to fetch orders');
         
         const ordersData = await ordersRes.json();
@@ -100,9 +122,12 @@ export default function ProfilePage() {
           // Orders are already formatted in the API response
           setOrders(ordersData.orders);
         }
+
+        // Mark data as loaded
+        setDataLoaded(true);
       } catch (err) {
         setError("Failed to load profile data");
-        logger.error('Profile data fetch error:', err);
+        console.error(err);
       } finally {
         setLoading(false);
         setDataLoaded(true);
@@ -110,10 +135,13 @@ export default function ProfilePage() {
     };
 
     // Only fetch if we have a user and we haven't loaded the data yet
-    if (user && !dataLoaded) {
+    if (user && loading) {
       fetchProfileData();
+    } else if (user && dataLoaded) {
+      // If we have user and data is loaded, just set loading to false
+      setLoading(false);
     }
-  }, [user?.id, dataLoaded, router]); // Include dataLoaded to prevent re-fetching
+  }, [user?.id, router]); // Only depend on user.id instead of the entire user object
 
   // Handle edit profile redirect
   const handleEditProfile = () => {
@@ -167,7 +195,16 @@ export default function ProfilePage() {
       <Header />
       <div className="max-w-4xl mx-auto p-6">
         <div className="flex items-center gap-4 mb-6">
-          <div className="w-16 h-16 bg-gray-300 rounded-full"></div>
+          <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-300 border-2 border-gray-300">
+            <img
+              src={profile?.profilePicture || '/p9.webp'}
+              alt="Profile"
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                e.currentTarget.src = '/p9.webp';
+              }}
+            />
+          </div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
             {profile?.firstName} {profile?.lastName}
             {profile && (

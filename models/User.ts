@@ -126,7 +126,7 @@ const UserSchema = new Schema<IUser>(
     
     profilePicture: {
       type: String,
-      default: '/p9.webp' // Change from '/default-profile.png' to an existing image
+      default: null // Set to null so we can handle default in frontend
     },
     
     phone: {

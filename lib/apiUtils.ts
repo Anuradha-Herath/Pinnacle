@@ -193,15 +193,20 @@ export const fetchTrendingProducts = async () => {
       'Cache-Control': 'max-age=300, stale-while-revalidate=60',
       'Accept': 'application/json',
     },
+    // Add timeout to prevent hanging requests
+    signal: AbortSignal.timeout ? AbortSignal.timeout(10000) : undefined,
   })
     .then(async (response) => {
       if (!response.ok) {
-        throw new Error(`Failed to fetch trending products: ${response.status}`);
+        // Log warning instead of throwing error for non-critical API
+        console.warn(`Trending products API returned ${response.status}, returning fallback data`);
+        return { products: [] }; // Return empty fallback instead of throwing
       }
       return response.json();
     })
     .catch((error) => {
-      console.error('Trending products fetch error:', error);
+      // Silent failure for trending products - not critical for app functionality
+      console.warn('Trending products fetch warning (non-critical):', error.message);
       return { products: [] }; // Return empty array on error for graceful degradation
     });
   

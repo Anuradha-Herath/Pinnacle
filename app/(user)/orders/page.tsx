@@ -34,7 +34,7 @@ const OrdersListPage = () => {
         }
       } catch (err) {
         setError("Failed to load orders");
-        console.error(err);
+        console.log(err);
       } finally {
         setLoading(false);
       }

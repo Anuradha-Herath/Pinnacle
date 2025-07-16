@@ -77,7 +77,7 @@ const AdminLoginPage: React.FC = () => {
     } catch (error) {
       setError("Authentication failed");
       toast.error("Authentication failed");
-      console.error("Login error:", error);
+      console.log("Login error:", error);
     } finally {
       setIsLoading(false);
     }
