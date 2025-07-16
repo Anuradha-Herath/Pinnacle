@@ -13,8 +13,7 @@ import { useRouter } from "next/navigation";
 function Checkout() {
   const [shipping, setShipping] = useState("ship");
   const [isClient, setIsClient] = useState(false);
-  const { cart, getCartTotal, isLoading, clearCart } = useCart();
-  const cartClearedRef = useRef(false);
+  const { cart, getCartTotal, isLoading } = useCart();
   const pointsProcessedRef = useRef(false);
   const router = useRouter();
 
@@ -41,26 +40,6 @@ function Checkout() {
     postalCode: "",
     phone: "",
   });
-
-  // Handle cart clearing only once
-  useEffect(() => {
-    if (isClient && !cartClearedRef.current) {
-      const searchParams = new URLSearchParams(window.location.search);
-      if (searchParams.get("success") === "1") {
-        (async () => {
-          try {
-            console.log("Success parameter detected, clearing cart");
-            cartClearedRef.current = true;
-
-            await clearCart();
-            console.log("Cart cleared successfully after payment");
-          } catch (error) {
-            console.error("Error clearing cart:", error);
-          }
-        })();
-      }
-    }
-  }, [isClient, clearCart]);
 
   // Handle points processing only once
   useEffect(() => {
@@ -268,7 +247,6 @@ function Checkout() {
     );
   }
 
-  // Checking URL parameters for success or cancel
   if (
     typeof window !== "undefined" &&
     new URLSearchParams(window.location.search).get("success") === "1"
@@ -698,7 +676,7 @@ function Checkout() {
             </div>
           </div>
 
-          {/* Order Summary - right, 50% width on desktop */}
+          {/* Order Summary - right*/}
           <div className="lg:col-span-6 order-2 lg:order-2 w-full">
             <div className="bg-white rounded-lg shadow-md p-3 sm:p-6 mb-4 lg:mb-0 h-full flex flex-col">
               <h2 className="text-lg sm:text-xl font-semibold mb-4 pb-2 border-b">
@@ -737,7 +715,7 @@ function Checkout() {
                           <p>Quantity: {item.quantity}</p>
                         </div>
                       </div>
-                      <div className="font-medium text-gray-900 text-xs sm:text-base whitespace-nowrap">
+                      {/* <div className="font-medium text-gray-900 text-xs sm:text-base whitespace-nowrap">
                         {item.discountedPrice !== undefined ? (
                           <div className="flex items-center gap-1 sm:gap-2">
                             <p className="text-xs text-gray-500 line-through">
@@ -753,6 +731,24 @@ function Checkout() {
                         ) : (
                           <>${(item.price * item.quantity).toFixed(2)}</>
                         )}{" "}
+                      </div> */}
+                      <div className="font-medium text-gray-900 text-xs sm:text-base whitespace-nowrap">
+                        {typeof item.discountedPrice === "number" &&
+                        item.discountedPrice < item.price ? (
+                          <div className="flex items-center gap-1 sm:gap-2">
+                            <p className="text-xs text-gray-500 line-through">
+                              ${(item.price * item.quantity).toFixed(2)}
+                            </p>
+                            <span className="text-gray-900">
+                              $
+                              {(item.discountedPrice * item.quantity).toFixed(
+                                2
+                              )}
+                            </span>
+                          </div>
+                        ) : (
+                          <>${(item.price * item.quantity).toFixed(2)}</>
+                        )}
                       </div>
                     </div>
                   ))}
