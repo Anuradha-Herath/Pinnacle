@@ -48,6 +48,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [error, setError] = useState<string | null>(null);
   const [lastSyncTime, setLastSyncTime] = useState<number>(0);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [hasInitialSync, setHasInitialSync] = useState<boolean>(false); // Track initial sync
   const pathname = usePathname();
   const { data: session, status: sessionStatus } = useSession();
   
@@ -149,9 +150,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Skip sync for admin pages to improve performance
       if (isAdminPage) return;
       
+      // If initial sync is already completed, skip frequent syncs
+      if (hasInitialSync) return;
+      
       // Don't sync too frequently (prevent excessive API calls)
       const now = Date.now();
-      if (now - lastSyncTime < 2000) { // 2 seconds minimum between syncs
+      if (now - lastSyncTime < 5000) { // 5 seconds minimum between syncs
         return;
       }
       setLastSyncTime(now);
@@ -196,6 +200,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       
       console.log('User data synchronized successfully');
+      setHasInitialSync(true); // Mark initial sync as complete
     } catch (error) {
       console.error('Error syncing user data:', error);
     }
@@ -206,19 +211,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     // Prevent multiple concurrent auth checks
     if (isSyncing) return user !== null;
     
+    // If we already have a user and we're on a profile page, skip auth check
+    if (user && pathname.includes('/profilepage')) {
+      return true;
+    }
+    
     setIsSyncing(true);
     try {
       setLoading(true);
       setError(null);
       
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // Increased timeout
       
       const response = await fetch('/api/auth/me', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'Cache-Control': 'no-cache',
+          'Cache-Control': 'max-age=60', // Cache for 1 minute
         },
         credentials: 'same-origin',
         signal: controller.signal,
@@ -244,13 +254,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         return false;
       }
     } catch (err) {
-      console.error('Authentication check error:', err);
+      // Only log errors, don't set them in state unless critical
+      console.warn('Authentication check warning:', err);
       if (err instanceof Error && err.name === 'AbortError') {
-        console.error('Auth request timed out');
-        setError('Authentication request timed out');
+        console.warn('Auth request timed out - continuing with existing state');
+        // Don't set error for timeout on profile page
+        if (!pathname.includes('/profilepage')) {
+          setError('Authentication request timed out');
+        }
       } else {
-        setError(err instanceof Error ? err.message : 'Authentication failed');
+        // Only set error for non-profile pages
+        if (!pathname.includes('/profilepage')) {
+          setError(err instanceof Error ? err.message : 'Authentication failed');
+        }
       }
+      
+      // If we're on profile page and have existing user, keep them
+      if (pathname.includes('/profilepage') && user) {
+        return true;
+      }
+      
       setUser(null);
       return false;
     } finally {
@@ -275,6 +298,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       if (response.ok) {
         setUser(data.user);
+        setHasInitialSync(false); // Reset sync flag for new user
         
         // After successful login, sync local data with server only for non-admin pages
         if (!isAdminPage) {
@@ -314,6 +338,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       if (response.ok) {
         setUser(data.user);
+        setHasInitialSync(false); // Reset sync flag for new user
         
         // After successful signup, sync local data with server only for non-admin pages
         if (!isAdminPage) {
@@ -354,6 +379,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       // Reset state
       setUser(null);
+      setHasInitialSync(false); // Reset sync flag on logout
       
       // REMOVE THIS TOAST - will be handled in the component
       // toast.success("Logged out successfully");

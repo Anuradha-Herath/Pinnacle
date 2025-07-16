@@ -30,6 +30,11 @@ export const prefetchTrendingProducts = async (): Promise<void> => {
 export const prefetchTrendingWhenIdle = (): void => {
   if (typeof window === 'undefined') return;
   
+  // Don't prefetch on profile pages or other non-home pages
+  if (window.location.pathname !== '/') {
+    return;
+  }
+  
   // Use requestIdleCallback if available, otherwise use a delayed timeout
   if ('requestIdleCallback' in window) {
     (window as any).requestIdleCallback(() => {
