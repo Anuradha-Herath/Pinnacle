@@ -16,6 +16,7 @@ function Checkout() {
   const { cart, getCartTotal, isLoading } = useCart();
   const pointsProcessedRef = useRef(false);
   const router = useRouter();
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Coupon state
   const [couponCode, setCouponCode] = useState("");
@@ -128,6 +129,7 @@ function Checkout() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsProcessing(true);
 
     // Creating an object with all the form data
     const checkoutData = {
@@ -659,9 +661,38 @@ function Checkout() {
 
                 <button
                   type="submit"
-                  className="w-full py-3 bg-black text-white font-medium rounded-md hover:bg-gray-900 transition"
+                  className="w-full py-3 bg-black text-white font-medium rounded-md hover:bg-gray-900 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isProcessing}
                 >
-                  Continue to Payment
+                  {isLoading ? (
+                    <span className="flex items-center justify-center">
+                      {/* SVG spinner */}
+                      <svg
+                        className="animate-spin h-5 w-5 mr-2 text-white"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        aria-hidden="true"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        />
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                        />
+                      </svg>
+                      Processing...
+                    </span>
+                  ) : (
+                    "Continue to Payment"
+                  )}
                 </button>
 
                 <div className="mt-6 text-center">
@@ -715,23 +746,6 @@ function Checkout() {
                           <p>Quantity: {item.quantity}</p>
                         </div>
                       </div>
-                      {/* <div className="font-medium text-gray-900 text-xs sm:text-base whitespace-nowrap">
-                        {item.discountedPrice !== undefined ? (
-                          <div className="flex items-center gap-1 sm:gap-2">
-                            <p className="text-xs text-gray-500 line-through">
-                              ${(item.price * item.quantity).toFixed(2)}
-                            </p>
-                            <span className="text-gray-900">
-                              $
-                              {(item.discountedPrice * item.quantity).toFixed(
-                                2
-                              )}
-                            </span>
-                          </div>
-                        ) : (
-                          <>${(item.price * item.quantity).toFixed(2)}</>
-                        )}{" "}
-                      </div> */}
                       <div className="font-medium text-gray-900 text-xs sm:text-base whitespace-nowrap">
                         {typeof item.discountedPrice === "number" &&
                         item.discountedPrice < item.price ? (
