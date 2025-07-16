@@ -40,6 +40,7 @@ export default function ProfilePage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [dataLoaded, setDataLoaded] = useState(false); // Track if data has been loaded
   
   // Add pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -127,7 +128,7 @@ export default function ProfilePage() {
         setDataLoaded(true);
       } catch (err) {
         setError("Failed to load profile data");
-        console.error(err);
+        console.log(err);
       } finally {
         setLoading(false);
         setDataLoaded(true);

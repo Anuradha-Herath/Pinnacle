@@ -10,7 +10,7 @@ const connectDB = async () => {
       await mongoose.connect(process.env.MONGODB_URI!);
     }
   } catch (error) {
-    console.error('MongoDB connection error:', error);
+    console.log('MongoDB connection error:', error);
     throw new Error('Failed to connect to database');
   }
 };
@@ -56,7 +56,7 @@ export async function GET(req: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Profile fetch error:', error);
+    console.log('Profile fetch error:', error);
     return NextResponse.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to fetch profile',
@@ -115,7 +115,7 @@ export async function PUT(req: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Profile update error:', error);
+    console.log('Profile update error:', error);
     return NextResponse.json({
       success: false,
       error: error instanceof Error ? error.message : 'Failed to update profile',

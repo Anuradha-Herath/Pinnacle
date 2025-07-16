@@ -29,7 +29,7 @@ const connectDB = async () => {
       await mongoose.connect(process.env.MONGODB_URI!);
     }
   } catch (error) {
-    console.error('MongoDB connection error:', error);
+    console.log('MongoDB connection error:', error);
     throw new Error('Failed to connect to database');
   }
 };
@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
     });
     
   } catch (error) {
-    console.error('Error fetching user profile:', error);
+    console.log('Error fetching user profile:', error);
     return NextResponse.json({ 
       success: false, 
       error: error instanceof Error ? error.message : 'Failed to fetch user profile' 

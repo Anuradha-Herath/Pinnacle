@@ -49,6 +49,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [error, setError] = useState<string | null>(null);
   const [lastSyncTime, setLastSyncTime] = useState<number>(0);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
+  const [hasInitialSync, setHasInitialSync] = useState<boolean>(false); // Track initial sync
   const pathname = usePathname();
   const { data: session, status: sessionStatus } = useSession();
   
@@ -150,6 +151,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Skip sync for admin pages to improve performance
       if (isAdminPage) return;
       
+      // If initial sync is already completed, skip frequent syncs
+      if (hasInitialSync) return;
+      
       // Don't sync too frequently (prevent excessive API calls)
       const now = Date.now();
       if (now - lastSyncTime < 5000) { // 5 seconds minimum between syncs
@@ -197,8 +201,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       
       console.log('User data synchronized successfully');
+      setHasInitialSync(true); // Mark initial sync as complete
     } catch (error) {
-      console.error('Error syncing user data:', error);
+      console.log('Error syncing user data:', error);
     }
   };
 
@@ -368,11 +373,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       // Reset state
       setUser(null);
+      setHasInitialSync(false); // Reset sync flag on logout
       
       // REMOVE THIS TOAST - will be handled in the component
       // toast.success("Logged out successfully");
     } catch (err) {
-      console.error('Logout error:', err);
+      console.log('Logout error:', err);
       toast.error("Error during logout");
     } finally {
       setLoading(false);
