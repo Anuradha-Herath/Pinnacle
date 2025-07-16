@@ -5,6 +5,7 @@ import Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
 import { headers } from "next/headers";
 import connectDB from "@/lib/db";
+import { processLoyaltyPoints } from "@/utils/loyaltyPoints";
 
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
@@ -44,6 +45,7 @@ export async function POST(request: Request) {
 
       const userId = updatedOrder.userId;
 
+      // Clear the user's cart after successful payment
       if (userId) {
         const clearedUser = await User.findByIdAndUpdate(
           userId,
@@ -55,6 +57,16 @@ export async function POST(request: Request) {
           console.log(`Cart cleared for user ${clearedUser._id}`);
         }
       }
+
+      // Add loyalty points if orderNumber exists
+    if (updatedOrder.orderNumber) {
+      try {
+        await processLoyaltyPoints(updatedOrder.orderNumber);
+        console.log("Loyalty points processed");
+      } catch (err) {
+        console.error("Failed to process loyalty points:", err);
+      }
+    }
   }
 
   return new NextResponse("ok", { status: 200 });
