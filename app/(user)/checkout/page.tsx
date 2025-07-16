@@ -13,10 +13,10 @@ import { useRouter } from "next/navigation";
 function Checkout() {
   const [shipping, setShipping] = useState("ship");
   const [isClient, setIsClient] = useState(false);
-  const { cart, getCartTotal, isLoading, clearCart } = useCart();
-  const cartClearedRef = useRef(false);
+  const { cart, getCartTotal, isLoading } = useCart();
   const pointsProcessedRef = useRef(false);
   const router = useRouter();
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Coupon state
   const [couponCode, setCouponCode] = useState("");
@@ -41,26 +41,6 @@ function Checkout() {
     postalCode: "",
     phone: "",
   });
-
-  // Handle cart clearing only once
-  useEffect(() => {
-    if (isClient && !cartClearedRef.current) {
-      const searchParams = new URLSearchParams(window.location.search);
-      if (searchParams.get("success") === "1") {
-        (async () => {
-          try {
-            console.log("Success parameter detected, clearing cart");
-            cartClearedRef.current = true;
-
-            await clearCart();
-            console.log("Cart cleared successfully after payment");
-          } catch (error) {
-            console.error("Error clearing cart:", error);
-          }
-        })();
-      }
-    }
-  }, [isClient, clearCart]);
 
   // Handle points processing only once
   useEffect(() => {
@@ -149,6 +129,7 @@ function Checkout() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsProcessing(true);
 
     // Creating an object with all the form data
     const checkoutData = {
@@ -268,7 +249,6 @@ function Checkout() {
     );
   }
 
-  // Checking URL parameters for success or cancel
   if (
     typeof window !== "undefined" &&
     new URLSearchParams(window.location.search).get("success") === "1"
@@ -681,9 +661,38 @@ function Checkout() {
 
                 <button
                   type="submit"
-                  className="w-full py-3 bg-black text-white font-medium rounded-md hover:bg-gray-900 transition"
+                  className="w-full py-3 bg-black text-white font-medium rounded-md hover:bg-gray-900 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isProcessing}
                 >
-                  Continue to Payment
+                  {isLoading ? (
+                    <span className="flex items-center justify-center">
+                      {/* SVG spinner */}
+                      <svg
+                        className="animate-spin h-5 w-5 mr-2 text-white"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        aria-hidden="true"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        />
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                        />
+                      </svg>
+                      Processing...
+                    </span>
+                  ) : (
+                    "Continue to Payment"
+                  )}
                 </button>
 
                 <div className="mt-6 text-center">
@@ -698,7 +707,7 @@ function Checkout() {
             </div>
           </div>
 
-          {/* Order Summary - right, 50% width on desktop */}
+          {/* Order Summary - right*/}
           <div className="lg:col-span-6 order-2 lg:order-2 w-full">
             <div className="bg-white rounded-lg shadow-md p-3 sm:p-6 mb-4 lg:mb-0 h-full flex flex-col">
               <h2 className="text-lg sm:text-xl font-semibold mb-4 pb-2 border-b">
@@ -738,7 +747,8 @@ function Checkout() {
                         </div>
                       </div>
                       <div className="font-medium text-gray-900 text-xs sm:text-base whitespace-nowrap">
-                        {item.discountedPrice !== undefined ? (
+                        {typeof item.discountedPrice === "number" &&
+                        item.discountedPrice < item.price ? (
                           <div className="flex items-center gap-1 sm:gap-2">
                             <p className="text-xs text-gray-500 line-through">
                               ${(item.price * item.quantity).toFixed(2)}
@@ -752,7 +762,7 @@ function Checkout() {
                           </div>
                         ) : (
                           <>${(item.price * item.quantity).toFixed(2)}</>
-                        )}{" "}
+                        )}
                       </div>
                     </div>
                   ))}

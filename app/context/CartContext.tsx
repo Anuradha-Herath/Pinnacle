@@ -2,18 +2,16 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useAuth } from "./AuthContext";
-import { toast } from "react-hot-toast";
-import { getValidImageUrl } from "@/lib/imageUtils"; 
-import { trackProductAction } from '@/lib/userPreferenceService';
-import { deduplicateRequest } from '@/lib/apiUtils';
-import { usePathname } from 'next/navigation';
+import { getValidImageUrl } from "@/lib/imageUtils";
+import { trackProductAction } from "@/lib/userPreferenceService";
+import { deduplicateRequest } from "@/lib/apiUtils";
+import { usePathname } from "next/navigation";
 
-// Define types
 export interface CartItem {
   id: string;
   name: string;
   price: number;
-  discountedPrice?: number; 
+  discountedPrice?: number;
   image: string;
   size?: string;
   color?: string;
@@ -24,24 +22,28 @@ export interface CartItem {
 
 export interface CartContextType {
   cart: CartItem[];
-  addToCart: (item: Omit<CartItem, 'quantity'> & { quantity?: number }, showNotification?: boolean) => void;
+  addToCart: (item: Omit<CartItem, "quantity"> & { quantity?: number }, showNotification?: boolean) => void;
   removeFromCart: (id: string, size?: string, color?: string) => void;
-  clearCart: () => Promise<void>;
+  // clearCart: () => Promise<void>;
   updateQuantity: (id: string, quantity: number, size?: string, color?: string) => void;
   getCartTotal: () => number;
   getCartCount: () => number;
   isLoading: boolean;
+  // cartCleared: boolean;
+  // resetCartCleared: () => void;
 }
 
 const CartContext = createContext<CartContextType>({
   cart: [],
   addToCart: () => {},
   removeFromCart: () => {},
-  clearCart: async () => {},
+  // clearCart: async () => {},
   updateQuantity: () => {},
   getCartTotal: () => 0,
   getCartCount: () => 0,
   isLoading: false,
+  // cartCleared: false,
+  // resetCartCleared: () => {},
 });
 
 export const useCart = () => useContext(CartContext);
@@ -50,346 +52,211 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [cart, setCart] = useState<CartItem[]>([]);
   const [initialized, setInitialized] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [isClearing, setIsClearing] = useState(false); // New flag to track clearing state
+  // const [isClearing, setIsClearing] = useState(false);
+  // const [cartCleared, setCartCleared] = useState(false);
   const { user } = useAuth();
   const pathname = usePathname();
-  
-  // Check if we're on an admin page - avoid cart loading for admin pages
-  const isAdminPage = pathname?.startsWith('/admin');
-  
-  // Load cart from localStorage or API when component mounts or user changes
+  const isAdminPage = pathname?.startsWith("/admin");
+
+  // Load cart from API/localStorage, but only if cart is not marked as cleared
   useEffect(() => {
-    // Skip cart loading for admin pages to improve performance
-    if (isAdminPage) {
-      setInitialized(true);
-      return;
-    }
-    
-    // Don't reload cart if we're in the process of clearing it
-    if (isClearing) {
-      console.log("Skipping cart reload because cart is being cleared");
-      return;
-    }
-    
+    // if (isAdminPage || isClearing || cartCleared) return;
+    if (isAdminPage) return;
+
     const loadCart = async () => {
+      setIsLoading(true);
       try {
-        setIsLoading(true);
         if (user) {
-          // User is logged in, fetch cart from API with deduplication
-          console.log("Fetching cart from server for user:", user.id);
-          try {
-            const data: any = await deduplicateRequest('/api/user/cart');
-            if (data.success && data.cart) {
-              console.log("Successfully loaded cart from server with", data.cart.length, "items");
-              // Convert API cart format to our CartItem format with validated images
-              const apiCart = data.cart.map((item: any) => ({
-                id: item.productId,
-                name: item.name || "Product", // Fallback if name isn't stored
-                price: item.price || 0,
-                image: getValidImageUrl(item.image), // Validate image URL
-                size: item.size,
-                color: item.color,
-                quantity: item.quantity,
-              }));
-              setCart(apiCart);
-            } else {
-              console.log("No cart data received from server");
-              setCart([]);
-            }
-          } catch (error) {
-            console.error("Failed to load cart from server:", error);
-            // Fallback to localStorage on API error
-            const savedCart = localStorage.getItem('cart');
-            if (savedCart) {
-              try {
-                setCart(JSON.parse(savedCart));
-              } catch (e) {
-                setCart([]);
-              }
-            }
-          }
-        } else {
-          // User is not logged in, load from localStorage
-          console.log("Loading cart from localStorage (not logged in)");
-          const savedCart = localStorage.getItem('cart');
-          if (savedCart) {
-            try {
-              setCart(JSON.parse(savedCart));
-            } catch (e) {
-              console.error('Error parsing cart from localStorage:', e);
-              setCart([]);
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Error loading cart:', error);
-        // Fallback to localStorage in case of API error
-        const savedCart = localStorage.getItem('cart');
-        if (savedCart) {
-          try {
-            setCart(JSON.parse(savedCart));
-          } catch (e) {
+          const data: any = await deduplicateRequest("/api/user/cart");
+          if (data.success && data.cart) {
+            const apiCart = data.cart.map((item: any) => ({
+              id: item.productId || item.id,
+              name: item.name || "Product",
+              price: item.price || 0,
+              discountedPrice: item.discountedPrice ?? undefined,
+              image: getValidImageUrl(item.image),
+              size: item.size,
+              color: item.color,
+              quantity: item.quantity || 1,
+            }));
+            setCart(apiCart);
+          } else {
             setCart([]);
           }
+        } else {
+          const savedCart = localStorage.getItem("cart");
+          if (savedCart) setCart(JSON.parse(savedCart));
         }
+      } catch {
+        setCart([]);
       } finally {
-        setInitialized(true);
         setIsLoading(false);
+        setInitialized(true);
       }
     };
 
     loadCart();
-  }, [user, isClearing, isAdminPage]);
+  }, [user, isAdminPage]);
+  // [user, isClearing, cartCleared, isAdminPage]);
 
-  // Save cart to localStorage and API when it changes - DEBOUNCED
+  // Save cart to localStorage and server (debounced), but do NOT save if cartCleared
   useEffect(() => {
-    if (!initialized) return;
-    
-    // Skip API calls for admin pages
-    if (isAdminPage) return;
-    
-    // Always save to localStorage (for guest users and as backup)
-    localStorage.setItem('cart', JSON.stringify(cart));
-    
-    // If user is logged in, also save to API with debouncing
+    // if (!initialized || isAdminPage || isClearing || cartCleared) return;
+    if (!initialized || isAdminPage) return;
+
+    localStorage.setItem("cart", JSON.stringify(cart));
+
     if (user) {
-      // Debounce API calls to prevent excessive requests
       const timeoutId = setTimeout(async () => {
         try {
-          // Ensure all required fields are included when sending to API
-          const apiCart = cart.map(item => ({
+          const apiCart = cart.map((item) => ({
             productId: item.id,
-            name: item.name || "Product", // Ensure name is present
-            price: item.price || 0,       // Ensure price is present
-            image: item.image || "/placeholder.png", // Ensure image is present
+            name: item.name,
+            price: item.price,
+            discountedPrice: item.discountedPrice ?? undefined,
+            image: item.image,
             size: item.size,
             color: item.color,
             quantity: item.quantity,
           }));
-
-          console.log(`Saving cart to API (debounced): ${apiCart.length} items`);
-          await fetch('/api/user/cart', {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-            },
+          await fetch("/api/user/cart", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ cart: apiCart }),
           });
         } catch (error) {
-          console.error('Error saving cart to API:', error);
+          console.error("Failed to sync cart:", error);
         }
-      }, 500); // 500ms debounce delay
-
+      }, 500);
       return () => clearTimeout(timeoutId);
     }
   }, [cart, user, initialized, isAdminPage]);
+  // [cart, user, initialized, isClearing, cartCleared, isAdminPage]);
 
-  // Helper function to generate a unique key for cart items
-  const getItemKey = (id: string, size?: string, color?: string): string => {
-    return `${id}${size ? `-${size}` : ''}${color ? `-${color}` : ''}`;
-  };
+  // // Call this anywhere to clear the cart
+  // const clearCart = async (): Promise<void> => {
+  //   console.log(" clearCart called!");
+  //   try {
+  //     setIsClearing(true);
+  //     setIsLoading(true);
+  //     setCart([]);
+  //     setCartCleared(true); // suppress reloads/effects for this session
+  //     localStorage.removeItem("cart");
+  //     sessionStorage.removeItem("cart");
 
-  // Improved helper function for debugging
-  const logCartOperation = (operation: string, details: any) => {
-    console.log(`Cart operation: ${operation}`, details);
-  };
+  //     if (user) {
+  //       const res = await fetch("/api/user/cart", { method: "DELETE" });
+  //       const result = await res.json();
+  //       if (!res.ok || !result.success) {
+  //         throw new Error(result.error || "DELETE failed");
+  //       }
+  //       console.log(" Cart successfully cleared via DELETE API.");
+  //     }
+  //   } catch (error) {
+  //     console.error(" Failed to clear cart:", error);
+  //   } finally {
+  //     setIsLoading(false);
+  //     setTimeout(() => setIsClearing(false), 2500);
+  //   }
+  // };
 
-  // Improved function to get a better color representation
-  const getDisplayColor = (color: string | undefined): string | undefined => {
-    if (!color) return undefined;
-    
-    // If color is a URL (likely when the color is stored as an image path)
-    if (color.startsWith('http') || color.startsWith('/')) {
-      // Extract just the filename for simplicity
-      const parts = color.split('/');
-      return parts[parts.length - 1].split('.')[0];
-    }
-    
-    return color;
-  };
+  // // Call this after leaving success page to re-enable cart
+  // const resetCartCleared = () => setCartCleared(false);
 
-  // Cart operations
-  const addToCart = (item: Omit<CartItem, 'quantity'> & { quantity?: number }, showNotification: boolean = true) => {
-    const itemQuantity = item.quantity || 1;
-    
-    // Extract a display-friendly color if it's a URL
-    const displayColor = getDisplayColor(item.color);
-    
-    logCartOperation('addToCart', {
-      id: item.id, 
-      color: item.color,
-      displayColor,
-      size: item.size,
-      quantity: itemQuantity,
-      price: item.price,
-      discountedPrice: item.discountedPrice
-    });
-    
-    // Track this action for personalization
-    trackProductAction({
-      id: item.id,
-      name: item.name,
-      category: item.category,
-      subCategory: item.subCategory,
-      price: item.price
-    }, 'cart');
+  const addToCart = (
+    item: Omit<CartItem, "quantity"> & { quantity?: number }
+  ) => {
+    const quantity = item.quantity || 1;
 
-    setCart(prevCart => {
-      // Check if item already exists in cart with same ID, size, and color
-      const existingItemIndex = prevCart.findIndex(
-        cartItem => 
-          cartItem.id === item.id && 
-          cartItem.size === item.size && 
-          cartItem.color === item.color
+    trackProductAction(
+      {
+        id: item.id,
+        name: item.name,
+        category: item.category,
+        subCategory: item.subCategory,
+        price: item.price,
+      },
+      "cart"
+    );
+
+    setCart((prev) => {
+      const index = prev.findIndex(
+        (i) =>
+          i.id === item.id && i.size === item.size && i.color === item.color
       );
-      
-      if (existingItemIndex !== -1) {
-        // Item exists, update quantity
-        const updatedCart = [...prevCart];
-        updatedCart[existingItemIndex].quantity += itemQuantity;
-        return updatedCart;
-      } else {
-        // Item doesn't exist, add new item with valid image
-        const newItem = {
+      if (index !== -1) {
+        const updated = [...prev];
+        updated[index].quantity += quantity;
+        if (typeof item.discountedPrice === "number") {
+          updated[index].discountedPrice = item.discountedPrice;
+        }
+        return updated;
+      }
+      return [
+        ...prev,
+        {
           ...item,
           image: item.image || "/placeholder.png",
-          colorDisplay: displayColor, // Add a display-friendly color name
-          quantity: itemQuantity
-        };
-        return [...prevCart, newItem];
-      }
-    });
-    
-    // Toast is handled by the component
-  };
-
-  const removeFromCart = (id: string, size?: string, color?: string) => {
-    logCartOperation('removeFromCart', {id, size, color});
-    
-    setCart(prevCart => {
-      // Log current cart before removal
-      console.log("Current cart before removal:", JSON.stringify(prevCart.map(i => ({
-        id: i.id, 
-        size: i.size, 
-        color: i.color,
-        name: i.name
-      }))));
-      
-      // Find exact match for deletion
-      const updatedCart = prevCart.filter(item => {
-        const itemMatches = 
-          item.id === id && 
-          item.size === size && 
-          item.color === color;
-        
-        // Log each comparison for debugging
-        if (item.id === id) {
-          console.log(`Comparing item: ${item.name}, id matches, size: ${item.size}=${size}, color: ${item.color}=${color}, match=${!itemMatches}`);
-        }
-        
-        return !itemMatches;
-      });
-      
-      console.log(`Previous cart length: ${prevCart.length}, Updated cart length: ${updatedCart.length}`);
-      
-      return updatedCart;
+          quantity,
+          discountedPrice: item.discountedPrice ?? undefined,
+        },
+      ];
     });
   };
 
-  const clearCart = async (): Promise<void> => {
-    try {
-      console.log("Starting cart clearing process...");
-      setIsClearing(true); // Set flag to prevent reload during clearing
-      setIsLoading(true);
-      
-      // Clear local state first
-      setCart([]);
-      
-      // Always clear localStorage
-      localStorage.removeItem('cart');
-      console.log("Cleared cart from localStorage");
-      
-      // For logged-in users, explicitly clear the cart on the server
-      if (user) {
-        console.log("Clearing cart on server for user:", user.id);
-        try {
-          const response = await fetch('/api/user/cart', {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ cart: [] }),
-          });
-          
-          if (!response.ok) {
-            console.error('Failed to clear cart on server:', await response.text());
-            throw new Error('Failed to clear cart on server');
-          } else {
-            console.log('Cart successfully cleared on server');
-          }
-        } catch (error) {
-          console.error('Error clearing cart on server:', error);
-          throw error; // Re-throw to be caught by the outer try-catch
-        }
-      }
-      
-      console.log("Cart clearing completed successfully");
-      return Promise.resolve();
-    } catch (error) {
-      console.error("Cart clearing failed:", error);
-      return Promise.reject(error);
-    } finally {
-      setIsLoading(false);
-      // Keep isClearing true for a short duration to prevent immediate reload
-      setTimeout(() => {
-        setIsClearing(false);
-      }, 2000); // 2-second delay before allowing reload
-    }
-  };
+  const removeFromCart = (id: string, size?: string, color?: string) =>
+    setCart((prev) =>
+      prev.filter(
+        (item) => !(item.id === id && item.size === size && item.color === color)
+      )
+    );
 
-  const updateQuantity = (id: string, quantity: number, size?: string, color?: string) => {
-    logCartOperation('updateQuantity', {id, quantity, size, color});
-    
+  const updateQuantity = (
+    id: string,
+    quantity: number,
+    size?: string,
+    color?: string
+  ) => {
     if (quantity <= 0) {
-      // Remove item if quantity is 0 or negative
       removeFromCart(id, size, color);
-      return;
+    } else {
+      setCart((prev) =>
+        prev.map((item) =>
+          item.id === id && item.size === size && item.color === color
+            ? { ...item, quantity }
+            : item
+        )
+      );
     }
-    
-    setCart(prevCart => {
-      const updatedCart = prevCart.map(item => {
-        // Check for exact match
-        if (item.id === id && item.size === size && item.color === color) {
-          return { ...item, quantity };
-        }
-        return item;
-      });
-      return updatedCart;
-    });
   };
 
-  const getCartTotal = () => {
-    return cart.reduce((total, item) => {
-      // Use discounted price if available, otherwise use regular price
-      const priceToUse = item.discountedPrice !== undefined ? item.discountedPrice : item.price;
-      return total + (priceToUse * item.quantity);
+  const getCartTotal = () =>
+    cart.reduce((total, item) => {
+      const price =
+        typeof item.discountedPrice === "number" &&
+        item.discountedPrice < item.price
+          ? item.discountedPrice
+          : item.price;
+      return total + price * item.quantity;
     }, 0);
-  };
 
-  const getCartCount = () => {
-    return cart.reduce((count, item) => count + item.quantity, 0);
-  };
+  const getCartCount = () => cart.reduce((count, item) => count + item.quantity, 0);
 
-  const value = {
-    cart,
-    addToCart,
-    removeFromCart,
-    clearCart,
-    updateQuantity,
-    getCartTotal,
-    getCartCount,
-    isLoading,
-  };
-
-  return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
+  return (
+    <CartContext.Provider
+      value={{
+        cart,
+        addToCart,
+        removeFromCart,
+        //clearCart,
+        updateQuantity,
+        getCartTotal,
+        getCartCount,
+        isLoading,
+        //cartCleared,
+      }}
+    >
+      {children}
+    </CartContext.Provider>
+  );
 };
