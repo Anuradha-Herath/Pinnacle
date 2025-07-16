@@ -56,7 +56,7 @@ export default function EditProfile() {
         }
       } catch (err) {
         setError("Could not load profile data");
-        console.error(err);
+        console.log(err);
       } finally {
         setLoading(false);
       }
@@ -107,7 +107,7 @@ export default function EditProfile() {
       }
     } catch (err) {
       setError("An error occurred while updating your profile");
-      console.error(err);
+      console.log(err);
     } finally {
       setUpdating(false);
     }
@@ -153,7 +153,7 @@ export default function EditProfile() {
       }
     } catch (err) {
       setError('Error uploading profile picture');
-      console.error(err);
+      console.log(err);
     } finally {
       setUploading(false);
     }

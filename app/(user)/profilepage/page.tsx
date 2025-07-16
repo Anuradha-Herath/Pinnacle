@@ -131,7 +131,7 @@ export default function ProfilePage() {
         } else {
           setError("Failed to load profile data");
         }
-        console.error(err);
+        console.log(err);
       } finally {
         setLoading(false);
       }

@@ -116,7 +116,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             }
           }
         } catch (error) {
-          console.error('Error fetching fresh user data:', error);
+          console.log('Error fetching fresh user data:', error);
         }
         
         // Fallback: Set user state from NextAuth session data
@@ -202,7 +202,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.log('User data synchronized successfully');
       setHasInitialSync(true); // Mark initial sync as complete
     } catch (error) {
-      console.error('Error syncing user data:', error);
+      console.log('Error syncing user data:', error);
     }
   };
 
@@ -255,9 +255,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
     } catch (err) {
       // Only log errors, don't set them in state unless critical
-      console.warn('Authentication check warning:', err);
+      console.log('Authentication check warning:', err);
       if (err instanceof Error && err.name === 'AbortError') {
-        console.warn('Auth request timed out - continuing with existing state');
+        console.log('Auth request timed out - continuing with existing state');
         // Don't set error for timeout on profile page
         if (!pathname.includes('/profilepage')) {
           setError('Authentication request timed out');
@@ -384,7 +384,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // REMOVE THIS TOAST - will be handled in the component
       // toast.success("Logged out successfully");
     } catch (err) {
-      console.error('Logout error:', err);
+      console.log('Logout error:', err);
       toast.error("Error during logout");
     } finally {
       setLoading(false);
@@ -415,7 +415,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         }
       }
     } catch (error) {
-      console.error('Error refreshing user data:', error);
+      console.log('Error refreshing user data:', error);
     } finally {
       setIsSyncing(false);
     }
