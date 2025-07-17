@@ -3,6 +3,7 @@
 import React from "react";
 import { BsBagFill, BsPersonFill } from "react-icons/bs";
 import { HiDotsVertical } from "react-icons/hi";
+import { format, subMonths } from "date-fns";
 
 interface StatsCardProps {
   title: string;
@@ -26,6 +27,13 @@ const StatsCard: React.FC<StatsCardProps> = ({
     return null;
   };
 
+  // Function to get the formatted previous month
+  const getFormattedPreviousMonth = () => {
+    const currentDate = new Date();
+    const previousMonth = subMonths(currentDate, 1);
+    return format(previousMonth, "MMM yyyy");
+  };
+
   return (
     <div className="bg-white p-4 rounded shadow">
       <div className="flex justify-between items-start mb-4">
@@ -37,7 +45,7 @@ const StatsCard: React.FC<StatsCardProps> = ({
         <span className="text-2xl font-bold">{value}</span>
         <span className="text-green-500 text-sm">↑{percentage}%</span>
       </div>
-      <p className="text-sm text-gray-500">Compared to Oct 2024</p>
+      <p className="text-sm text-gray-500">Compared to {getFormattedPreviousMonth()}</p>
     </div>
   );
 };
