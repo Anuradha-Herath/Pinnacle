@@ -7,6 +7,7 @@ import Image from "next/image";
 import { Crown } from "lucide-react";
 import { useEffect, useState } from "react";
 import { getCustomerType } from "@/utils/loyaltyPoints";
+import { getUserPoints } from "@/utils/modelAdapters";
 
 interface Order {
   _id: string;
@@ -28,7 +29,7 @@ interface User {
   createdAt: string;
   profilePicture: string;
   role: string;
-  points: number; // Added points field
+  points?: number | null; // Optional points field
 }
 
 export default function CustomerDetails() {
@@ -180,7 +181,7 @@ export default function CustomerDetails() {
                     className="rounded-full border-4 border-white" 
                   />
                   <div className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-md">
-                    <Crown className={`w-6 h-6 ${user.role === 'admin' ? 'text-orange-500' : getCustomerType(user.points || 0).color}`} />
+                    <Crown className={`w-6 h-6 ${user.role === 'admin' ? 'text-orange-500' : getCustomerType(getUserPoints(user)).color}`} />
                   </div>
                 </div>
                 <div className="p-4 text-center">
@@ -223,11 +224,11 @@ export default function CustomerDetails() {
                   <p>
                     <span className="font-semibold">Customer Type:</span><br></br> 
                     <span className="flex items-center">
-                      {getCustomerType(user.points || 0).type} 
-                      <Crown className={`w-4 h-4 ml-1 ${getCustomerType(user.points || 0).color}`} />
+                      {getCustomerType(getUserPoints(user)).type} 
+                      <Crown className={`w-4 h-4 ml-1 ${getCustomerType(getUserPoints(user)).color}`} />
                     </span>
                   </p>
-                  <p><span className="font-semibold">Loyalty Points:</span><br></br> {user.points || 0}</p>
+                  <p><span className="font-semibold">Loyalty Points:</span><br></br> {getUserPoints(user)}</p>
                   <p><span className="font-semibold">Registration Date:</span><br></br> {formatDate(user.createdAt)}</p>
                   <p><span className="font-semibold">Last Login Date:</span><br></br> {formatDate(new Date().toISOString())}</p>
                 </div>

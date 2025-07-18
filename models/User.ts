@@ -233,7 +233,7 @@ UserSchema.methods.resetLoginAttempts = async function(): Promise<void> {
 // Create or get User model
 let User: mongoose.Model<IUser>;
 
-// Check if the model exists already to avoid model compilation error
+// Check if mongoose.models exists before accessing it
 if (mongoose.models && mongoose.models.User) {
   User = mongoose.models.User as mongoose.Model<IUser>;
 } else {

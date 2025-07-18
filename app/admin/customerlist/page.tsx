@@ -8,6 +8,7 @@ import TopBar from "../../components/TopBar";
 import Image from "next/image";
 import { Crown } from "lucide-react";
 import { getCustomerType } from "@/utils/loyaltyPoints";
+import { getUserPoints } from "@/utils/modelAdapters";
 {/*import { Card, CardContent } from "@/components/ui/card";*/}
 
 interface Customer {
@@ -17,7 +18,7 @@ interface Customer {
   email: string;
   role: string;
   createdAt: string;
-  points: number;
+  points?: number | null;
 }
 
 export default function CustomerList() {
@@ -197,12 +198,12 @@ export default function CustomerList() {
                     </td>
                     <td className="p-3">
                       <div className="flex items-center">
-                        <span className={`font-medium ${customer.role === 'admin' ? 'text-orange-500' : getCustomerType(customer.points || 0).color}`}>
+                        <span className={`font-medium ${customer.role === 'admin' ? 'text-orange-500' : getCustomerType(getUserPoints(customer)).color}`}>
                           {customer.role === 'admin' 
                             ? 'Admin' 
-                            : getCustomerType(customer.points || 0).type}
+                            : getCustomerType(getUserPoints(customer)).type}
                         </span>
-                        <span className="ml-2 text-gray-500">({customer.points || 0} points)</span>
+                        <span className="ml-2 text-gray-500">({getUserPoints(customer)} points)</span>
                       </div>
                     </td>
                     <td className="p-3 text-center">
@@ -210,7 +211,7 @@ export default function CustomerList() {
                         <span className="text-orange-500">Admin</span>
                       ) : (
                         <Crown
-                          className={`w-5 h-5 inline ${getCustomerType(customer.points || 0).color}`}
+                          className={`w-5 h-5 inline ${getCustomerType(getUserPoints(customer)).color}`}
                         />
                       )}
                     </td>

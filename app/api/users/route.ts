@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import User from '@/models/User';
+import { adaptUsers } from '@/utils/modelAdapters';
 
 // Connect to MongoDB
 const connectDB = async () => {
@@ -27,15 +28,9 @@ export async function GET(request: NextRequest) {
       passwordResetExpires: 0
     }).sort({ createdAt: -1 }).exec(); // Sort by newest first
     
-    // Convert to plain objects and ensure points are defined
-    const processedUsers = users.map(user => {
-      const userObj = user.toObject();
-      // Ensure points is a number
-      if (userObj.points === undefined || userObj.points === null) {
-        userObj.points = 0;
-      }
-      return userObj;
-    });
+    // Convert users to plain objects and use adapter to handle points
+    const userObjects = users.map(user => user.toObject());
+    const processedUsers = adaptUsers(userObjects);
     
     return NextResponse.json({ 
       success: true, 

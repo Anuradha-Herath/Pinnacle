@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import User from '@/models/User';
+import { adaptUser } from '@/utils/modelAdapters';
 
 // Connect to MongoDB
 const connectDB = async () => {
@@ -49,14 +50,12 @@ export async function GET(
     // Convert to plain object for manipulation
     const userObj = user.toObject();
     
-    // Ensure points is a number
-    if (userObj.points === undefined || userObj.points === null) {
-      userObj.points = 0;
-    }
+    // Use the adapter to ensure points is properly handled
+    const adaptedUser = adaptUser(userObj);
     
     return NextResponse.json({ 
       success: true, 
-      user: userObj
+      user: adaptedUser
     });
     
   } catch (error) {
