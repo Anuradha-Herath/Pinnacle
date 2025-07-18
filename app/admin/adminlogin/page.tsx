@@ -15,6 +15,14 @@ const AdminLoginPage: React.FC = () => {
   const [isCheckingRole, setIsCheckingRole] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   
+  // Email verification states
+  const [isVerificationStep, setIsVerificationStep] = useState(false);
+  const [verificationCode, setVerificationCode] = useState("");
+  const [userEnteredCode, setUserEnteredCode] = useState("");
+  const [verificationTimer, setVerificationTimer] = useState(60);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [adminEmail, setAdminEmail] = useState("");
+  
   const { login, user } = useAuth();
   const router = useRouter();
   
@@ -25,7 +33,110 @@ const AdminLoginPage: React.FC = () => {
   useEffect(() => {
     setIsClient(true);
   }, []);
-  
+
+  // Timer effect for verification code
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isVerificationStep && verificationTimer > 0) {
+      interval = setInterval(() => {
+        setVerificationTimer(prev => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [isVerificationStep, verificationTimer]);
+
+  // Generate 4-digit verification code
+  const generateVerificationCode = () => {
+    return Math.floor(1000 + Math.random() * 9000).toString();
+  };
+
+  // Send verification code to admin's email
+  const sendVerificationCode = async (email: string) => {
+    const code = generateVerificationCode();
+    setVerificationCode(code);
+    setVerificationTimer(60);
+    
+    try {
+      const response = await fetch('/api/admin/send-verification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, code }),
+      });
+      
+      const data = await response.json();
+      if (data.success) {
+        toast.success("Verification code sent to your email!");
+      } else {
+        toast.error("Failed to send verification code. Please try again.");
+      }
+    } catch (error) {
+      console.log("Error sending verification code:", error);
+      toast.error("Failed to send verification code. Please try again.");
+    }
+  };
+
+  // Verify the entered code
+  const verifyCode = (): boolean => {
+    if (!verificationCode || !userEnteredCode) return false;
+    if (verificationTimer <= 0) return false;
+    return verificationCode === userEnteredCode;
+  };
+
+  // Handle verification form submission
+  const handleVerificationSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (userEnteredCode.length !== 4) {
+      setError("Please enter a 4-digit verification code");
+      return;
+    }
+
+    if (verificationTimer <= 0) {
+      setError("Verification code has expired. Please request a new one.");
+      return;
+    }
+
+    setIsVerifying(true);
+    setError('');
+
+    try {
+      const isValid = verifyCode();
+      
+      if (isValid) {
+        console.log('Verification successful, redirecting to dashboard');
+        router.push('/admin/dashboard');
+      } else {
+        setError("Invalid verification code. Please try again.");
+      }
+    } catch (error) {
+      console.log('Error during verification:', error);
+      setError("Verification failed. Please try again.");
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  // Resend verification code
+  const resendVerificationCode = async () => {
+    if (!adminEmail) return;
+    
+    try {
+      const newCode = generateVerificationCode();
+      setVerificationCode(newCode);
+      setUserEnteredCode('');
+      setVerificationTimer(60);
+      setError('');
+      
+      await sendVerificationCode(adminEmail);
+      console.log('Verification code resent successfully');
+    } catch (error) {
+      console.log('Error resending verification code:', error);
+      setError("Failed to resend verification code. Please try again.");
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
@@ -69,8 +180,11 @@ const AdminLoginPage: React.FC = () => {
               if (authResponse.ok) {
                 const authData = await authResponse.json();
                 if (authData.success && authData.user && authData.user.role === 'admin') {
-                  toast.success("Admin login successful!");
-                  router.push('/admin/dashboard');
+                  // Instead of direct dashboard redirect, trigger email verification
+                  setAdminEmail(authData.user.email);
+                  await sendVerificationCode(authData.user.email);
+                  setIsVerificationStep(true);
+                  setIsCheckingRole(false);
                   authSuccess = true;
                 } else {
                   setError("Access denied. Admin privileges only.");
@@ -146,84 +260,167 @@ const AdminLoginPage: React.FC = () => {
         <h1 className="text-4xl font-semibold italic">Pinnacle</h1>
       </div>
 
-      {/* Right Section (Login Form) */}
+      {/* Right Section (Login Form or Verification Form) */}
       <div className="flex flex-col justify-center items-center w-1/2 bg-gray-100">
         <div className="w-96 p-8 bg-white rounded-lg shadow-md">
-          <h2 className="text-2xl font-semibold mb-4 text-center">Admin Login</h2>
-          <p className="text-sm text-gray-600 mb-6 text-center">
-            Enter your email address and password to access admin panel.
-          </p>
+          {!isVerificationStep ? (
+            // Login Form
+            <>
+              <h2 className="text-2xl font-semibold mb-4 text-center">Admin Login</h2>
+              <p className="text-sm text-gray-600 mb-6 text-center">
+                Enter your email address and password to access admin panel.
+              </p>
 
-          {error && (
-            <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md text-sm">
-              {error}
-            </div>
+              {error && (
+                <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md text-sm">
+                  {error}
+                </div>
+              )}
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <input
+                    type="email"
+                    placeholder="Email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    disabled={isLoading}
+                    required
+                  />
+                </div>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full p-2 pr-10 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    disabled={isLoading}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+                    disabled={isLoading}
+                  >
+                    {showPassword ? <FaEyeSlash size={16} /> : <FaEye size={16} />}
+                  </button>
+                </div>
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="remember"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="mr-2"
+                    disabled={isLoading}
+                  />
+                  <label htmlFor="remember" className="text-sm text-gray-600">
+                    Keep me logged in
+                  </label>
+                </div>
+                <button
+                  type="submit"
+                  className={`w-full ${isLoading ? 'bg-orange-300' : 'bg-orange-500'} text-white p-2 rounded-md hover:bg-orange-600 focus:outline-none focus:ring focus:border-orange-300`}
+                  disabled={isLoading}
+                >
+                  {isLoading ? "Signing in..." : "Sign In"}
+                </button>
+              </form>
+              
+              {/* Forgot Password Link */}
+              <div className="mt-4 text-center">
+                <a 
+                  href="/request-reset?from=admin" 
+                  className="text-sm text-orange-500 hover:text-orange-600 hover:underline"
+                >
+                  Forgot your password?
+                </a>
+              </div>
+            </>
+          ) : (
+            // Verification Form
+            <>
+              <h2 className="text-2xl font-semibold mb-4 text-center">Email Verification</h2>
+              <p className="text-sm text-gray-600 mb-6 text-center">
+                We've sent a 4-digit verification code to {adminEmail}. Please enter it below.
+              </p>
+
+              {error && (
+                <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md text-sm">
+                  {error}
+                </div>
+              )}
+
+              <form onSubmit={handleVerificationSubmit} className="space-y-4">
+                <div>
+                  <input
+                    type="text"
+                    placeholder="Enter 4-digit code"
+                    value={userEnteredCode}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\D/g, '').slice(0, 4);
+                      setUserEnteredCode(value);
+                    }}
+                    className="w-full p-2 text-center text-2xl tracking-widest border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    disabled={isVerifying}
+                    required
+                    maxLength={4}
+                    autoFocus
+                  />
+                </div>
+                
+                <div className="text-center">
+                  {verificationTimer > 0 ? (
+                    <p className="text-sm text-gray-600">
+                      Code expires in: <span className="font-semibold text-orange-500">{verificationTimer}s</span>
+                    </p>
+                  ) : (
+                    <p className="text-sm text-red-600 font-semibold">
+                      Code has expired
+                    </p>
+                  )}
+                </div>
+
+                <button
+                  type="submit"
+                  className={`w-full ${isVerifying || verificationTimer <= 0 ? 'bg-orange-300' : 'bg-orange-500'} text-white p-2 rounded-md hover:bg-orange-600 focus:outline-none focus:ring-2 focus:border-transparent`}
+                  disabled={isVerifying || verificationTimer <= 0 || userEnteredCode.length !== 4}
+                >
+                  {isVerifying ? "Verifying..." : "Verify Code"}
+                </button>
+              </form>
+              
+              {/* Resend Code Button */}
+              <div className="mt-4 text-center">
+                <button
+                  onClick={resendVerificationCode}
+                  className="text-sm text-orange-500 hover:text-orange-600 hover:underline focus:outline-none"
+                  disabled={verificationTimer > 0}
+                >
+                  {verificationTimer > 0 ? "Resend code (wait)" : "Resend verification code"}
+                </button>
+              </div>
+
+              {/* Back to Login Button */}
+              <div className="mt-2 text-center">
+                <button
+                  onClick={() => {
+                    setIsVerificationStep(false);
+                    setError('');
+                    setUserEnteredCode('');
+                    setVerificationCode('');
+                    setVerificationTimer(60);
+                  }}
+                  className="text-sm text-gray-500 hover:text-gray-700 hover:underline focus:outline-none"
+                >
+                  ← Back to Login
+                </button>
+              </div>
+            </>
           )}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <input
-                type="email"
-                placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                disabled={isLoading}
-                required
-              />
-            </div>
-            <div className="relative">
-              <input
-                type={showPassword ? "text" : "password"}
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full p-2 pr-10 border rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
-                disabled={isLoading}
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
-                disabled={isLoading}
-              >
-                {showPassword ? <FaEyeSlash size={16} /> : <FaEye size={16} />}
-              </button>
-            </div>
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="remember"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                className="mr-2"
-                disabled={isLoading}
-              />
-              <label htmlFor="remember" className="text-sm text-gray-600">
-                Keep me logged in
-              </label>
-            </div>
-            <button
-              type="submit"
-              className={`w-full ${isLoading ? 'bg-orange-300' : 'bg-orange-500'} text-white p-2 rounded-md hover:bg-orange-600 focus:outline-none focus:ring focus:border-orange-300`}
-              disabled={isLoading}
-            >
-              {isLoading ? "Signing in..." : "Sign In"}
-            </button>
-          </form>
-          
-          {/* Forgot Password Link */}
-          <div className="mt-4 text-center">
-            <a 
-              href="/request-reset?from=admin" 
-              className="text-sm text-orange-500 hover:text-orange-600 hover:underline"
-            >
-              Forgot your password?
-            </a>
-          </div>
-          
-          {/* No Google login button for admin access */}
         </div>
       </div>
     </div>
