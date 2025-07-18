@@ -1,4 +1,44 @@
-import mongoose, { Schema } from "mongoose";
+import mongoose, { Schema, Document } from "mongoose";
+
+interface OrderDocument extends Document {
+  userId: string;
+  customer: {
+    email: string;
+    firstName: string;
+    lastName: string;
+    phone: string;
+    emailOffers: boolean;
+  };
+  shipping: {
+    deliveryMethod: string;
+    address?: {
+      district?: string;
+      address?: string;
+      city?: string;
+      postalCode?: string;
+    };
+  };
+  line_items: any[];
+  amount: {
+    subtotal: number;
+    shippingCost: number;
+    total: number;
+  };
+  status: string;
+  paymentStatus: string;
+  coupon: {
+    code: string | null;
+    discount: number;
+    description: string | null;
+  };
+  metadata: {
+    customerId: string;
+  };
+  orderNumber: string;
+  pointsEarned: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 // Schema for line items in the order
 const LineItemSchema = new Schema({
@@ -34,7 +74,7 @@ const LineItemSchema = new Schema({
 });
 
 // Main Order schema
-const OrderSchema = new Schema({
+const OrderSchema = new Schema<OrderDocument>({
   userId: {
       type: String,
       required: true,
@@ -167,5 +207,13 @@ OrderSchema.pre("save", function (next) {
 });
 
 // Create and export the Order model
-const Order = mongoose.models.Order || mongoose.model("Order", OrderSchema);
+let Order: mongoose.Model<OrderDocument>;
+
+// Check if the model exists already to avoid model compilation error
+if (mongoose.models && mongoose.models.Order) {
+  Order = mongoose.models.Order as mongoose.Model<OrderDocument>;
+} else {
+  Order = mongoose.model<OrderDocument>("Order", OrderSchema);
+}
+
 export default Order;

@@ -20,12 +20,26 @@ export async function GET(request: NextRequest) {
     
     // Get all users (in a real app, you might want to implement pagination)
     const users = await User.find({}, {
-      password: 0 // Exclude password from the results
-    }).sort({ createdAt: -1 }); // Sort by newest first
+      password: 0, // Exclude password from the results
+      resetPasswordToken: 0,
+      resetPasswordExpires: 0,
+      passwordResetToken: 0,
+      passwordResetExpires: 0
+    }).sort({ createdAt: -1 }).exec(); // Sort by newest first
+    
+    // Convert to plain objects and ensure points are defined
+    const processedUsers = users.map(user => {
+      const userObj = user.toObject();
+      // Ensure points is a number
+      if (userObj.points === undefined || userObj.points === null) {
+        userObj.points = 0;
+      }
+      return userObj;
+    });
     
     return NextResponse.json({ 
       success: true, 
-      users
+      users: processedUsers
     });
     
   } catch (error) {

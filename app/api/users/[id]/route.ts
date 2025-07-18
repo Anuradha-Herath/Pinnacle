@@ -37,7 +37,7 @@ export async function GET(
       resetPasswordExpires: 0,
       passwordResetToken: 0,
       passwordResetExpires: 0
-    });
+    }).exec(); // Use exec() instead of lean()
     
     if (!user) {
       return NextResponse.json({ 
@@ -46,9 +46,17 @@ export async function GET(
       }, { status: 404 });
     }
     
+    // Convert to plain object for manipulation
+    const userObj = user.toObject();
+    
+    // Ensure points is a number
+    if (userObj.points === undefined || userObj.points === null) {
+      userObj.points = 0;
+    }
+    
     return NextResponse.json({ 
       success: true, 
-      user
+      user: userObj
     });
     
   } catch (error) {

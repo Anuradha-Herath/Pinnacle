@@ -6,6 +6,7 @@ import { BellIcon, Cog6ToothIcon, ClockIcon } from "@heroicons/react/24/solid";
 import Image from "next/image";
 import { Crown } from "lucide-react";
 import { useEffect, useState } from "react";
+import { getCustomerType } from "@/utils/loyaltyPoints";
 
 interface Order {
   _id: string;
@@ -27,6 +28,7 @@ interface User {
   createdAt: string;
   profilePicture: string;
   role: string;
+  points: number; // Added points field
 }
 
 export default function CustomerDetails() {
@@ -50,10 +52,12 @@ export default function CustomerDetails() {
     
     const fetchUserData = async () => {
       try {
+        console.log("Fetching user data for ID:", userId);
+        
         // Fetch user details
         const userResponse = await fetch(`/api/users/${userId}`);
         if (!userResponse.ok) {
-          throw new Error('Failed to fetch user data');
+          throw new Error(`Failed to fetch user data: ${userResponse.status} ${userResponse.statusText}`);
         }
         const userData = await userResponse.json();
         
@@ -61,12 +65,13 @@ export default function CustomerDetails() {
           throw new Error(userData.error || 'Failed to fetch user data');
         }
         
+        console.log("User data received:", userData.user);
         setUser(userData.user);
         
         // Fetch user orders
         const ordersResponse = await fetch(`/api/users/orders/${userId}`);
         if (!ordersResponse.ok) {
-          throw new Error('Failed to fetch user orders');
+          throw new Error(`Failed to fetch user orders: ${ordersResponse.status} ${ordersResponse.statusText}`);
         }
         const ordersData = await ordersResponse.json();
         
@@ -74,6 +79,7 @@ export default function CustomerDetails() {
           throw new Error(ordersData.error || 'Failed to fetch user orders');
         }
         
+        console.log("Orders data received:", ordersData);
         setOrders(ordersData.orders);
         setTotalOrders(ordersData.totalOrders);
         setTotalAmount(ordersData.totalAmount);
@@ -140,9 +146,17 @@ export default function CustomerDetails() {
           </div>
         ) : error ? (
           <div className="flex justify-center items-center h-96">
-            <div className="text-red-500 bg-red-50 p-4 rounded-lg">
-              <p className="font-semibold">Error</p>
-              <p>{error}</p>
+            <div className="text-red-500 bg-red-50 p-6 rounded-lg max-w-md">
+              <p className="font-semibold text-lg mb-2">Error Loading Customer Details</p>
+              <p className="mb-4">{error}</p>
+              <p className="text-sm text-gray-700 mb-4">
+                This might be due to one of the following reasons:
+                <ul className="list-disc ml-5 mt-2">
+                  <li>The customer ID is invalid</li>
+                  <li>Database connection issues</li>
+                  <li>The customer data no longer exists</li>
+                </ul>
+              </p>
               <button 
                 onClick={() => router.push("/admin/customerlist")} 
                 className="mt-4 bg-orange-500 text-white px-4 py-2 rounded-lg"
@@ -166,10 +180,7 @@ export default function CustomerDetails() {
                     className="rounded-full border-4 border-white" 
                   />
                   <div className="absolute top-2 right-2 bg-white rounded-full p-1 shadow-md">
-                    <Crown className={`w-6 h-6 ${
-                      user.role === 'admin' ? 'text-black' : 
-                      user.role === 'premium' ? 'text-orange-500' : 'text-gray-400'
-                    }`} />
+                    <Crown className={`w-6 h-6 ${user.role === 'admin' ? 'text-orange-500' : getCustomerType(user.points || 0).color}`} />
                   </div>
                 </div>
                 <div className="p-4 text-center">
@@ -209,6 +220,14 @@ export default function CustomerDetails() {
                   <p><span className="font-semibold">Customer Id:</span><br></br> #{user._id.substring(0, 5)}</p>
                   <p><span className="font-semibold">Delivery Address:</span><br></br> {user.address || 'Not provided'}</p>
                   <p><span className="font-semibold">Latest Order Id:</span><br></br> {orders.length > 0 ? `#${orders[0].orderNumber}` : 'No orders'}</p>
+                  <p>
+                    <span className="font-semibold">Customer Type:</span><br></br> 
+                    <span className="flex items-center">
+                      {getCustomerType(user.points || 0).type} 
+                      <Crown className={`w-4 h-4 ml-1 ${getCustomerType(user.points || 0).color}`} />
+                    </span>
+                  </p>
+                  <p><span className="font-semibold">Loyalty Points:</span><br></br> {user.points || 0}</p>
                   <p><span className="font-semibold">Registration Date:</span><br></br> {formatDate(user.createdAt)}</p>
                   <p><span className="font-semibold">Last Login Date:</span><br></br> {formatDate(new Date().toISOString())}</p>
                 </div>
