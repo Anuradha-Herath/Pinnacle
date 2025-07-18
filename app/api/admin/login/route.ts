@@ -10,7 +10,7 @@ const connectDB = async () => {
       await mongoose.connect(process.env.MONGODB_URI!);
     }
   } catch (error) {
-    console.error('MongoDB connection error:', error);
+    console.log('MongoDB connection error:', error);
     throw new Error('Failed to connect to database');
   }
 };
@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
     return response;
     
   } catch (error) {
-    console.error('Admin login error:', error);
+    console.log('Admin login error:', error);
     return NextResponse.json({ 
       success: false, 
       error: error instanceof Error ? error.message : 'Login failed' 

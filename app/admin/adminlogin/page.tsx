@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/app/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
@@ -23,22 +23,6 @@ const AdminLoginPage: React.FC = () => {
   useEffect(() => {
     setIsClient(true);
   }, []);
-
-  // Check user state changes to handle navigation
-  useEffect(() => {
-    if (user && isCheckingRole) {
-      setIsCheckingRole(false);
-      
-      if (user.role === 'admin') {
-        toast.success("Admin login successful!");
-        router.push('/admin/dashboard');
-      } else {
-        setError("Access denied. Admin privileges only.");
-        toast.error("Access denied. Admin privileges only.");
-        // You might want to add logout functionality here
-      }
-    }
-  }, [user, router, isCheckingRole]);
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,8 +42,59 @@ const AdminLoginPage: React.FC = () => {
       const data = await response.json();
       
       if (data.success) {
-        // Login successful, let the useEffect handle admin check
+        // Login successful, wait a moment for cookie to be set then check auth
         setIsCheckingRole(true);
+        
+        // Add a small delay to ensure the cookie is set
+        setTimeout(async () => {
+          try {
+            // Force a fresh auth check with retry mechanism
+            let authSuccess = false;
+            let retryCount = 0;
+            const maxRetries = 3;
+            
+            while (!authSuccess && retryCount < maxRetries) {
+              const authResponse = await fetch('/api/auth/me', {
+                method: 'GET',
+                credentials: 'include',
+                headers: {
+                  'Cache-Control': 'no-cache, no-store, must-revalidate',
+                  'Pragma': 'no-cache',
+                  'Expires': '0',
+                },
+              });
+              
+              if (authResponse.ok) {
+                const authData = await authResponse.json();
+                if (authData.success && authData.user && authData.user.role === 'admin') {
+                  toast.success("Admin login successful!");
+                  router.push('/admin/dashboard');
+                  authSuccess = true;
+                } else {
+                  setError("Access denied. Admin privileges only.");
+                  toast.error("Access denied. Admin privileges only.");
+                  authSuccess = true; // Stop retrying for permission errors
+                }
+              } else {
+                retryCount++;
+                if (retryCount < maxRetries) {
+                  // Wait before retry
+                  await new Promise(resolve => setTimeout(resolve, 300));
+                }
+              }
+            }
+            
+            if (!authSuccess) {
+              setError("Authentication verification failed. Please try again.");
+              toast.error("Authentication verification failed. Please try again.");
+            }
+          } catch (authError) {
+            console.log("Auth verification error:", authError);
+            setError("Authentication verification failed. Please try again.");
+            toast.error("Authentication verification failed. Please try again.");
+          }
+          setIsCheckingRole(false);
+        }, 300); // Reduced delay but added retry mechanism
       } else {
         // Handle different error cases
         if (data.accountLocked) {
