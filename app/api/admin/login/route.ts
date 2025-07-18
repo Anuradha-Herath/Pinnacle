@@ -101,8 +101,8 @@ export async function POST(request: NextRequest) {
       secure: process.env.NODE_ENV !== 'development',
       sameSite: 'strict',
       path: '/',
-      // 7 days in seconds
-      maxAge: 7 * 24 * 60 * 60
+      // 1 day in seconds
+      maxAge: 24 * 60 * 60
     });
     
     return response;
