@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
         to: user.email,
         subject: 'Password Reset Request',
         html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 2px solid #000; border-radius: 8px; background-color: #fff;">
             <h1 style="color: #000; ">Password Reset</h1>
             <p style="color: #333; font-size: 16px;">You requested a password reset for your Pinnacle account.</p>
             <p style="color: #333; font-size: 16px;">Click the button below to reset your password:</p>
