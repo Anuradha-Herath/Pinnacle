@@ -112,7 +112,7 @@ const AdminLoginPage: React.FC = () => {
       {/* Right Section (Login Form) */}
       <div className="flex flex-col justify-center items-center w-1/2 bg-gray-100">
         <div className="w-96 p-8 bg-white rounded-lg shadow-md">
-          <h2 className="text-2xl font-semibold mb-4 text-center">Admin Sign in</h2>
+          <h2 className="text-2xl font-semibold mb-4 text-center">Admin Login</h2>
           <p className="text-sm text-gray-600 mb-6 text-center">
             Enter your email address and password to access admin panel.
           </p>
