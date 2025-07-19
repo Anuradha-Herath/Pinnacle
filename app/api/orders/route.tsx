@@ -284,7 +284,7 @@ export async function POST(request: NextRequest) {
           mode: "payment",
           success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/checkout?success=1&order=${newOrder.orderNumber}`,
           cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/checkout?canceled=1`,
-          metadata: { orderId: newOrder._id.toString() },
+          metadata: { orderId: String(newOrder._id) },
         });
 
         // Stripe's checkout URL is put to redirectUrl
