@@ -30,13 +30,21 @@ export default function ProfilePage() {
     // Fetch admin user data
     const fetchAdminProfile = async () => {
       try {
+        // Wait a bit for auth context to stabilize
+        if (user === undefined) {
+          // Auth context is still loading, don't redirect yet
+          return;
+        }
+
         // Check if user is authenticated and is an admin
         if (!user) {
+          console.log('No user found, redirecting to login');
           router.push('/login');
           return;
         }
 
         if (user.role !== 'admin') {
+          console.log('User is not admin, redirecting to home');
           router.push('/');
           return;
         }
@@ -76,7 +84,10 @@ export default function ProfilePage() {
         console.error('Error fetching admin profile:', err);
         setError('Failed to load admin profile data');
       } finally {
-        setLoading(false);
+        // Only set loading to false if we have determined the user state
+        if (user !== undefined) {
+          setLoading(false);
+        }
       }
     };
 
@@ -88,7 +99,14 @@ export default function ProfilePage() {
       <div className="flex">
         <Sidebar />
         <div className="min-h-screen bg-gray-50 p-6 flex-1 flex justify-center items-center">
-          <CircularProgress />
+          <CircularProgress 
+            sx={{ 
+              color: 'orange',
+              '& .MuiCircularProgress-circle': {
+                stroke: 'orange'
+              }
+            }} 
+          />
         </div>
       </div>
     );

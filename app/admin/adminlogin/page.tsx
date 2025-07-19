@@ -262,7 +262,7 @@ const AdminLoginPage: React.FC = () => {
     <div className="flex h-screen">
       {/* Left Section (Logo) */}
       <div className="bg-[#282C34] text-white flex items-center justify-center w-1/2">
-        <h1 className="text-4xl font-semibold italic">Pinnacle</h1>
+        <h1 className="text-6xl font-semibold italic">Pinnacle</h1>
       </div>
 
       {/* Right Section (Login Form or Verification Form) */}

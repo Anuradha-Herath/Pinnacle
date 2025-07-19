@@ -195,7 +195,14 @@ export default function ProfilePage() {
       <>
         <Header />
         <div className="flex justify-center items-center h-[60vh]">
-          <CircularProgress />
+          <CircularProgress 
+            sx={{ 
+              color: 'black',
+              '& .MuiCircularProgress-circle': {
+                stroke: 'black'
+              }
+            }} 
+          />
         </div>
         <Footer />
       </>
