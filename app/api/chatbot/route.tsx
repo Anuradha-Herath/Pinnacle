@@ -386,11 +386,11 @@ const categoryMatchStrategy: RecommendationStrategy = {
     
     // Enhanced clothing category terms with more variations
     const productCategories = [
-      'hoodie', 'hoody', 'hoodies', 'sweater', 'jacket', 'tshirt', 't-shirt', 'shirt', 
+      'hoodie', 'hoody', 'hoodies', 'sweater', 'jacket', 'tshirt', 't-shirt', 'tee', 'tees', 'shirt', 
       'pants', 'jeans', 'shorts', 'dress', 'dresses', 'skirt', 'skirts', 'blouse', 'coat', 
       'shoes', 'sneakers', 'boots', 'hat', 'cap', 'socks', 'accessories', 'crop top', 
       'crop tops', 'leggings', 'tanks', 'tank top', 'tank tops', 'joggers', 'sweatshirt',
-      'gym', 'workout', 'sports', 'athletic'
+      'gym', 'workout', 'sports', 'athletic', 'tops', 'top'
     ];
     
     // Gender-specific categories
@@ -455,6 +455,14 @@ const categoryMatchStrategy: RecommendationStrategy = {
               if (catMatch.includes('gym') || catMatch.includes('workout') || catMatch.includes('sports') || catMatch.includes('athletic')) {
                 return prodCat.includes('sport') || prodCat.includes('gym') || prodCat.includes('athletic') ||
                        productKeywords.includes('sport') || productKeywords.includes('gym') || productKeywords.includes('athletic');
+              }
+              if (catMatch.includes('tee') || catMatch === 'tees' || catMatch.includes('t-shirt')) {
+                // Very specific matching for tees and t-shirts
+                return (prodCat.includes('t-shirt') || prodCat.includes('tee') || prodCat.includes('shirt')) &&
+                       !prodCat.includes('tank') && !prodCat.includes('crop') && !prodCat.includes('jogger') &&
+                       (productKeywords.includes('t-shirt') || productKeywords.includes('tee') || 
+                        product.name.toLowerCase().includes('t-shirt') || product.name.toLowerCase().includes('tee')) &&
+                       !product.name.toLowerCase().includes('tank') && !product.name.toLowerCase().includes('crop');
               }
               return prodCat.includes(catMatch) || productKeywords.includes(catMatch);
             })
@@ -689,8 +697,8 @@ const responseCategoryStrategy: RecommendationStrategy = {
       'dresses', 'dress', 'skirts', 'skirt', 'crop tops', 'crop top', 
       'leggings', 'tanks', 'tank tops', 'tank top', 'shorts', 'short',
       'hoodies', 'hoodie', 'jackets', 'jacket', 'jeans', 'pants', 
-      'shirts', 'shirt', 't-shirts', 't-shirt', 'accessories',
-      'gym', 'workout', 'sports', 'joggers', 'jogger'
+      'shirts', 'shirt', 't-shirts', 't-shirt', 'tees', 'tee', 'tops', 'top',
+      'accessories', 'gym', 'workout', 'sports', 'joggers', 'jogger'
     ];
     
     const foundCategories: string[] = [];
@@ -732,6 +740,15 @@ const responseCategoryStrategy: RecommendationStrategy = {
           } else if (mentionedCat.includes('short')) {
             isMatch = productCat.includes('short') || productSubCat.includes('short') || 
                      productKeywords.includes('short') || productName.includes('short');
+          } else if (mentionedCat.includes('tee') || mentionedCat.includes('t-shirt')) {
+            // Specific handling for tees and t-shirts - be very precise
+            isMatch = productName.includes('t-shirt') || productName.includes('tee') || 
+                     productCat.includes('t-shirt') || productCat.includes('tee') ||
+                     productSubCat.includes('t-shirt') || productSubCat.includes('tee') ||
+                     (productKeywords.includes('t-shirt') || productKeywords.includes('tee')) &&
+                     // Exclude other types that might contain these terms
+                     !productName.includes('tank') && !productName.includes('crop') && 
+                     !productName.includes('jogger') && !productName.includes('pant');
           } else if (mentionedCat.includes('gym') || mentionedCat.includes('workout') || mentionedCat.includes('sports')) {
             isMatch = productKeywords.includes('gym') || productKeywords.includes('workout') || 
                      productKeywords.includes('sport') || productName.includes('gym') ||
@@ -931,7 +948,38 @@ const findRecommendedProducts = (responseText: string, productContext: ProductCo
   
   // FINAL SAFETY CHECK: Apply gender filtering one more time to ensure no leaks
   const detectedGender = detectGenderPreference(userQuery, responseText);
-  const finalFilteredProducts = filterProductsByGender(recommendedProducts, detectedGender);
+  let finalFilteredProducts = filterProductsByGender(recommendedProducts, detectedGender);
+  
+  // ADDITIONAL SAFETY CHECK: Validate category relevance for specific queries
+  if (userQuery.toLowerCase().includes('tee') || userQuery.toLowerCase().includes('t-shirt')) {
+    console.log('🔍 SPECIFIC TEE FILTER: Filtering for tee/t-shirt specific query');
+    finalFilteredProducts = finalFilteredProducts.filter(product => {
+      const name = product.name.toLowerCase();
+      const category = product.category.toLowerCase();
+      const subCategory = product.subCategory.toLowerCase();
+      
+      // Must contain tee or t-shirt related terms, exclude unrelated items
+      return (name.includes('t-shirt') || name.includes('tee') || 
+              category.includes('t-shirt') || category.includes('tee') ||
+              subCategory.includes('t-shirt') || subCategory.includes('tee')) &&
+             !name.includes('tank') && !name.includes('crop') && 
+             !name.includes('jogger') && !name.includes('pant') && !name.includes('cargo');
+    });
+  }
+  
+  if (userQuery.toLowerCase().includes('shorts')) {
+    console.log('🔍 SPECIFIC SHORTS FILTER: Filtering for shorts specific query');
+    finalFilteredProducts = finalFilteredProducts.filter(product => {
+      const name = product.name.toLowerCase();
+      const category = product.category.toLowerCase();
+      const subCategory = product.subCategory.toLowerCase();
+      
+      // Must contain shorts related terms, exclude pants and other items
+      return (name.includes('short') || category.includes('short') || subCategory.includes('short')) &&
+             !name.includes('shirt') && !name.includes('pant') && !name.includes('cargo') &&
+             !name.includes('jogger') && !name.includes('jean');
+    });
+  }
   
   if (finalFilteredProducts.length !== recommendedProducts.length) {
     console.log(`🚨 SAFETY FILTER ACTIVATED: Removed ${recommendedProducts.length - finalFilteredProducts.length} mismatched products`);
@@ -957,8 +1005,8 @@ const findRecommendedProducts = (responseText: string, productContext: ProductCo
   };
 };
 
-// Reduce threshold to be more inclusive for debugging
-const RELEVANCE_THRESHOLD = 0.3; // Reduced from 0.6 to see more matches
+// Increase threshold to be more precise for better recommendations
+const RELEVANCE_THRESHOLD = 0.6; // Increased from 0.3 to be more selective
 
 // New function to detect when the response is saying we don't have a product
 const isNegativeProductResponse = (responseText: string): boolean => {
