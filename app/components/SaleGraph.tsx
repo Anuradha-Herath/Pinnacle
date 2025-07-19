@@ -80,37 +80,6 @@ const SaleGraph: React.FC<SaleGraphProps> = ({ salesData }) => {
           }]
         });
       } 
-      // For weekly view, use last 4 months with weekly breakdown (simplified)
-      else if (timePeriod === "weekly") {
-        // Get last 4 months data
-        const lastFourMonths = salesData.slice(-4);
-        // Create weekly labels (4 weeks per month)
-        const weeklyLabels: string[] = [];
-        const weeklyData: number[] = [];
-        
-        lastFourMonths.forEach((month: SalesDataPoint) => {
-          // Divide monthly orders into 4 weeks (approximation)
-          const weeklyAvg = month.orderCount / 4;
-          for (let week = 1; week <= 4; week++) {
-            // Add some variation to weekly data
-            const weekValue = Math.round(weeklyAvg * (0.8 + Math.random() * 0.4));
-            weeklyLabels.push(`${month.month} W${week}`);
-            weeklyData.push(weekValue);
-          }
-        });
-        
-        setChartData({
-          labels: weeklyLabels,
-          datasets: [{
-            label: 'Weekly Orders',
-            data: weeklyData,
-            fill: false,
-            borderColor: "rgb(255, 127, 80)",
-            backgroundColor: "rgba(255, 127, 80, 0.1)",
-            tension: 0.4,
-          }]
-        });
-      }
       // For yearly view, aggregate data by quarters
       else if (timePeriod === "yearly") {
         // Quarterly breakdown
@@ -151,45 +120,30 @@ const SaleGraph: React.FC<SaleGraphProps> = ({ salesData }) => {
         beginAtZero: true,
         ticks: {
           stepSize: 5,
-          padding: 10,
-          font: {
-            size: 11
-          },
-          callback: function (value: number | string) {
-            return value; // Just return the number of orders
-          },
+          padding: 5,
+          font: { size: 9 },
+          callback: function (value: number | string) { return value; }
         },
         title: {
-          display: true,
-          text: 'Number of Orders',
-          font: {
-            size: 12
-          },
-          padding: {
-            top: 0,
-            bottom: 10
-          }
+          display: false
         },
         grid: {
-          color: 'rgba(200, 200, 200, 0.2)'
+          display: false
         }
       },
       x: {
         ticks: {
-          font: {
-            size: 11
-          },
-          padding: 5
+          font: { size: 8 },
+          padding: 2
         },
         grid: {
-          color: 'rgba(200, 200, 200, 0.2)'
+          display: false
         }
       }
     },
     plugins: {
       legend: {
-        display: true,
-        position: 'top' as const,
+        display: false
       },
       tooltip: {
         callbacks: {
@@ -202,15 +156,23 @@ const SaleGraph: React.FC<SaleGraphProps> = ({ salesData }) => {
         }
       },
       title: {
-        display: true,
-        text: `${currentYear} Order Statistics`,
-        color: '#333',
-        font: {
-          size: 16,
-          weight: 'bold' as const
-        }
+        display: false
       },
     },
+    layout: {
+      padding: {
+        top: 5,
+        bottom: 5
+      }
+    },
+    elements: {
+      point: {
+        radius: 2
+      },
+      line: {
+        borderWidth: 2
+      }
+    }
   };
 
   const handleTimePeriodChange = (period: string) => {
@@ -218,23 +180,15 @@ const SaleGraph: React.FC<SaleGraphProps> = ({ salesData }) => {
   };
 
   return (
-    <div className="bg-white p-4 rounded shadow h-full flex flex-col">
-      <h3 className="text-lg font-semibold mb-4">Order Statistics</h3>
-      <div className="flex-grow" style={{ minHeight: "300px" }}>
+    <div className="bg-white p-3 rounded shadow h-[250px] flex flex-col">
+      <h3 className="text-lg font-semibold mb-2">Order Statistics</h3>
+      <div className="flex-grow" style={{ height: "160px" }}>
         <Line data={chartData} options={options} />
       </div>
       <div className="mt-auto">
-        <div className="flex justify-center mt-4 space-x-2">
+        <div className="flex justify-center mt-1 space-x-4">
           <button
-            className={`text-sm px-3 py-1 rounded ${
-              timePeriod === "weekly" ? "bg-orange-500 text-white" : "bg-gray-200"
-            }`}
-            onClick={() => handleTimePeriodChange("weekly")}
-          >
-            WEEKLY
-          </button>
-          <button
-            className={`text-sm px-3 py-1 rounded ${
+            className={`text-xs px-3 py-0.5 rounded ${
               timePeriod === "monthly" ? "bg-orange-500 text-white" : "bg-gray-200"
             }`}
             onClick={() => handleTimePeriodChange("monthly")}
@@ -242,7 +196,7 @@ const SaleGraph: React.FC<SaleGraphProps> = ({ salesData }) => {
             MONTHLY
           </button>
           <button
-            className={`text-sm px-3 py-1 rounded ${
+            className={`text-xs px-3 py-0.5 rounded ${
               timePeriod === "yearly" ? "bg-orange-500 text-white" : "bg-gray-200"
             }`}
             onClick={() => handleTimePeriodChange("yearly")}
@@ -250,8 +204,8 @@ const SaleGraph: React.FC<SaleGraphProps> = ({ salesData }) => {
             YEARLY
           </button>
         </div>
-        <p className="text-xs text-center text-gray-500 mt-2">
-          Showing {timePeriod} order counts for {currentYear}
+        <p className="text-xs text-center text-gray-500 mt-0.5">
+          {timePeriod === "monthly" ? "Monthly" : "Quarterly"} orders for {currentYear}
         </p>
       </div>
     </div>

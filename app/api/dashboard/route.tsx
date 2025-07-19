@@ -28,8 +28,14 @@ export interface DashboardData {
   totalOrdersValue: number;
   activeOrders: number;
   activeOrdersValue: number;
+  processingOrders: number; // Orders with status "Processing"
+  shippedOrders: number;    // Orders with status "Shipped"
+  paidOrders: number;       // Orders with status "Paid"
   completedOrders: number;
   completedOrdersValue: number;
+  totalActiveData: number;  // Sum of active orders and completed orders
+  deliveredOrders: number;  // Orders with status "Delivered"
+  refundedOrders: number;   // Orders with status "Refunded"
   totalCustomers: number;
   salesByMonth: { month: string; sales: number; orderCount: number }[];
   bestSellingProducts: BestSellingProduct[];
@@ -39,8 +45,27 @@ export async function getDashboardData(): Promise<DashboardData> {
   try {
     await connectDB();
 
-    // Get orders data
-    const [totalOrders, activeOrders, completedOrders, totalCustomers, monthlySales] = await Promise.all([
+    // Get orders data with specific conditions:
+    // - Total orders: All orders with paymentStatus = "paid"
+    // - Active orders: Orders with paymentStatus = "paid" and status in ["Processing", "Shipped", "Paid"]
+    // - Completed orders: Orders with paymentStatus = "paid" and status in ["Delivered", "Refunded"]
+    // - Delivered orders: Orders with paymentStatus = "paid" and status = "Delivered"
+    // - Refunded orders: Orders with paymentStatus = "paid" and status = "Refunded"
+    // - Processing orders: Orders with paymentStatus = "paid" and status = "Processing"
+    // - Shipped orders: Orders with paymentStatus = "paid" and status = "Shipped"
+    // - Paid orders: Orders with paymentStatus = "paid" and status = "Paid"
+    const [
+      totalOrders, 
+      activeOrders, 
+      completedOrders, 
+      deliveredOrders, 
+      refundedOrders,
+      processingOrders,
+      shippedOrders,
+      paidOrders,
+      totalCustomers, 
+      monthlySales
+    ] = await Promise.all([
       // Total orders - only paid orders
       Order.countDocuments({
         paymentStatus: "paid"
@@ -52,9 +77,39 @@ export async function getDashboardData(): Promise<DashboardData> {
         paymentStatus: "paid"
       }),
       
-      // Completed orders (Delivered) - only paid orders
+      // Completed orders (Delivered or Refunded) - only paid orders
+      Order.countDocuments({
+        status: { $in: ["Delivered", "Refunded"] },
+        paymentStatus: "paid"
+      }),
+      
+      // Delivered orders - only paid orders with status = "Delivered"
       Order.countDocuments({
         status: "Delivered",
+        paymentStatus: "paid"
+      }),
+      
+      // Refunded orders - only paid orders with status = "Refunded"
+      Order.countDocuments({
+        status: "Refunded",
+        paymentStatus: "paid"
+      }),
+      
+      // Processing orders - only paid orders with status = "Processing"
+      Order.countDocuments({
+        status: "Processing",
+        paymentStatus: "paid"
+      }),
+      
+      // Shipped orders - only paid orders with status = "Shipped"
+      Order.countDocuments({
+        status: "Shipped",
+        paymentStatus: "paid"
+      }),
+      
+      // Paid orders - only paid orders with status = "Paid"
+      Order.countDocuments({
+        status: "Paid",
         paymentStatus: "paid"
       }),
       
@@ -84,11 +139,11 @@ export async function getDashboardData(): Promise<DashboardData> {
         { $group: { _id: null, total: { $sum: "$amount.total" } } }
       ]),
       
-      // Completed orders value - only paid orders
+      // Completed orders value - only paid orders with status Delivered or Refunded
       Order.aggregate([
         { 
           $match: { 
-            status: "Delivered",
+            status: { $in: ["Delivered", "Refunded"] },
             paymentStatus: "paid"
           } 
         },
@@ -104,8 +159,14 @@ export async function getDashboardData(): Promise<DashboardData> {
       totalOrdersValue: totalOrdersValue[0]?.total || 0,
       activeOrders,
       activeOrdersValue: activeOrdersValue[0]?.total || 0,
+      processingOrders,
+      shippedOrders,
+      paidOrders,
       completedOrders,
       completedOrdersValue: completedOrdersValue[0]?.total || 0,
+      totalActiveData: activeOrders + completedOrders, // Sum of active and completed orders
+      deliveredOrders,
+      refundedOrders,
       totalCustomers,
       salesByMonth: monthlySales,
       bestSellingProducts
@@ -161,7 +222,10 @@ async function getBestSellingProducts(): Promise<BestSellingProduct[]> {
     // Unwind the line_items array to treat each product separately
     // Only include paid orders
     const productSales = await Order.aggregate([
-      { $match: { paymentStatus: "paid" } },
+      { $match: { 
+          paymentStatus: "paid"
+        } 
+      },
       { $unwind: "$line_items" },
       {
         $group: {
@@ -218,7 +282,7 @@ export async function getRecentOrders(limit: number = 7): Promise<RecentOrder[]>
   try {
     await connectDB();
     
-    // Fetch the most recent orders, only paid orders
+    // Fetch the most recent orders with paymentStatus = "paid"
     const recentOrders = await Order.find({ 
       paymentStatus: "paid" 
     })
