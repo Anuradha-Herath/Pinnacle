@@ -29,13 +29,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ suggestions: [] });
     }
     
-    // Create a regex search pattern that's case insensitive
-    const searchPattern = new RegExp(query, 'i');
+    // Create a regex search pattern that's case insensitive with escaped special characters
+    const searchPattern = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
     
-    // Search for product names that match the query
+    // Use lean() for better performance and limit fields
     const products = await Product.find({
       productName: { $regex: searchPattern }
     })
+    .select('productName gallery')
+    .lean()
     .limit(limit);
     
     // Return data needed for suggestions including images
@@ -47,7 +49,11 @@ export async function GET(request: NextRequest) {
         '/placeholder.png'
     }));
     
-    return NextResponse.json({ suggestions });
+    // Add cache headers
+    const response = NextResponse.json({ suggestions });
+    response.headers.set('Cache-Control', 'public, max-age=60, stale-while-revalidate=30');
+    
+    return response;
     
   } catch (error) {
     console.error("Error fetching search suggestions:", error);

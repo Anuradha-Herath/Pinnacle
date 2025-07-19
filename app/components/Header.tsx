@@ -146,7 +146,7 @@ const Header = () => {
 
       setIsLoading(true);
       try {
-        const response = await fetch(`/api/suggestions?q=${encodeURIComponent(searchQuery.trim())}`);
+        const response = await fetch(`/api/search/suggestions?q=${encodeURIComponent(searchQuery.trim())}`);
         if (!response.ok) throw new Error("Failed to fetch suggestions");
 
         const data = await response.json();
@@ -161,7 +161,7 @@ const Header = () => {
 
     const debounceTimer = setTimeout(() => {
       fetchSuggestions();
-    }, 300);
+    }, 150); // Reduced from 300ms to 150ms
 
     return () => clearTimeout(debounceTimer);
   }, [searchQuery]);
@@ -191,7 +191,7 @@ const Header = () => {
 
     const debounceTimer = setTimeout(() => {
       fetchKeywordSuggestions();
-    }, 200);
+    }, 100); // Reduced from 200ms to 100ms
 
     return () => clearTimeout(debounceTimer);
   }, [searchQuery]);

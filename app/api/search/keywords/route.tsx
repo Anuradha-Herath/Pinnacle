@@ -29,19 +29,21 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ keywords: [] });
     }
     
-    // Create a regex search pattern that's case insensitive
-    const searchPattern = new RegExp(query, 'i');
+    // Create a regex search pattern that's case insensitive with escaped special characters
+    const searchPattern = new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
     
-    // Find products matching the query
+    // Find products matching the query (removed description from search) - use lean() for performance
     const products = await Product.find({
       $or: [
         { productName: { $regex: searchPattern } },
-        { description: { $regex: searchPattern } },
         { category: { $regex: searchPattern } },
         { subCategory: { $regex: searchPattern } },
         { tag: { $regex: searchPattern } },
       ]
-    }).limit(100); // Get a larger sample to extract keywords from
+    })
+    .select('productName category subCategory tag')
+    .lean()
+    .limit(50); // Reduced from 100 to 50 for better performance
     
     // Extract keywords from products
     const keywordSet = new Set<string>();
@@ -103,7 +105,11 @@ export async function GET(request: NextRequest) {
       .filter(keyword => keyword.toLowerCase() !== query.toLowerCase()) // Remove exact matches
       .slice(0, limit);
     
-    return NextResponse.json({ keywords });
+    // Add cache headers
+    const response = NextResponse.json({ keywords });
+    response.headers.set('Cache-Control', 'public, max-age=120, stale-while-revalidate=60');
+    
+    return response;
     
   } catch (error) {
     console.error("Error fetching keyword suggestions:", error);
