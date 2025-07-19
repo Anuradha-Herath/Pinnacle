@@ -221,6 +221,61 @@ export const fetchTrendingProducts = async () => {
 };
 
 /**
+ * Fetches best-selling products with deduplication and caching
+ * Supports filtering by category (Men or Women)
+ */
+export const fetchBestSellers = async (filters: {
+  category?: 'Men' | 'Women';
+  limit?: number;
+} = {}) => {
+  const url = buildApiUrl('/api/customer/bestsellers', filters);
+  const cacheKey = url;
+  
+  // Check for cached best sellers data
+  const cached = requestCache.get(cacheKey);
+  if (cached) {
+    if (Date.now() - cached.timestamp < CACHE_TIMEOUT) {
+      console.log(`⚡ Using cached best sellers data for ${filters.category || 'all'}`);
+      performanceMonitor.countRequest(`${url} (cached)`);
+      return cached.promise;
+    } else {
+      requestCache.delete(cacheKey);
+    }
+  }
+  
+  // Create new request
+  console.log(`🚀 Fetching fresh best sellers data for ${filters.category || 'all'}`);
+  performanceMonitor.countRequest(url);
+  
+  const promise = fetch(url, {
+    headers: {
+      'Cache-Control': 'max-age=300, stale-while-revalidate=60',
+      'Accept': 'application/json',
+    },
+    signal: AbortSignal.timeout ? AbortSignal.timeout(10000) : undefined,
+  })
+    .then(async (response) => {
+      if (!response.ok) {
+        console.warn(`Best sellers API returned ${response.status}, returning fallback data`);
+        return { products: [] };
+      }
+      return response.json();
+    })
+    .catch((error) => {
+      console.warn('Best sellers fetch warning (non-critical):', error.message);
+      return { products: [] };
+    });
+  
+  // Cache the promise
+  requestCache.set(cacheKey, {
+    promise,
+    timestamp: Date.now(),
+  });
+  
+  return promise;
+};
+
+/**
  * Fetches user cart with deduplication
  */
 export const fetchUserCart = async () => {

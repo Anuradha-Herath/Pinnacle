@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Header from "./components/Header";
 import ProductCarousel from "./components/ProductCarousel";
+import BestSellersCarousel from "./components/BestSellersCarousel";
 import TrendingCarousel from "./components/TrendingCarousel";
 import Footer from "./components/Footer";
 import Link from "next/link";
@@ -429,7 +430,7 @@ const HomePage = () => {
           </div>
         </div>
 
-        {/* Best Sellers with Gender Toggle */}
+        {/* Best Sellers with Gender Toggle - Updated to use sales data */}
         <div className="px-4 md:px-8 lg:px-12 my-8">
           {/* Title with Toggle Buttons */}
           <div className="flex justify-between items-center mb-6">
@@ -458,34 +459,14 @@ const HomePage = () => {
             </div>
           </div>
 
-          {/* Products Carousel without title (using empty string) */}
-          <ProductCarousel
-            title=""
-            products={
-              selectedGender === "men"
-                ? categoryProducts.mens.length > 0
-                  ? categoryProducts.mens
-                  : []
-                : categoryProducts.womens.length > 0
-                ? categoryProducts.womens
-                : []
-            }
+          {/* Best Sellers Carousel - Using sales data instead of category products */}
+          <BestSellersCarousel
+            category={selectedGender === "men" ? "Men" : "Women"}
             loading={genderLoading}
           />
-
-          {/* Show message if no products in category */}
-          {!genderLoading &&
-            ((selectedGender === "men" && categoryProducts.mens.length === 0) ||
-              (selectedGender === "women" &&
-                categoryProducts.womens.length === 0)) && (
-              <div className="text-center py-8 text-black">
-                No products found for{" "}
-                {selectedGender === "men" ? "men" : "women"}.
-              </div>
-            )}
         </div>
 
-        {/* Accessories - Updated to match the loading style of other carousels */}
+        {/* Accessories - Original implementation restored */}
         <div className="px-4 md:px-8 lg:px-12 my-8">
           <ProductCarousel
             title="Accessories"
@@ -496,6 +477,7 @@ const HomePage = () => {
                 : []
             }
             loading={accessoriesLoading}
+            carouselId="accessories"
           />
 
           {/* Show message if no accessories products and not loading */}

@@ -10,9 +10,10 @@ interface ProductCarouselProps {
   title: string;
   products: any[];
   loading?: boolean;
+  carouselId?: string; // Add unique identifier for keys
 }
 
-const ProductCarousel = ({ title, products, loading = false }: ProductCarouselProps) => {
+const ProductCarousel = ({ title, products, loading = false, carouselId }: ProductCarouselProps) => {
   const carouselRef = useRef<HTMLDivElement>(null);
   const [scrollPosition, setScrollPosition] = useState(0);
   const [maxScroll, setMaxScroll] = useState(0);
@@ -212,8 +213,8 @@ const ProductCarousel = ({ title, products, loading = false }: ProductCarouselPr
             className="flex overflow-x-auto gap-6 pb-8 scroll-smooth hide-scrollbar"
             onScroll={handleScroll}
           >
-            {products.map((product) => (
-              <div key={product.id} className="flex-none">
+            {products.map((product, index) => (
+              <div key={`${carouselId || title}-${product.id}-${index}`} className="flex-none">
                 <ProductCard product={product} />
               </div>
             ))}

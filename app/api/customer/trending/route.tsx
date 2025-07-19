@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import Product from "@/models/Product";
+import Order from "@/models/Order";
 import Inventory from "@/models/Inventory";
 import Discount from "@/models/Discount";
 import connectDB from "@/lib/optimizedDB"; // Use optimized connection
@@ -26,7 +27,7 @@ export async function OPTIONS() {
   });
 }
 
-// GET method to fetch trending products (newly created + recently stocked) that are in stock
+// GET method to fetch trending products (mix of top-selling, newly created, and recently stocked items)
 export async function GET(request: Request) {
   try {
     console.log('Starting trending products fetch...');
@@ -68,29 +69,78 @@ export async function GET(request: Request) {
     
     const PRODUCT_LIMIT = 10;
     
-    // Get date threshold for recent items (last 30 days)
+    // Get date thresholds
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     
-    // Find all inventory items with "In Stock" status - with fallback
+    const ninetyDaysAgo = new Date();
+    ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+    
+    // Find all inventory items with "In Stock" status
     let inStockProductIds: string[] = [];
     let useInventoryFilter = true;
     
     try {
       const inStockInventory = await Inventory.find({
         status: 'In Stock'
-      });
+      }).select('productId');
       
       if (inStockInventory.length > 0) {
-        inStockProductIds = inStockInventory.map(item => item.productId);
-        console.log(`Found ${inStockProductIds.length} products in stock for trending`);
+        inStockProductIds = inStockInventory.map(item => item.productId.toString());
+        console.log(`Found ${inStockProductIds.length} in-stock products for trending`);
       } else {
-        console.log('No inventory found, using all products for trending');
+        console.log('No in-stock inventory found, using all products');
         useInventoryFilter = false;
       }
     } catch (inventoryError) {
       console.error('Inventory fetch failed for trending, using all products:', inventoryError);
       useInventoryFilter = false;
+    }
+
+    // Get sales data for trending calculation (last 60 days for trending)
+    let topSellingProductIds: string[] = [];
+    try {
+      const salesAggregation = [
+        {
+          $match: {
+            createdAt: { $gte: ninetyDaysAgo },
+            status: { $in: ['confirmed', 'shipped', 'delivered'] }
+          }
+        },
+        {
+          $unwind: '$line_items'
+        },
+        {
+          $group: {
+            _id: '$line_items.metadata.productId',
+            totalSold: { $sum: '$line_items.quantity' },
+            recentSales: {
+              $sum: {
+                $cond: [
+                  { $gte: ['$createdAt', thirtyDaysAgo] },
+                  '$line_items.quantity',
+                  0
+                ]
+              }
+            }
+          }
+        },
+        {
+          $sort: { recentSales: -1, totalSold: -1 }
+        },
+        {
+          $limit: 15 // Get top 15 selling products
+        }
+      ];
+
+      const salesData = await Order.aggregate(salesAggregation);
+      topSellingProductIds = salesData
+        .map(item => item._id)
+        .filter(id => id && mongoose.Types.ObjectId.isValid(id));
+      
+      console.log(`Found ${topSellingProductIds.length} top-selling products`);
+    } catch (salesError) {
+      console.error('Sales aggregation failed, skipping sales data:', salesError);
     }
     
     // Build the base query based on inventory availability
@@ -104,64 +154,112 @@ export async function GET(request: Request) {
     }
     
     // Find all products that match our criteria
-    const allProducts = await Product.find(baseQuery).sort({ createdAt: -1 });
+    const allProducts = await Product.find(baseQuery)
+      .select('productName description category subCategory regularPrice gallery sizes createdAt _id')
+      .sort({ createdAt: -1 })
+      .lean()
+      .exec();
     
     if (allProducts.length === 0) {
       return NextResponse.json({ products: [] }, {
         headers: corsHeaders,
       });
     }
+
+    // Categorize products for balanced trending mix
+    const categorizedProducts = {
+      men: allProducts.filter(p => p.category && p.category.toLowerCase().includes('men')),
+      women: allProducts.filter(p => p.category && p.category.toLowerCase().includes('women')),
+      accessories: allProducts.filter(p => p.category && p.category.toLowerCase().includes('accessories'))
+    };
+
+    console.log(`Categorized products: Men: ${categorizedProducts.men.length}, Women: ${categorizedProducts.women.length}, Accessories: ${categorizedProducts.accessories.length}`);
+
+    // Create trending score for each product
+    let productsWithScore: { product: any; score: number; category: string; }[] = [];
     
-    // Process trending logic based on inventory availability
-    let productsWithTimestamp: { product: any; timestamp: number; }[];
-    
-    if (useInventoryFilter && inStockProductIds.length > 0) {
-      // Separate into new products and recently updated products
-      const newProducts = allProducts.filter(product => 
-        product.createdAt && product.createdAt >= thirtyDaysAgo
-      );
+    allProducts.forEach(product => {
+      let score = 0;
+      const productId = product._id.toString();
+      const category = product.category?.toLowerCase() || '';
       
-      // Get the IDs of new products
-      const newProductIds = newProducts.map(product => product._id.toString());
+      // Base recency score (newer products get higher score)
+      const daysSinceCreated = product.createdAt ? 
+        (Date.now() - product.createdAt.getTime()) / (1000 * 60 * 60 * 24) : 999;
+      const recencyScore = Math.max(0, 100 - daysSinceCreated);
+      score += recencyScore * 0.3; // 30% weight for recency
       
-      // Get recently updated inventory items that are in stock
-      const recentlyUpdatedInventory = await Inventory.find({
-        status: 'In Stock',
-        updatedAt: { $gte: thirtyDaysAgo }
-      }).sort({ updatedAt: -1 });
+      // Sales performance score
+      const salesIndex = topSellingProductIds.indexOf(productId);
+      if (salesIndex !== -1) {
+        const salesScore = (topSellingProductIds.length - salesIndex) * 10;
+        score += salesScore * 0.5; // 50% weight for sales performance
+      }
       
-      // Get product IDs from recently updated inventory
-      const recentlyUpdatedProductIds = recentlyUpdatedInventory.map(item => 
-        item.productId.toString()
-      );
+      // Category diversity bonus (ensure mix of categories)
+      if (category.includes('men')) {
+        score += 10; // Small bonus for men's products
+      } else if (category.includes('women')) {
+        score += 15; // Slightly higher bonus for women's products
+      } else if (category.includes('accessories')) {
+        score += 12; // Bonus for accessories
+      }
       
-      // Find products that were recently updated but not newly created
-      const recentlyUpdatedProducts = allProducts.filter(product => 
-        !newProducts.some(newProduct => newProduct._id.toString() === product._id.toString()) &&
-        recentlyUpdatedProductIds.includes(product._id.toString())
-      );
-      
-      // Create a map of products with their most recent timestamp
-      productsWithTimestamp = [...newProducts, ...recentlyUpdatedProducts].map(product => {
-        const inventoryItem = recentlyUpdatedInventory.find(item => 
-          item.productId.toString() === product._id.toString()
-        );
-        
-        const createdAt = product.createdAt ? product.createdAt.getTime() : 0;
-        const updatedAt = inventoryItem?.updatedAt ? inventoryItem.updatedAt.getTime() : 0;
-        
-        return {
-          product,
-          timestamp: Math.max(createdAt, updatedAt)
-        };
-      });
-    } else {
-      // If no inventory filter, just use the newest products
-      productsWithTimestamp = allProducts.slice(0, PRODUCT_LIMIT).map(product => ({
+      // Recent stock update bonus
+      if (useInventoryFilter && inStockProductIds.includes(productId)) {
+        score += 20; // 20% bonus for being in stock
+      }
+
+      productsWithScore.push({
         product,
-        timestamp: product.createdAt ? product.createdAt.getTime() : 0
-      }));
+        score,
+        category: category.includes('men') ? 'men' : 
+                 category.includes('women') ? 'women' : 
+                 category.includes('accessories') ? 'accessories' : 'other'
+      });
+    });
+
+    // Sort by score and ensure category diversity
+    productsWithScore.sort((a, b) => b.score - a.score);
+    
+    // Select products ensuring category balance
+    const selectedProducts: any[] = [];
+    const categoryLimits = {
+      women: Math.ceil(PRODUCT_LIMIT * 0.4), // 40% women
+      men: Math.ceil(PRODUCT_LIMIT * 0.35),   // 35% men  
+      accessories: Math.ceil(PRODUCT_LIMIT * 0.25) // 25% accessories
+    };
+    
+    const categoryCounts = { women: 0, men: 0, accessories: 0 };
+    
+    // First pass: fill up to category limits
+    for (const item of productsWithScore) {
+      if (selectedProducts.length >= PRODUCT_LIMIT) break;
+      
+      const cat = item.category as keyof typeof categoryCounts;
+      if (cat in categoryCounts && categoryCounts[cat] < categoryLimits[cat]) {
+        selectedProducts.push(item.product);
+        categoryCounts[cat]++;
+      }
     }
+    
+    // Second pass: fill remaining slots with highest scoring products (ensure no duplicates)
+    for (const item of productsWithScore) {
+      if (selectedProducts.length >= PRODUCT_LIMIT) break;
+      
+      if (!selectedProducts.find(p => p._id.toString() === item.product._id.toString())) {
+        selectedProducts.push(item.product);
+      }
+    }
+    
+    // Ensure we have exactly PRODUCT_LIMIT products and no duplicates
+    const uniqueProducts = selectedProducts.filter((product, index, self) => 
+      self.findIndex(p => p._id.toString() === product._id.toString()) === index
+    );
+    const finalProducts = uniqueProducts.slice(0, PRODUCT_LIMIT);
+    
+    console.log(`Selected ${finalProducts.length} trending products with category distribution:`, 
+      `Women: ${categoryCounts.women}, Men: ${categoryCounts.men}, Accessories: ${categoryCounts.accessories}`);
     
     // Get active discounts
     const today = new Date().toISOString().split('T')[0];
@@ -171,14 +269,8 @@ export async function GET(request: Request) {
       endDate: { $gte: today }
     });
     
-    // Sort by timestamp (most recent first) and limit to exactly 10 products
-    const sortedProducts = productsWithTimestamp
-      .sort((a, b) => b.timestamp - a.timestamp)
-      .slice(0, PRODUCT_LIMIT)
-      .map(item => item.product);
-    
     // Transform products to customer format with discount information
-    const customerProducts = sortedProducts.map(product => {
+    const customerProducts = finalProducts.map(product => {
       // Find applicable discount
       const discount = activeDiscounts.find(
         d => (d.type === 'Product' && d.product === product._id.toString()) ||

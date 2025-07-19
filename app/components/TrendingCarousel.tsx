@@ -268,8 +268,8 @@ const TrendingCarousel = () => {
             style={{ scrollbarWidth: "none" }}
             onScroll={handleScroll}
           >
-            {products.map((product) => (
-              <ProductCard key={product.id} product={product} />
+            {products.map((product, index) => (
+              <ProductCard key={`trending-${product.id}-${index}`} product={product} />
             ))}
           </div>
 
