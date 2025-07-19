@@ -217,18 +217,9 @@ const AdminLoginPage: React.FC = () => {
           setIsCheckingRole(false);
         }, 300); // Reduced delay but added retry mechanism
       } else {
-        // Handle different error cases
-        if (data.accountLocked) {
-          const unlockTime = new Date(data.lockUntil).toLocaleTimeString();
-          setError(`Account temporarily locked. Try again after ${unlockTime}`);
-          toast.error(`Account temporarily locked. Try again after ${unlockTime}`);
-        } else if (data.remainingAttempts !== undefined) {
-          setError(`Invalid credentials. ${data.remainingAttempts} attempts remaining before lockout.`);
-          toast.error(`Invalid credentials. ${data.remainingAttempts} attempts remaining.`);
-        } else {
-          setError(data.error || "Invalid credentials");
-          toast.error(data.error || "Invalid credentials");
-        }
+        // Handle error cases - simplified since no more account locking
+        setError(data.error || "Invalid credentials");
+        toast.error(data.error || "Invalid credentials");
       }
     } catch (error) {
       setError("Authentication failed");

@@ -33,51 +33,33 @@ export async function POST(request: NextRequest) {
     // Find user by email
     const user = await User.findOne({ email });
     
-    // Return same error message even if user doesn't exist (security)
+    // If user doesn't exist, return error
     if (!user) {
       return NextResponse.json({ 
         success: false, 
-        error: 'Invalid credentials',
-        remainingAttempts: 5 // Default max attempts
+        error: 'Invalid credentials'
       }, { status: 401 });
     }
     
-    // Check if account is locked
-    if (user.isLocked()) {
+    // If user exists but is not admin, return error
+    if (user.role !== 'admin') {
       return NextResponse.json({ 
         success: false, 
-        error: 'Account is temporarily locked due to too many failed attempts',
-        accountLocked: true,
-        lockUntil: user.lockUntil
-      }, { status: 423 }); // 423 Locked
+        error: 'Access denied. Admin privileges only.'
+      }, { status: 403 });
     }
     
     // Check password
     const isPasswordValid = await user.comparePassword(password);
     
-    // Check if this is an admin account
-    const isAdmin = user.role === 'admin';
-    
-    if (!isPasswordValid || !isAdmin) {
-      // Increment login attempts and potentially lock account
-      await user.incrementLoginAttempts();
-      
-      // Calculate remaining attempts
-      const remainingAttempts = Math.max(0, 5 - user.loginAttempts);
-      
+    if (!isPasswordValid) {
       return NextResponse.json({ 
         success: false, 
-        error: !isAdmin ? 'Admin access required' : 'Invalid credentials',
-        remainingAttempts,
-        accountLocked: remainingAttempts === 0,
-        lockUntil: user.lockUntil
+        error: 'Invalid credentials'
       }, { status: 401 });
     }
     
-    // Login successful - reset login attempts
-    await user.resetLoginAttempts();
-    
-    // Generate JWT token
+    // Login successful - generate JWT token
     const token = generateToken(user);
     
     // Create response
