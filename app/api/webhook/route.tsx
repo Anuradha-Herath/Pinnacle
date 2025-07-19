@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import Order from "@/models/Order";
-import User from "@/models/User"; 
+import User from "@/models/User";
 import Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
 import { headers } from "next/headers";
@@ -31,18 +31,18 @@ export async function POST(request: Request) {
 
   // Handle Stripe checkout completion
   if (event.type === "checkout.session.completed") {
-
-      const updatedOrder = await Order.findByIdAndUpdate(
-        session.metadata?.orderId,
-        {
-          status: "Paid",
-          paymentStatus: "paid",
-          stripeSessionId: session.id,
-          updatedAt: new Date(),
-        },
-        { new: true }
-      );
-
+    const updatedOrder = await Order.findByIdAndUpdate(
+      session.metadata?.orderId,
+      {
+        status: "Paid",
+        paymentStatus: "paid",
+        stripeSessionId: session.id,
+        updatedAt: new Date(),
+      },
+      { new: true }
+    );
+    
+    if (updatedOrder) {
       const userId = updatedOrder.userId;
 
       // Clear the user's cart after successful payment
@@ -59,12 +59,13 @@ export async function POST(request: Request) {
       }
 
       // Add loyalty points if orderNumber exists
-    if (updatedOrder.orderNumber) {
-      try {
-        await processLoyaltyPoints(updatedOrder.orderNumber);
-        console.log("Loyalty points processed");
-      } catch (err) {
-        console.error("Failed to process loyalty points:", err);
+      if (updatedOrder.orderNumber) {
+        try {
+          await processLoyaltyPoints(updatedOrder.orderNumber);
+          console.log("Loyalty points processed");
+        } catch (err) {
+          console.error("Failed to process loyalty points:", err);
+        }
       }
     }
   }
