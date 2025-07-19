@@ -1,5 +1,5 @@
 /**
- * Utility functions for handling images and URLs
+ * Utility functions for handling images and URLs with enhanced Cloudinary support
  */
 
 // Default placeholder image to use when images fail to load (SVG data URL to avoid 404s)
@@ -37,6 +37,57 @@ export const isValidImageUrl = (url: string): boolean => {
 };
 
 /**
+ * Optimizes Cloudinary URLs for better performance and fallback handling
+ * @param url The Cloudinary URL to optimize
+ * @param options Optimization options
+ * @returns Optimized URL or fallback
+ */
+export const optimizeCloudinaryUrl = (
+  url: string, 
+  options: {
+    width?: number;
+    height?: number;
+    quality?: number;
+    format?: string;
+    fallback?: boolean;
+  } = {}
+): string => {
+  if (!url || !url.includes('cloudinary.com')) {
+    return getValidImageUrl(url);
+  }
+
+  try {
+    const cloudinaryUrl = new URL(url);
+    
+    // If fallback is requested, use Cloudinary's direct URL without Next.js optimization
+    if (options.fallback) {
+      // Add transformation parameters directly to Cloudinary URL
+      const transformations = [];
+      if (options.width) transformations.push(`w_${options.width}`);
+      if (options.height) transformations.push(`h_${options.height}`);
+      if (options.quality) transformations.push(`q_${options.quality}`);
+      if (options.format) transformations.push(`f_${options.format}`);
+      
+      if (transformations.length > 0) {
+        const pathParts = cloudinaryUrl.pathname.split('/');
+        const uploadIndex = pathParts.findIndex(part => part === 'upload');
+        if (uploadIndex !== -1) {
+          pathParts.splice(uploadIndex + 1, 0, transformations.join(','));
+          cloudinaryUrl.pathname = pathParts.join('/');
+        }
+      }
+      
+      return cloudinaryUrl.toString();
+    }
+    
+    return url;
+  } catch (error) {
+    console.warn('Failed to optimize Cloudinary URL:', error);
+    return getValidImageUrl(url);
+  }
+};
+
+/**
  * Returns a valid image URL or fallback to placeholder
  * @param url The URL to check
  * @returns Valid image URL or placeholder
@@ -46,19 +97,97 @@ export const getValidImageUrl = (url: string): string => {
 };
 
 /**
- * Enhanced image error handler with debugging
+ * Enhanced image error handler with Cloudinary fallback and debugging
  * @param e The error event from the image
  */
 export const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>): void => {
   const target = e.target as HTMLImageElement;
   const originalSrc = target.src;
-  console.log(`Image load failed: ${originalSrc}`);
+  console.warn(`Image load failed: ${originalSrc}`);
   
-  target.onerror = null; // Prevent infinite loop
+  // Prevent infinite loop
+  target.onerror = null;
+  
+  // If this was a Next.js optimized Cloudinary image that failed, try our proxy
+  if (originalSrc.includes('_next/image') && originalSrc.includes('cloudinary.com')) {
+    try {
+      // Extract the original Cloudinary URL from the Next.js image URL
+      const urlParams = new URLSearchParams(originalSrc.split('?')[1]);
+      const cloudinaryUrl = urlParams.get('url');
+      const width = urlParams.get('w');
+      const quality = urlParams.get('q');
+      
+      if (cloudinaryUrl) {
+        const decodedUrl = decodeURIComponent(cloudinaryUrl);
+        console.log(`Attempting image proxy fallback: ${decodedUrl}`);
+        
+        // Try our custom image proxy
+        const proxyParams = new URLSearchParams();
+        proxyParams.set('url', decodedUrl);
+        if (width) proxyParams.set('w', width);
+        if (quality) proxyParams.set('q', quality);
+        
+        const proxyUrl = `/api/image-proxy?${proxyParams.toString()}`;
+        target.src = proxyUrl;
+        return;
+      }
+    } catch (error) {
+      console.warn('Failed to create image proxy fallback:', error);
+    }
+  }
+  
+  // If it's a direct Cloudinary URL that failed, try optimized version
+  if (originalSrc.includes('cloudinary.com') && !originalSrc.includes('/api/image-proxy')) {
+    try {
+      console.log(`Attempting direct Cloudinary optimization fallback: ${originalSrc}`);
+      
+      const fallbackUrl = optimizeCloudinaryUrl(originalSrc, {
+        width: 800,
+        quality: 80,
+        format: 'webp',
+        fallback: true
+      });
+      
+      if (fallbackUrl !== originalSrc) {
+        target.src = fallbackUrl;
+        return;
+      }
+    } catch (error) {
+      console.warn('Failed to create Cloudinary fallback:', error);
+    }
+  }
+  
+  // Final fallback to placeholder
   target.src = PLACEHOLDER_IMAGE;
-  
-  // For debugging
-  console.log(`Image replaced with placeholder: ${PLACEHOLDER_IMAGE}`);
+  console.log(`Image replaced with placeholder for: ${originalSrc}`);
+};
+
+/**
+ * Creates a robust image component props with error handling
+ * @param src Original image source
+ * @param alt Alt text for the image
+ * @param options Additional options
+ * @returns Props object for image component
+ */
+export const createImageProps = (
+  src: string,
+  alt: string = 'Product image',
+  options: {
+    width?: number;
+    height?: number;
+    priority?: boolean;
+    className?: string;
+  } = {}
+) => {
+  return {
+    src: getValidImageUrl(src),
+    alt,
+    onError: handleImageError,
+    loading: options.priority ? 'eager' : 'lazy' as 'eager' | 'lazy',
+    placeholder: 'blur' as const,
+    blurDataURL: PLACEHOLDER_IMAGE,
+    ...options,
+  };
 };
 
 /**

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { Star, Minus, Plus, ChevronDown, Copy, MessageCircle } from "lucide-react";
 import Image from "next/image";
 import SizeGuideModal from "./SizeGuideModal";
+import { handleImageError, getValidImageUrl, createImageProps } from "@/lib/imageUtils";
 
 interface ProductInformationProps {
   product: {
@@ -215,13 +216,16 @@ const ProductInformation: React.FC<ProductInformationProps> = ({
               }`}
             >
                 <Image
-                  src={image || placeholderImage}
-                  alt={`Product variant ${index + 1}`}
+                  {...createImageProps(
+                    getValidImageUrl(image),
+                    `Product variant ${index + 1}`,
+                    { 
+                      className: "object-cover",
+                      priority: index < 4,
+                    }
+                  )}
                   fill
-                  className="object-cover"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = placeholderImage;
-                  }}
+                  onError={handleImageError}
                 />
               </button>
             ))}

@@ -1,5 +1,6 @@
 import Image from 'next/image';
 import { useState, useRef, useEffect } from 'react';
+import { handleImageError, getValidImageUrl, optimizeCloudinaryUrl, PLACEHOLDER_IMAGE } from '@/lib/imageUtils';
 
 interface OptimizedImageProps {
   src: string;
@@ -10,6 +11,9 @@ interface OptimizedImageProps {
   priority?: boolean;
   onClick?: () => void;
   sizes?: string;
+  fill?: boolean;
+  quality?: number;
+  fallbackToProxy?: boolean;
 }
 
 export default function OptimizedImage({ 
@@ -20,11 +24,16 @@ export default function OptimizedImage({
   className = '', 
   priority = false,
   onClick,
-  sizes = "(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+  sizes = "(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw",
+  fill = false,
+  quality = 80,
+  fallbackToProxy = true
 }: OptimizedImageProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const [isInView, setIsInView] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
+  const [currentSrc, setCurrentSrc] = useState(getValidImageUrl(src));
   const imgRef = useRef<HTMLDivElement>(null);
 
   // Intersection Observer for lazy loading
@@ -55,9 +64,56 @@ export default function OptimizedImage({
     setIsLoading(false);
   };
 
-  const handleError = () => {
+  const handleError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    const target = e.target as HTMLImageElement;
+    const failedSrc = target.src;
+    
+    console.warn(`OptimizedImage failed to load (attempt ${retryCount + 1}): ${failedSrc}`);
+    
+    // Prevent infinite retry loop
+    if (retryCount >= 2) {
+      console.log('Max retries reached, showing error state');
+      setIsLoading(false);
+      setHasError(true);
+      return;
+    }
+    
+    // Try our image proxy for Cloudinary images
+    if (fallbackToProxy && failedSrc.includes('cloudinary.com') && !failedSrc.includes('/api/image-proxy')) {
+      const proxyParams = new URLSearchParams();
+      proxyParams.set('url', src);
+      if (width) proxyParams.set('w', width.toString());
+      proxyParams.set('q', quality.toString());
+      
+      const proxyUrl = `/api/image-proxy?${proxyParams.toString()}`;
+      console.log(`Trying image proxy: ${proxyUrl}`);
+      
+      setCurrentSrc(proxyUrl);
+      setRetryCount(prev => prev + 1);
+      return;
+    }
+    
+    // Try direct Cloudinary optimization
+    if (failedSrc.includes('cloudinary.com') && retryCount === 0) {
+      const optimizedUrl = optimizeCloudinaryUrl(src, {
+        width: width || 800,
+        quality,
+        format: 'webp',
+        fallback: true
+      });
+      
+      if (optimizedUrl !== failedSrc) {
+        console.log(`Trying optimized Cloudinary URL: ${optimizedUrl}`);
+        setCurrentSrc(optimizedUrl);
+        setRetryCount(prev => prev + 1);
+        return;
+      }
+    }
+    
+    // Final fallback
+    console.log('Using placeholder as final fallback');
+    setCurrentSrc(PLACEHOLDER_IMAGE);
     setIsLoading(false);
-    setHasError(true);
   };
 
   if (hasError) {
@@ -76,26 +132,42 @@ export default function OptimizedImage({
       {isLoading && isInView && (
         <div 
           className="absolute inset-0 bg-gray-200 animate-pulse flex items-center justify-center"
-          style={{ width, height }}
+          style={fill ? {} : { width, height }}
         >
           <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
         </div>
       )}
       {isInView && (
-        <Image
-          src={src}
-          alt={alt}
-          width={width}
-          height={height}
-          className={`transition-opacity duration-300 ${isLoading ? 'opacity-0' : 'opacity-100'} ${onClick ? 'cursor-pointer hover:opacity-90' : ''}`}
-          onLoad={handleLoad}
-          onError={handleError}
-          priority={priority}
-          sizes={sizes}
-          quality={75} // Reduce quality for faster loading
-          placeholder="blur"
-          blurDataURL="data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAAIAAoDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAhEAACAQMDBQAAAAAAAAAAAAABAgMABAUGIWGRkqGx0f/EABUBAQEAAAAAAAAAAAAAAAAAAAMF/8QAGhEAAgIDAAAAAAAAAAAAAAAAAAECEgMRkf/aAAwDAQACEQMRAD8AltJagyeH0AthI5xdrLcNM91BF5pX2HaH9bcfaSXWGaRmknyaKhSSRyNHoQlq2kpTOoRgQi+LB9Fa2kh5v59YNND4n4VNWwE/sBPNvQEhqXOFYiOeDpOoJJSKSmG/lINHX6djqRQ="
-        />
+        fill ? (
+          <Image
+            src={currentSrc}
+            alt={alt}
+            fill
+            className={`transition-opacity duration-300 ${isLoading ? 'opacity-0' : 'opacity-100'} ${onClick ? 'cursor-pointer hover:opacity-90' : ''}`}
+            onLoad={handleLoad}
+            onError={handleError}
+            priority={priority}
+            sizes={sizes}
+            quality={quality}
+            placeholder="blur"
+            blurDataURL={PLACEHOLDER_IMAGE}
+          />
+        ) : (
+          <Image
+            src={currentSrc}
+            alt={alt}
+            width={width}
+            height={height}
+            className={`transition-opacity duration-300 ${isLoading ? 'opacity-0' : 'opacity-100'} ${onClick ? 'cursor-pointer hover:opacity-90' : ''}`}
+            onLoad={handleLoad}
+            onError={handleError}
+            priority={priority}
+            sizes={sizes}
+            quality={quality}
+            placeholder="blur"
+            blurDataURL={PLACEHOLDER_IMAGE}
+          />
+        )
       )}
     </div>
   );
