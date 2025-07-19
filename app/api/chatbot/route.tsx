@@ -51,19 +51,35 @@ const isGeneralInfoOrFAQ = (query: string, responseText: string): boolean => {
     'policy', 'policies', 'shipping', 'delivery', 'return', 'exchange', 'payment', 
     'order', 'track', 'contact', 'help', 'support', 'faq', 'question', 
     'hours', 'store', 'location', 'warranty', 'guarantee', 'refund',
-    'how do i', 'how can i', 'how long', 'what is'
-    // Removed 'do you' as it's too broad and catches product questions
+    'how do i', 'how can i', 'how long', 'what is', 'what are', 'when do',
+    'process', 'procedure', 'steps', 'method', 'way to', 'cost of shipping',
+    'free shipping', 'customer service', 'business hours', 'opening hours'
   ];
   
-  // New: Product-related keywords that indicate a product query even with FAQ phrasing
+  // Strong FAQ indicators that should never show product recommendations
+  const strongFAQIndicators = [
+    'return policy', 'shipping policy', 'exchange policy', 'refund policy',
+    'how long does shipping take', 'how much does shipping cost',
+    'what is your return policy', 'what are your hours',
+    'how do i return', 'how do i exchange', 'how do i track',
+    'customer service', 'contact information', 'business hours'
+  ];
+  
+  // Product-related keywords that indicate a product query even with FAQ phrasing
   const productQueryKeywords = [
     'have', 'sell', 'offer', 'stock', 'available', 'color', 'size', 
     'price', 'cost', 'shirt', 'top', 'dress', 'pant', 'jean', 'hoodie', 
-    'sweater', 'jacket', 'shoe', 'accessory', 'accessories', 'outfit'
+    'sweater', 'jacket', 'shoe', 'accessory', 'accessories', 'outfit',
+    'recommend', 'suggestion', 'looking for', 'need', 'want', 'style'
   ];
   
   const queryLower = query.toLowerCase();
   const responseLower = responseText.toLowerCase();
+  
+  // Check for strong FAQ indicators first
+  if (strongFAQIndicators.some(indicator => queryLower.includes(indicator))) {
+    return true;
+  }
   
   // Check if query contains product-specific terms like "do you have [product]"
   const isProductAvailabilityQuery = 
@@ -77,6 +93,16 @@ const isGeneralInfoOrFAQ = (query: string, responseText: string): boolean => {
     return false;
   }
   
+  // Check if the query is asking for recommendations or suggestions
+  const isRecommendationQuery = [
+    'recommend', 'suggest', 'what should i wear', 'what to wear',
+    'outfit for', 'help me find', 'looking for', 'show me', 'need something'
+  ].some(phrase => queryLower.includes(phrase));
+  
+  if (isRecommendationQuery && productQueryKeywords.some(keyword => queryLower.includes(keyword))) {
+    return false;
+  }
+  
   const containsFAQKeyword = faqKeywords.some(keyword => queryLower.includes(keyword));
   const containsPolicyInfo = 
     responseLower.includes('policy') || 
@@ -85,12 +111,21 @@ const isGeneralInfoOrFAQ = (query: string, responseText: string): boolean => {
     responseLower.includes('return') ||
     responseLower.includes('exchange') ||
     responseLower.includes('days') ||
+    responseLower.includes('hours') ||
+    responseLower.includes('business hours') ||
     (responseLower.includes('contact') && responseLower.includes('customer service'));
   
   return containsFAQKeyword || containsPolicyInfo;
 };
 
-const MODEL_PRIORITY = ["gemini-1.5-flash", "gemini-1.5-pro"];
+// Optimized model priority based on rate limits - prioritize higher RPM models
+const MODEL_PRIORITY = [
+  "gemini-2.0-flash-lite",      // 30 RPM, 1M TPM, 200 RPD
+  "gemini-2.0-flash",           // 15 RPM, 1M TPM, 200 RPD  
+  "gemini-2.5-flash-lite-preview-06-17", // 15 RPM, 250K TPM, 1000 RPD
+  "gemini-2.5-flash",           // 10 RPM, 250K TPM, 250 RPD
+  "gemini-2.5-pro",             // 5 RPM, 250K TPM, 100 RPD (last resort)
+];
 
 const timeoutPromise = (ms: number) => {
   return new Promise((_, reject) => {
@@ -100,7 +135,32 @@ const timeoutPromise = (ms: number) => {
 
 let productCache: any[] = [];
 let lastCacheUpdate = 0;
-const CACHE_TTL = 2 * 60 * 1000;
+const CACHE_TTL = 5 * 60 * 1000; // Increased to 5 minutes to reduce DB calls
+
+// Rate limiting tracking
+let requestCount = 0;
+let lastRequestReset = Date.now();
+const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
+const MAX_REQUESTS_PER_MINUTE = 25; // Conservative limit
+
+// Check rate limits
+const checkRateLimit = (): boolean => {
+  const now = Date.now();
+  
+  // Reset counter if window has passed
+  if (now - lastRequestReset > RATE_LIMIT_WINDOW) {
+    requestCount = 0;
+    lastRequestReset = now;
+  }
+  
+  if (requestCount >= MAX_REQUESTS_PER_MINUTE) {
+    console.warn(`Rate limit exceeded: ${requestCount} requests in current window`);
+    return false;
+  }
+  
+  requestCount++;
+  return true;
+};
 
 let knownCategories = new Set<string>();
 let knownSubCategories = new Set<string>();
@@ -248,12 +308,18 @@ const stringSimilarity = (str1: string, str2: string): number => {
 // Strategy 1: Explicit Mentions - Find products mentioned with prices
 const explicitMentionsStrategy: RecommendationStrategy = {
   name: 'explicitMentions',
-  priority: 1,
+  priority: 2, // Changed from 1 to 2 to avoid conflict with responseCategoryStrategy
   execute: (query: string, response: string, products: ProductContextItem[]): ProductMatch[] => {
     const productPriceRegex = /([A-Za-z0-9\s\-&']+)(\s+\(\$\d+(\.\d+)?\))/g;
     let matches: RegExpExecArray | null;
     const explicitProductMatches: string[] = [];
     const results: ProductMatch[] = [];
+    
+    // Apply gender filtering
+    const genderPreference = detectGenderPreference(query, response);
+    const filteredProducts = filterProductsByGender(products, genderPreference);
+    
+    console.log(`Explicit mentions strategy: Gender preference ${genderPreference}, filtered from ${products.length} to ${filteredProducts.length} products`);
     
     while ((matches = productPriceRegex.exec(response)) !== null) {
       const potentialProductName = matches[1].trim();
@@ -261,7 +327,7 @@ const explicitMentionsStrategy: RecommendationStrategy = {
     }
     
     explicitProductMatches.forEach(productName => {
-      for (const product of products) {
+      for (const product of filteredProducts) { // Use filtered products instead of all products
         const similarity = stringSimilarity(product.name, productName);
         if (similarity > 0.5) {
           results.push({ product, similarity, method: 'explicit' });
@@ -276,12 +342,18 @@ const explicitMentionsStrategy: RecommendationStrategy = {
 // Strategy 2: Direct Name Match - Direct product name matching from query
 const directNameMatchStrategy: RecommendationStrategy = {
   name: 'directNameMatch',
-  priority: 2,
+  priority: 3, // Changed from 2 to 3
   execute: (query: string, response: string, products: ProductContextItem[]): ProductMatch[] => {
     const matches: ProductMatch[] = [];
     const queryLower = query.toLowerCase();
     
-    for (const product of products) {
+    // Apply gender filtering
+    const genderPreference = detectGenderPreference(query, response);
+    const filteredProducts = filterProductsByGender(products, genderPreference);
+    
+    console.log(`Direct name strategy: Gender preference ${genderPreference}, filtered from ${products.length} to ${filteredProducts.length} products`);
+    
+    for (const product of filteredProducts) {
       const productNameLower = product.normalizedName;
       
       if (queryLower.includes(productNameLower) || productNameLower.includes(queryLower)) {
@@ -300,60 +372,140 @@ const directNameMatchStrategy: RecommendationStrategy = {
 // Strategy 3: Category Match - Finding products by category/subcategory
 const categoryMatchStrategy: RecommendationStrategy = {
   name: 'categoryMatch',
-  priority: 3,
+  priority: 4, // Changed from 3 to 4
   execute: (query: string, response: string, products: ProductContextItem[]): ProductMatch[] => {
     const queryLower = query.toLowerCase();
+    const responseLower = response.toLowerCase();
     const matches: ProductMatch[] = [];
     
-    // Common clothing category terms
+    // Detect gender preference and filter products accordingly
+    const genderPreference = detectGenderPreference(query, response);
+    const filteredProducts = filterProductsByGender(products, genderPreference);
+    
+    console.log(`Category strategy: Gender preference ${genderPreference}, filtered from ${products.length} to ${filteredProducts.length} products`);
+    
+    // Enhanced clothing category terms with more variations
     const productCategories = [
-      'hoodie', 'hoody', 'hoodies', 'sweater', 'jacket', 'tshirt', 't-shirt', 'shirt', 
-      'pants', 'jeans', 'shorts', 'dress', 'skirt', 'blouse', 'coat', 'shoes', 'sneakers', 
-      'boots', 'hat', 'cap', 'socks', 'accessories'
+      'hoodie', 'hoody', 'hoodies', 'sweater', 'jacket', 'tshirt', 't-shirt', 'tee', 'tees', 'shirt', 
+      'pants', 'jeans', 'shorts', 'dress', 'dresses', 'skirt', 'skirts', 'blouse', 'coat', 
+      'shoes', 'sneakers', 'boots', 'hat', 'cap', 'socks', 'accessories', 'crop top', 
+      'crop tops', 'leggings', 'tanks', 'tank top', 'tank tops', 'joggers', 'sweatshirt',
+      'gym', 'workout', 'sports', 'athletic', 'tops', 'top'
     ];
     
+    // Gender-specific categories
+    const womenCategories = [
+      'dress', 'dresses', 'skirt', 'skirts', 'crop top', 'crop tops', 'leggings', 
+      'tanks', 'tank top', 'tank tops', 'blouse', 'women', 'ladies'
+    ];
+    
+    const menCategories = [
+      'men', 'mens', 'guys', 'male'
+    ];
+    
+    // Check for gender-specific requests
+    const isWomenQuery = queryLower.includes('women') || queryLower.includes('ladies') || 
+                         womenCategories.some(cat => queryLower.includes(cat) || responseLower.includes(cat));
+    const isMenQuery = queryLower.includes('men') || queryLower.includes('guys') || 
+                       menCategories.some(cat => queryLower.includes(cat));
+    
+    // Find category matches in query and response
     const categoryMatches: string[] = [];
     for (const category of productCategories) {
-      if (queryLower.includes(category)) {
+      if (queryLower.includes(category) || responseLower.includes(category)) {
         categoryMatches.push(category);
       }
     }
     
-    if (categoryMatches.length > 0) {
-      products.forEach(product => {
+    // If we have category matches, find matching products
+    if (categoryMatches.length > 0 || isWomenQuery || isMenQuery) {
+      filteredProducts.forEach(product => {
         const productCategories = [product.category, product.subCategory].map(c => c?.toLowerCase() || '');
+        const productKeywords = product.keywords.toLowerCase();
         
-        const matchesCategory = categoryMatches.some(catMatch => 
-          productCategories.some(prodCat => {
-            if (catMatch === 'hoodie' || catMatch === 'hoodies' || catMatch === 'hoody') {
-              return prodCat === 'hoodies' || prodCat.includes('hood') || 
-                    (product.keywords && product.keywords.includes('hood'));
-            }
-            return prodCat === catMatch || prodCat.includes(catMatch);
-          })
-        );
+        let isMatch = false;
+        let similarity = 0.5;
         
-        if (matchesCategory) {
+        // Check for specific category matches
+        if (categoryMatches.length > 0) {
+          const matchesCategory = categoryMatches.some(catMatch => 
+            productCategories.some(prodCat => {
+              // Special handling for different category variations
+              if (catMatch.includes('hoodie') || catMatch.includes('hoody')) {
+                return prodCat.includes('hoodie') || prodCat.includes('hoody') || productKeywords.includes('hood');
+              }
+              if (catMatch.includes('dress')) {
+                return prodCat.includes('dress') || productKeywords.includes('dress');
+              }
+              if (catMatch.includes('skirt')) {
+                return prodCat.includes('skirt') || productKeywords.includes('skirt');
+              }
+              if (catMatch.includes('crop')) {
+                return prodCat.includes('crop') || productKeywords.includes('crop');
+              }
+              if (catMatch.includes('leggings')) {
+                return prodCat.includes('legging') || productKeywords.includes('legging');
+              }
+              if (catMatch.includes('tank')) {
+                return prodCat.includes('tank') || productKeywords.includes('tank');
+              }
+              if (catMatch.includes('short')) {
+                return prodCat.includes('short') || productKeywords.includes('short');
+              }
+              if (catMatch.includes('gym') || catMatch.includes('workout') || catMatch.includes('sports') || catMatch.includes('athletic')) {
+                return prodCat.includes('sport') || prodCat.includes('gym') || prodCat.includes('athletic') ||
+                       productKeywords.includes('sport') || productKeywords.includes('gym') || productKeywords.includes('athletic');
+              }
+              if (catMatch.includes('tee') || catMatch === 'tees' || catMatch.includes('t-shirt')) {
+                // Very specific matching for tees and t-shirts
+                return (prodCat.includes('t-shirt') || prodCat.includes('tee') || prodCat.includes('shirt')) &&
+                       !prodCat.includes('tank') && !prodCat.includes('crop') && !prodCat.includes('jogger') &&
+                       (productKeywords.includes('t-shirt') || productKeywords.includes('tee') || 
+                        product.name.toLowerCase().includes('t-shirt') || product.name.toLowerCase().includes('tee')) &&
+                       !product.name.toLowerCase().includes('tank') && !product.name.toLowerCase().includes('crop');
+              }
+              return prodCat.includes(catMatch) || productKeywords.includes(catMatch);
+            })
+          );
+          
+          if (matchesCategory) {
+            isMatch = true;
+            similarity = 0.8;
+          }
+        }
+        
+        // Check for gender-specific matches (already filtered, so this adds confidence)
+        if (isWomenQuery && genderPreference === 'women') {
+          isMatch = true;
+          similarity = Math.max(similarity, 0.75);
+        }
+        
+        if (isMenQuery && genderPreference === 'men') {
+          isMatch = true;
+          similarity = Math.max(similarity, 0.75);
+        }
+        
+        if (isMatch) {
           matches.push({
             product,
-            similarity: 0.7,
+            similarity,
             method: 'category'
           });
         }
       });
     }
     
-    // Match known categories and subcategories
+    // Match known categories and subcategories from database
     const matchingCategories = Array.from(knownCategories).filter(cat => 
-      queryLower.includes(cat.toLowerCase())
+      queryLower.includes(cat.toLowerCase()) || responseLower.includes(cat.toLowerCase())
     );
     
     const matchingSubCategories = Array.from(knownSubCategories).filter(subcat => 
-      queryLower.includes(subcat.toLowerCase())
+      queryLower.includes(subcat.toLowerCase()) || responseLower.includes(subcat.toLowerCase())
     );
     
     if (matchingCategories.length > 0 || matchingSubCategories.length > 0) {
-      products.forEach(product => {
+      filteredProducts.forEach(product => {
         const productCat = (product.category || "").toLowerCase();
         const productSubCat = (product.subCategory || "").toLowerCase();
         
@@ -362,11 +514,15 @@ const categoryMatchStrategy: RecommendationStrategy = {
           matchingSubCategories.some(subcat => productSubCat.includes(subcat.toLowerCase()));
           
         if (matchesCatOrSubCat) {
-          matches.push({
-            product,
-            similarity: 0.65,
-            method: 'category-term'
-          });
+          // Check if already added to avoid duplicates
+          const alreadyAdded = matches.some(match => match.product.id === product.id);
+          if (!alreadyAdded) {
+            matches.push({
+              product,
+              similarity: 0.7,
+              method: 'category-term'
+            });
+          }
         }
       });
     }
@@ -378,12 +534,18 @@ const categoryMatchStrategy: RecommendationStrategy = {
 // Strategy 4: New Products - Recommend newest products
 const newProductsStrategy: RecommendationStrategy = {
   name: 'newProducts',
-  priority: 4,
+  priority: 5, // Changed from 4 to 5
   execute: (query: string, response: string, products: ProductContextItem[]): ProductMatch[] => {
     const queryLower = query.toLowerCase();
     
     if (queryLower.includes("new")) {
-      const newestProducts = [...products].sort((a, b) => {
+      // Apply gender filtering
+      const genderPreference = detectGenderPreference(query, response);
+      const filteredProducts = filterProductsByGender(products, genderPreference);
+      
+      console.log(`New products strategy: Gender preference ${genderPreference}, filtered from ${products.length} to ${filteredProducts.length} products`);
+      
+      const newestProducts = [...filteredProducts].sort((a, b) => {
         const dateA = new Date(a.createdAt);
         const dateB = new Date(b.createdAt);
         return dateB.getTime() - dateA.getTime();
@@ -403,19 +565,25 @@ const newProductsStrategy: RecommendationStrategy = {
 // Strategy 5: Color Match - Finding products by color mentions
 const colorMatchStrategy: RecommendationStrategy = {
   name: 'colorMatch',
-  priority: 5,
+  priority: 6, // Changed from 5 to 6
   execute: (query: string, response: string, products: ProductContextItem[]): ProductMatch[] => {
     const colorRegex = /\b(red|blue|green|black|white|yellow|purple|pink|orange|brown|grey|gray)\b/gi;
     const mentionedColors: string[] = [];
     let matches: RegExpExecArray | null;
     const results: ProductMatch[] = [];
     
+    // Apply gender filtering
+    const genderPreference = detectGenderPreference(query, response);
+    const filteredProducts = filterProductsByGender(products, genderPreference);
+    
+    console.log(`Color match strategy: Gender preference ${genderPreference}, filtered from ${products.length} to ${filteredProducts.length} products`);
+    
     while ((matches = colorRegex.exec(query + ' ' + response)) !== null) {
       mentionedColors.push(matches[1].toLowerCase());
     }
     
     if (mentionedColors.length > 0) {
-      products.forEach(product => {
+      filteredProducts.forEach(product => { // Use filtered products instead of all products
         if (Array.isArray(product.colors)) {
           const hasMatchingColor = product.colors.some((color: string) => 
             mentionedColors.includes(color.toLowerCase())
@@ -436,10 +604,187 @@ const colorMatchStrategy: RecommendationStrategy = {
   }
 };
 
+// Helper function to detect gender preference from query
+const detectGenderPreference = (query: string, response: string): 'men' | 'women' | 'neutral' => {
+  const queryLower = query.toLowerCase();
+  const responseLower = response.toLowerCase();
+  const combined = `${queryLower} ${responseLower}`;
+  
+  // Check for explicit gender mentions
+  const womenKeywords = ['women', 'ladies', 'woman', 'lady', 'for women', 'women\'s', 'ladies\''];
+  const menKeywords = ['men', 'man', 'guys', 'male', 'for men', 'men\'s', 'guys\''];
+  
+  const hasWomenKeywords = womenKeywords.some(keyword => combined.includes(keyword));
+  const hasMenKeywords = menKeywords.some(keyword => combined.includes(keyword));
+  
+  if (hasWomenKeywords && !hasMenKeywords) return 'women';
+  if (hasMenKeywords && !hasWomenKeywords) return 'men';
+  return 'neutral';
+};
+
+// Helper function to filter products by gender preference
+const filterProductsByGender = (products: ProductContextItem[], genderPreference: 'men' | 'women' | 'neutral'): ProductContextItem[] => {
+  if (genderPreference === 'neutral') return products;
+  
+  return products.filter(product => {
+    const category = product.category.toLowerCase();
+    const subCategory = product.subCategory.toLowerCase();
+    const keywords = product.keywords.toLowerCase();
+    const name = product.name.toLowerCase();
+    
+    // Define clear gender indicators
+    const womenIndicators = ['women', 'ladies', 'woman', 'lady'];
+    const menIndicators = ['men', 'man', 'mens', 'male', 'guys', 'boy', 'boys'];
+    
+    // Define category-specific items
+    const womenCategories = ['dress', 'dresses', 'skirt', 'skirts', 'crop', 'legging', 'bra', 'blouse'];
+    const menCategories = ['suit', 'tie', 'boxers', 'briefs'];
+    
+    const hasWomenIndicator = womenIndicators.some(indicator => 
+      category.includes(indicator) || subCategory.includes(indicator) || 
+      keywords.includes(indicator) || name.includes(indicator)
+    );
+    
+    const hasMenIndicator = menIndicators.some(indicator => 
+      category.includes(indicator) || subCategory.includes(indicator) || 
+      keywords.includes(indicator) || name.includes(indicator)
+    );
+    
+    const hasWomenCategory = womenCategories.some(cat => 
+      category.includes(cat) || subCategory.includes(cat) || 
+      keywords.includes(cat) || name.includes(cat)
+    );
+    
+    const hasMenCategory = menCategories.some(cat => 
+      category.includes(cat) || subCategory.includes(cat) || 
+      keywords.includes(cat) || name.includes(cat)
+    );
+    
+    if (genderPreference === 'women') {
+      // For women: include if has women indicators OR women categories
+      // Exclude if has men indicators (unless it also has women indicators)
+      return (hasWomenIndicator || hasWomenCategory) && !hasMenIndicator;
+    } else {
+      // For men: include if has men indicators OR men categories  
+      // Also include gender-neutral items (no clear gender indicators)
+      // Exclude if has women indicators or women categories
+      if (hasWomenIndicator || hasWomenCategory) {
+        return false; // Definitely exclude women's items
+      }
+      return hasMenIndicator || hasMenCategory || (!hasWomenIndicator && !hasWomenCategory);
+    }
+  });
+};
+
+// Strategy 7: Response Category Extraction - Find products mentioned in AI response
+const responseCategoryStrategy: RecommendationStrategy = {
+  name: 'responseCategory',
+  priority: 1, // High priority since AI specifically mentioned these
+  execute: (query: string, response: string, products: ProductContextItem[]): ProductMatch[] => {
+    const results: ProductMatch[] = [];
+    const responseLower = response.toLowerCase();
+    
+    // Detect gender preference first
+    const genderPreference = detectGenderPreference(query, response);
+    console.log(`Detected gender preference: ${genderPreference}`);
+    
+    // Filter products by gender preference
+    const filteredProducts = filterProductsByGender(products, genderPreference);
+    console.log(`Filtered products from ${products.length} to ${filteredProducts.length} based on gender preference`);
+    
+    // Extract categories mentioned in the response
+    const mentionedCategories = [
+      'dresses', 'dress', 'skirts', 'skirt', 'crop tops', 'crop top', 
+      'leggings', 'tanks', 'tank tops', 'tank top', 'shorts', 'short',
+      'hoodies', 'hoodie', 'jackets', 'jacket', 'jeans', 'pants', 
+      'shirts', 'shirt', 't-shirts', 't-shirt', 'tees', 'tee', 'tops', 'top',
+      'accessories', 'gym', 'workout', 'sports', 'joggers', 'jogger'
+    ];
+    
+    const foundCategories: string[] = [];
+    
+    for (const category of mentionedCategories) {
+      if (responseLower.includes(category) || query.toLowerCase().includes(category)) {
+        foundCategories.push(category);
+      }
+    }
+    
+    console.log(`Response mentioned categories: ${foundCategories.join(', ')}`);
+    
+    if (foundCategories.length > 0) {
+      filteredProducts.forEach(product => {
+        const productCat = (product.category || "").toLowerCase();
+        const productSubCat = (product.subCategory || "").toLowerCase();
+        const productKeywords = product.keywords.toLowerCase();
+        const productName = product.name.toLowerCase();
+        
+        for (const mentionedCat of foundCategories) {
+          let isMatch = false;
+          
+          // Check various ways this category might match
+          if (mentionedCat.includes('dress')) {
+            isMatch = productCat.includes('dress') || productSubCat.includes('dress') || 
+                     productKeywords.includes('dress') || productName.includes('dress');
+          } else if (mentionedCat.includes('skirt')) {
+            isMatch = productCat.includes('skirt') || productSubCat.includes('skirt') || 
+                     productKeywords.includes('skirt') || productName.includes('skirt');
+          } else if (mentionedCat.includes('crop')) {
+            isMatch = productCat.includes('crop') || productSubCat.includes('crop') || 
+                     productKeywords.includes('crop') || productName.includes('crop');
+          } else if (mentionedCat.includes('legging')) {
+            isMatch = productCat.includes('legging') || productSubCat.includes('legging') || 
+                     productKeywords.includes('legging') || productName.includes('legging');
+          } else if (mentionedCat.includes('tank')) {
+            isMatch = productCat.includes('tank') || productSubCat.includes('tank') || 
+                     productKeywords.includes('tank') || productName.includes('tank');
+          } else if (mentionedCat.includes('short')) {
+            isMatch = productCat.includes('short') || productSubCat.includes('short') || 
+                     productKeywords.includes('short') || productName.includes('short');
+          } else if (mentionedCat.includes('tee') || mentionedCat.includes('t-shirt')) {
+            // Specific handling for tees and t-shirts - be very precise
+            isMatch = productName.includes('t-shirt') || productName.includes('tee') || 
+                     productCat.includes('t-shirt') || productCat.includes('tee') ||
+                     productSubCat.includes('t-shirt') || productSubCat.includes('tee') ||
+                     (productKeywords.includes('t-shirt') || productKeywords.includes('tee')) &&
+                     // Exclude other types that might contain these terms
+                     !productName.includes('tank') && !productName.includes('crop') && 
+                     !productName.includes('jogger') && !productName.includes('pant');
+          } else if (mentionedCat.includes('gym') || mentionedCat.includes('workout') || mentionedCat.includes('sports')) {
+            isMatch = productKeywords.includes('gym') || productKeywords.includes('workout') || 
+                     productKeywords.includes('sport') || productName.includes('gym') ||
+                     productName.includes('sport') || productSubCat.includes('sport');
+          } else if (mentionedCat.includes('jogger')) {
+            isMatch = productCat.includes('jogger') || productSubCat.includes('jogger') || 
+                     productKeywords.includes('jogger') || productName.includes('jogger');
+          } else {
+            // Generic matching for other categories
+            isMatch = productCat.includes(mentionedCat) || productSubCat.includes(mentionedCat) || 
+                     productKeywords.includes(mentionedCat) || productName.includes(mentionedCat);
+          }
+          
+          if (isMatch) {
+            // Check if already added to avoid duplicates
+            const alreadyAdded = results.some(r => r.product.id === product.id);
+            if (!alreadyAdded) {
+              results.push({
+                product,
+                similarity: 0.9, // High similarity since AI mentioned this category
+                method: 'response-category'
+              });
+            }
+            break; // Only add once per product
+          }
+        }
+      });
+    }
+    
+    return results;
+  }
+};
 // Strategy 6: User Preference - Using user preferences and history
 const userPreferenceStrategy: RecommendationStrategy = {
   name: 'userPreference',
-  priority: 6,
+  priority: 7, // Updated priority (remains 7)
   execute: (query: string, response: string, products: ProductContextItem[], userPreferences?: any): ProductMatch[] => {
     const results: ProductMatch[] = [];
     
@@ -447,7 +792,13 @@ const userPreferenceStrategy: RecommendationStrategy = {
       return results;
     }
     
-    for (const product of products) {
+    // Apply gender filtering
+    const genderPreference = detectGenderPreference(query, response);
+    const filteredProducts = filterProductsByGender(products, genderPreference);
+    
+    console.log(`User preference strategy: Gender preference ${genderPreference}, filtered from ${products.length} to ${filteredProducts.length} products`);
+    
+    for (const product of filteredProducts) {
       let score = 0;
       
       if (product.category && userPreferences.topCategories && 
@@ -494,18 +845,51 @@ const userPreferenceStrategy: RecommendationStrategy = {
   }
 };
 
+// Function to detect if user is specifically requesting product recommendations
+const isExplicitProductRequest = (query: string): boolean => {
+  const explicitRequestTerms = [
+    'recommend', 'recommendation', 'suggest', 'suggestion', 'show me', 'help me find',
+    'looking for', 'need', 'want to buy', 'shopping for', 'browse',
+    'what should i wear', 'what to wear', 'outfit for', 'clothes for',
+    'do you have', 'do you sell', 'do you offer', 'available',
+    'in stock', 'find me', 'help me choose', 'pick out', 'options',
+    'would you like me to show', 'some options', 'wide variety'
+  ];
+  
+  // Gender and category specific terms that indicate product interest
+  const productCategoryTerms = [
+    'women', 'ladies', 'men', 'guys', 'items for women', 'items for men',
+    'dress', 'dresses', 'skirt', 'skirts', 'crop top', 'crop tops',
+    'leggings', 'tanks', 'tank tops', 'shorts', 'hoodie', 'hoodies',
+    'jacket', 'jackets', 'jeans', 'pants', 'shirt', 'shirts', 'accessories'
+  ];
+  
+  const queryLower = query.toLowerCase();
+  
+  return explicitRequestTerms.some(term => queryLower.includes(term)) ||
+         productCategoryTerms.some(term => queryLower.includes(term));
+};
+
 // Refactored findRecommendedProducts function using strategy pattern
 const findRecommendedProducts = (responseText: string, productContext: ProductContextItem[], userQuery: string, userPreferences?: any): { products: ProductContextItem[], relevanceScore: number } => {
   console.log(`Finding product recommendations for: "${userQuery.substring(0, 50)}..."`);
   
-  // Restore this check to filter out FAQ queries
+  // First check: Is this a FAQ/general info query?
   if (isGeneralInfoOrFAQ(userQuery, responseText)) {
     console.log("Detected general information or FAQ query - skipping product recommendations");
     return { products: [], relevanceScore: 0 };
   }
   
+  // Second check: Is user explicitly asking for product recommendations?
+  const isExplicitRequest = isExplicitProductRequest(userQuery);
+  if (!isExplicitRequest) {
+    console.log("User not explicitly requesting products - skipping recommendations");
+    return { products: [], relevanceScore: 0 };
+  }
+  
   // Define all recommendation strategies with their priorities
   const strategies: RecommendationStrategy[] = [
+    responseCategoryStrategy,     // NEW: High priority for AI-mentioned categories
     explicitMentionsStrategy,
     directNameMatchStrategy,
     categoryMatchStrategy,
@@ -521,7 +905,10 @@ const findRecommendedProducts = (responseText: string, productContext: ProductCo
   for (const strategy of strategies) {
     const matches = strategy.execute(userQuery, responseText, productContext, userPreferences);
     strategyResults[strategy.name] = matches;
-    debug[strategy.name] = { found: matches.length };
+    debug[strategy.name] = { 
+      found: matches.length,
+      products: matches.map(m => ({ name: m.product.name, similarity: m.similarity, method: m.method }))
+    };
   }
   
   // Process results in priority order to build recommendations
@@ -556,28 +943,70 @@ const findRecommendedProducts = (responseText: string, productContext: ProductCo
       }
     });
   
-  // Remove the fallback random product recommendation code
-  // Don't provide fallback recommendations
-  
   // Calculate overall relevance score (average of matches, or 0 if none)
   const overallRelevanceScore = matchesFound > 0 ? totalRelevanceScore / matchesFound : 0;
   
-  console.log("Recommendation debug info:", JSON.stringify(debug, null, 2));
-  console.log(`Found ${recommendedProducts.length} recommended products with relevance score: ${overallRelevanceScore.toFixed(2)}`);
+  // FINAL SAFETY CHECK: Apply gender filtering one more time to ensure no leaks
+  const detectedGender = detectGenderPreference(userQuery, responseText);
+  let finalFilteredProducts = filterProductsByGender(recommendedProducts, detectedGender);
   
-  if (recommendedProducts.length > 0) {
-    console.log("Recommended products:", recommendedProducts.map(p => p.name).join(", "));
+  // ADDITIONAL SAFETY CHECK: Validate category relevance for specific queries
+  if (userQuery.toLowerCase().includes('tee') || userQuery.toLowerCase().includes('t-shirt')) {
+    console.log('🔍 SPECIFIC TEE FILTER: Filtering for tee/t-shirt specific query');
+    finalFilteredProducts = finalFilteredProducts.filter(product => {
+      const name = product.name.toLowerCase();
+      const category = product.category.toLowerCase();
+      const subCategory = product.subCategory.toLowerCase();
+      
+      // Must contain tee or t-shirt related terms, exclude unrelated items
+      return (name.includes('t-shirt') || name.includes('tee') || 
+              category.includes('t-shirt') || category.includes('tee') ||
+              subCategory.includes('t-shirt') || subCategory.includes('tee')) &&
+             !name.includes('tank') && !name.includes('crop') && 
+             !name.includes('jogger') && !name.includes('pant') && !name.includes('cargo');
+    });
   }
   
-  // Do not provide fallback recommendations
+  if (userQuery.toLowerCase().includes('shorts')) {
+    console.log('🔍 SPECIFIC SHORTS FILTER: Filtering for shorts specific query');
+    finalFilteredProducts = finalFilteredProducts.filter(product => {
+      const name = product.name.toLowerCase();
+      const category = product.category.toLowerCase();
+      const subCategory = product.subCategory.toLowerCase();
+      
+      // Must contain shorts related terms, exclude pants and other items
+      return (name.includes('short') || category.includes('short') || subCategory.includes('short')) &&
+             !name.includes('shirt') && !name.includes('pant') && !name.includes('cargo') &&
+             !name.includes('jogger') && !name.includes('jean');
+    });
+  }
+  
+  if (finalFilteredProducts.length !== recommendedProducts.length) {
+    console.log(`🚨 SAFETY FILTER ACTIVATED: Removed ${recommendedProducts.length - finalFilteredProducts.length} mismatched products`);
+    console.log(`Detected gender preference: ${detectedGender}`);
+    console.log(`Original products: ${recommendedProducts.map(p => `${p.name} (${p.category})`).join(', ')}`);
+    console.log(`After safety filter: ${finalFilteredProducts.map(p => `${p.name} (${p.category})`).join(', ')}`);
+  }
+  
+  console.log("Recommendation debug info:", JSON.stringify(debug, null, 2));
+  console.log(`Found ${finalFilteredProducts.length} recommended products with relevance score: ${overallRelevanceScore.toFixed(2)}`);
+  console.log(`Query: "${userQuery}"`);
+  console.log(`Response excerpt: "${responseText.substring(0, 100)}..."`);
+  
+  if (finalFilteredProducts.length > 0) {
+    console.log("Final recommended products:", finalFilteredProducts.map(p => `${p.name} (${p.category}/${p.subCategory})`).join(", "));
+  } else {
+    console.log("No products found. Sample product categories:", productContext.slice(0, 5).map(p => `${p.name} (${p.category}/${p.subCategory})`));
+  }
+  
   return { 
-    products: recommendedProducts.slice(0, 3),
+    products: finalFilteredProducts.slice(0, 3),
     relevanceScore: overallRelevanceScore
   };
 };
 
-// Restore original threshold for determining if recommendations are relevant enough
-const RELEVANCE_THRESHOLD = 0.4; // Change back from 0.2 to 0.4
+// Increase threshold to be more precise for better recommendations
+const RELEVANCE_THRESHOLD = 0.6; // Increased from 0.3 to be more selective
 
 // New function to detect when the response is saying we don't have a product
 const isNegativeProductResponse = (responseText: string): boolean => {
@@ -599,7 +1028,12 @@ const processResponseWithProductCards = async (
   // First check if this is a negative product response
   if (isNegativeProductResponse(responseText)) {
     console.log("Detected negative product response - skipping recommendations");
-    // Return the response without any product recommendations
+    return responseText;
+  }
+  
+  // Check if this is explicitly a FAQ/policy question
+  if (isGeneralInfoOrFAQ(userQuery, responseText)) {
+    console.log("FAQ/Policy question detected - no product recommendations");
     return responseText;
   }
   
@@ -611,15 +1045,14 @@ const processResponseWithProductCards = async (
   );
   
   // Determine if the query appears to be asking for specific products
-  const isProductQuery = isSpecificProductQuery(userQuery) || userQuery.toLowerCase().includes('recommend');
+  const isProductQuery = isSpecificProductQuery(userQuery) || isExplicitProductRequest(userQuery);
   
-  // Handle case where we have no relevant product recommendations but the user was asking for products
-  if (recommendedProducts.length === 0 && isProductQuery) {
-    // Add a message about not having matching products
+  // Handle case where we have no relevant product recommendations but the user was explicitly asking for products
+  if (recommendedProducts.length === 0 && isProductQuery && !isGeneralInfoOrFAQ(userQuery, responseText)) {
     return `${responseText}\n\nI'm sorry, but we don't currently have products that match your specific request in our inventory. We regularly update our collections, so please check back later or browse our available items on the website.`;
   } 
-  // Include recommendations only when they're relevant and not for FAQ queries
-  else if (recommendedProducts.length > 0 && relevanceScore >= RELEVANCE_THRESHOLD && !isGeneralInfoOrFAQ(userQuery, responseText)) {
+  // Include recommendations only when they're highly relevant and explicitly requested
+  else if (recommendedProducts.length > 0 && relevanceScore >= RELEVANCE_THRESHOLD && isProductQuery) {
     return `${responseText}\n\n[[PRODUCT_RECOMMENDATIONS]]\n${JSON.stringify(recommendedProducts)}`;
   }
   
@@ -641,14 +1074,12 @@ const isSpecificProductQuery = (query: string): boolean => {
   const specificProductTerms = [
     'hoodie', 'hoodies', 'hoody', 't-shirt', 'tshirt', 'jacket', 'sweater',
     'pants', 'jeans', 'shoe', 'shoes', 'dress', 'hat', 'cap', 'socks',
-    'outfit', 'wear', 'clothing', 'clothes', 'apparel', 'wardrobe', 'attire',
-    'recommend', 'recommendation', 'suggestion', 'suggest',
-    'do you have', 'do you sell', 'do you offer', 'looking for'
+    'outfit', 'wear', 'clothing', 'clothes', 'apparel', 'wardrobe', 'attire'
   ];
   
   const outfitPhrases = [
     'what should i wear', 'what to wear', 'outfit for', 'dress for',
-    'clothes for', 'look for', 'attire for', 'recommend something for'
+    'clothes for', 'look for', 'attire for'
   ];
   
   const queryLower = query.toLowerCase();
@@ -663,7 +1094,7 @@ const makeResponseConcise = (text: string): string => {
   
   let conciseText = text;
   
-  conciseText = conciseText.replace(/\d+\.\s+\*\*([^:]+):\*\*\s+(.*?)(?=\d+\.|$)/gs, '• $1: $2\n');
+  conciseText = conciseText.replace(/\d+\.\s+\*\*([^:]+):\*\*\s+(.*?)(?=\d+\.|$)/g, '• $1: $2\n');
   conciseText = conciseText.replace(/\n{3,}/g, '\n\n');
   
   const formalities = [
@@ -693,6 +1124,15 @@ const makeResponseConcise = (text: string): string => {
 
 export async function POST(request: NextRequest) {
   try {
+    // Check rate limits first
+    if (!checkRateLimit()) {
+      return NextResponse.json({ 
+        success: false, 
+        error: "Rate limit exceeded. Please wait a moment before trying again.",
+        fallbackResponse: "I'm receiving too many requests right now. Please wait a moment and try again."
+      }, { status: 429 });
+    }
+
     await connectDB();
 
     const { message, chatHistory, userContext } = await request.json();
@@ -774,6 +1214,8 @@ export async function POST(request: NextRequest) {
       - Keep explanations minimal - users prefer direct answers without lengthy context
       - Never apologize excessively or use overly formal language
       - If you don't know an answer, say so briefly and move on
+      - ONLY recommend products when specifically asked or when the user is clearly shopping for items
+      - Do NOT include product recommendations for policy questions, FAQ, or general inquiries
       
       When answering:
       1. Use short sentences and minimal formatting
@@ -804,11 +1246,11 @@ export async function POST(request: NextRequest) {
             contents: conversation,
             generationConfig: {
               temperature: 0.7,
-              maxOutputTokens: 300,
+              maxOutputTokens: 250, // Reduced from 300 to save tokens
               topP: 0.8,
             },
           }),
-          timeoutPromise(15000)
+          timeoutPromise(12000) // Reduced timeout to avoid rate limit issues
         ]) as GenerateContentResult;
 
         let responseText = result.response.text();
