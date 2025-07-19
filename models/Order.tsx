@@ -1,4 +1,9 @@
-import mongoose, { Schema } from "mongoose";
+import mongoose, { Schema, Model } from "mongoose";
+
+// Basic Order interface for typing purposes
+interface OrderModel extends mongoose.Document {
+  [key: string]: any;
+}
 
 // Schema for line items in the order
 const LineItemSchema = new Schema({
@@ -167,5 +172,13 @@ OrderSchema.pre("save", function (next) {
 });
 
 // Create and export the Order model
-const Order = mongoose.models.Order || mongoose.model("Order", OrderSchema);
+let Order: Model<OrderModel>;
+
+// Check if mongoose.models exists before accessing it
+if (mongoose.models && mongoose.models.Order) {
+  Order = mongoose.models.Order as Model<OrderModel>;
+} else {
+  Order = mongoose.model<OrderModel>("Order", OrderSchema);
+}
+
 export default Order;

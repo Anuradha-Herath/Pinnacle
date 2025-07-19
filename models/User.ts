@@ -231,6 +231,15 @@ UserSchema.methods.resetLoginAttempts = async function(): Promise<void> {
 };
 
 // Create or get User model
-export default mongoose.models.User || mongoose.model<IUser>('User', UserSchema);
+let User: mongoose.Model<IUser>;
+
+// Check if mongoose.models exists before accessing it
+if (mongoose.models && mongoose.models.User) {
+  User = mongoose.models.User as mongoose.Model<IUser>;
+} else {
+  User = mongoose.model<IUser>('User', UserSchema);
+}
+
+export default User;
 
 

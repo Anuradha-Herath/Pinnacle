@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import User from '@/models/User';
+import { adaptUser } from '@/utils/modelAdapters';
 
 // Connect to MongoDB
 const connectDB = async () => {
@@ -37,7 +38,7 @@ export async function GET(
       resetPasswordExpires: 0,
       passwordResetToken: 0,
       passwordResetExpires: 0
-    });
+    }).exec(); // Use exec() instead of lean()
     
     if (!user) {
       return NextResponse.json({ 
@@ -46,9 +47,15 @@ export async function GET(
       }, { status: 404 });
     }
     
+    // Convert to plain object for manipulation
+    const userObj = user.toObject();
+    
+    // Use the adapter to ensure points is properly handled
+    const adaptedUser = adaptUser(userObj);
+    
     return NextResponse.json({ 
       success: true, 
-      user
+      user: adaptedUser
     });
     
   } catch (error) {
