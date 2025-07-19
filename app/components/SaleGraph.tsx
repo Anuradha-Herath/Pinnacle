@@ -80,37 +80,6 @@ const SaleGraph: React.FC<SaleGraphProps> = ({ salesData }) => {
           }]
         });
       } 
-      // For weekly view, use last 4 months with weekly breakdown (simplified)
-      else if (timePeriod === "weekly") {
-        // Get last 4 months data
-        const lastFourMonths = salesData.slice(-4);
-        // Create weekly labels (4 weeks per month)
-        const weeklyLabels: string[] = [];
-        const weeklyData: number[] = [];
-        
-        lastFourMonths.forEach((month: SalesDataPoint) => {
-          // Divide monthly orders into 4 weeks (approximation)
-          const weeklyAvg = month.orderCount / 4;
-          for (let week = 1; week <= 4; week++) {
-            // Add some variation to weekly data
-            const weekValue = Math.round(weeklyAvg * (0.8 + Math.random() * 0.4));
-            weeklyLabels.push(`${month.month} W${week}`);
-            weeklyData.push(weekValue);
-          }
-        });
-        
-        setChartData({
-          labels: weeklyLabels,
-          datasets: [{
-            label: 'Weekly Orders',
-            data: weeklyData,
-            fill: false,
-            borderColor: "rgb(255, 127, 80)",
-            backgroundColor: "rgba(255, 127, 80, 0.1)",
-            tension: 0.4,
-          }]
-        });
-      }
       // For yearly view, aggregate data by quarters
       else if (timePeriod === "yearly") {
         // Quarterly breakdown
@@ -224,17 +193,9 @@ const SaleGraph: React.FC<SaleGraphProps> = ({ salesData }) => {
         <Line data={chartData} options={options} />
       </div>
       <div className="mt-auto">
-        <div className="flex justify-center mt-4 space-x-2">
+        <div className="flex justify-center mt-4 space-x-4">
           <button
-            className={`text-sm px-3 py-1 rounded ${
-              timePeriod === "weekly" ? "bg-orange-500 text-white" : "bg-gray-200"
-            }`}
-            onClick={() => handleTimePeriodChange("weekly")}
-          >
-            WEEKLY
-          </button>
-          <button
-            className={`text-sm px-3 py-1 rounded ${
+            className={`text-sm px-5 py-1.5 rounded ${
               timePeriod === "monthly" ? "bg-orange-500 text-white" : "bg-gray-200"
             }`}
             onClick={() => handleTimePeriodChange("monthly")}
@@ -242,7 +203,7 @@ const SaleGraph: React.FC<SaleGraphProps> = ({ salesData }) => {
             MONTHLY
           </button>
           <button
-            className={`text-sm px-3 py-1 rounded ${
+            className={`text-sm px-5 py-1.5 rounded ${
               timePeriod === "yearly" ? "bg-orange-500 text-white" : "bg-gray-200"
             }`}
             onClick={() => handleTimePeriodChange("yearly")}
