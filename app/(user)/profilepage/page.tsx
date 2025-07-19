@@ -6,6 +6,7 @@ import Header from "../../components/Header";
 import Footer from "../../components/Footer";
 import { useAuth } from "@/app/context/AuthContext";
 import { useRouter } from "next/navigation";
+import withAuth from "../../components/withAuth";
 
 interface Order {
   _id: string;
@@ -34,7 +35,7 @@ interface UserProfile {
   profilePicture: string;
 }
 
-export default function ProfilePage() {
+function ProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,6 +50,17 @@ export default function ProfilePage() {
   
   const { user } = useAuth();
   const router = useRouter();
+
+  // Early authentication check
+  useEffect(() => {
+    if (!user && !loading) {
+      setError("Authentication required");
+      setTimeout(() => {
+        router.push('/login');
+      }, 1500);
+      return;
+    }
+  }, [user, loading, router]);
 
   // Function to get crown color based on points
   const getCrownColor = (points: number) => {
@@ -453,3 +465,11 @@ export default function ProfilePage() {
     </>
   );
 }
+
+// Export with authentication protection
+const ProtectedProfilePage = withAuth(ProfilePage, {
+  requireAdmin: false,
+  redirectTo: '/login'
+});
+
+export default ProtectedProfilePage;

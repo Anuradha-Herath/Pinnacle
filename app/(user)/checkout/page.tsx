@@ -9,6 +9,7 @@ import Success from "@/app/components/checkout/Success";
 import Cancel from "@/app/components/checkout/Cancel";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
+import withAuth from "../../components/withAuth";
 
 function Checkout() {
   const [shipping, setShipping] = useState("ship");
@@ -858,4 +859,8 @@ function Checkout() {
   );
 }
 
-export default Checkout;
+// Export with authentication protection
+export default withAuth(Checkout, {
+  requireAdmin: false,
+  redirectTo: '/login'
+});

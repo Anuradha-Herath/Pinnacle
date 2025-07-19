@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/app/context/AuthContext";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "react-hot-toast";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 
@@ -25,6 +25,8 @@ const AdminLoginPage: React.FC = () => {
   
   const { login, user } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const urlError = searchParams.get('error');
   
   // Add state to handle client-side rendering
   const [isClient, setIsClient] = useState(false);
@@ -230,6 +232,35 @@ const AdminLoginPage: React.FC = () => {
     }
   };
 
+  // Error display component for URL errors
+  const renderUrlErrorMessage = () => {
+    if (!urlError) return null;
+    
+    let errorMessage = "An error occurred. Please try again.";
+    
+    if (urlError === 'Authentication required to access admin area') {
+      errorMessage = "You need to log in to access the admin area.";
+    } else if (urlError === 'Admin privileges required') {
+      errorMessage = "Admin privileges are required to access that page.";
+    } else if (urlError === 'Session expired. Please log in again') {
+      errorMessage = "Your admin session has expired. Please log in again.";
+    } else if (urlError.length > 5) {
+      // If it's a custom error message from middleware, use it directly
+      errorMessage = urlError;
+    }
+    
+    return (
+      <div className="p-3 bg-red-100 text-red-700 rounded-md mb-4 border border-red-300">
+        <div className="flex items-center">
+          <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd"></path>
+          </svg>
+          {errorMessage}
+        </div>
+      </div>
+    );
+  };
+
   // Only render the form on the client side to avoid hydration mismatches
   if (!isClient) {
     return (
@@ -266,6 +297,9 @@ const AdminLoginPage: React.FC = () => {
               <p className="text-sm text-gray-600 mb-6 text-center">
                 Enter your email address and password to access admin panel.
               </p>
+
+              {/* Display URL error messages */}
+              {renderUrlErrorMessage()}
 
               {error && (
                 <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md text-sm">

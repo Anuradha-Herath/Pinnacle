@@ -7,6 +7,7 @@ import StatsCard from "../../components/StatsCard";
 import SaleGraph from "../../components/SaleGraph";
 import BestSellingItems from "../../components/BestSellingItems";
 import RecentOrders from "../../components/RecentOrders";
+import withAuth from "../../components/withAuth";
 
 const DashboardPage: React.FC = () => {
   return (
@@ -52,4 +53,8 @@ const DashboardPage: React.FC = () => {
   );
 };
 
-export default DashboardPage;
+// Export with admin authentication protection
+export default withAuth(DashboardPage, {
+  requireAdmin: true,
+  redirectTo: '/admin/adminlogin'
+});
