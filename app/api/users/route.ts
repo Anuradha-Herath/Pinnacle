@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import User from '@/models/User';
+import { adaptUsers } from '@/utils/modelAdapters';
 
 // Connect to MongoDB
 const connectDB = async () => {
@@ -20,12 +21,20 @@ export async function GET(request: NextRequest) {
     
     // Get all users (in a real app, you might want to implement pagination)
     const users = await User.find({}, {
-      password: 0 // Exclude password from the results
-    }).sort({ createdAt: -1 }); // Sort by newest first
+      password: 0, // Exclude password from the results
+      resetPasswordToken: 0,
+      resetPasswordExpires: 0,
+      passwordResetToken: 0,
+      passwordResetExpires: 0
+    }).sort({ createdAt: -1 }).exec(); // Sort by newest first
+    
+    // Convert users to plain objects and use adapter to handle points
+    const userObjects = users.map(user => user.toObject());
+    const processedUsers = adaptUsers(userObjects);
     
     return NextResponse.json({ 
       success: true, 
-      users
+      users: processedUsers
     });
     
   } catch (error) {
