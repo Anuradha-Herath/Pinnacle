@@ -128,17 +128,18 @@ const Sidebar: React.FC = () => {
                         </NavLink>
                     </li>
                     <li>
-                        <NavLink href="/admin/adminprofile">
-                            <CgProfile className="text-xl w-6 flex-shrink-0" />
-                            {!collapsed && <span className="ml-2">Profile</span>}
-                        </NavLink>
-                    </li>
-                    <li>
                         <NavLink href="/admin/salesreport">
                             <BarChartIcon className="text-xl w-6 flex-shrink-0" />
                             {!collapsed && <span className="ml-2">Sales Report</span>}
                         </NavLink>
                     </li>
+                    <li>
+                        <NavLink href="/admin/adminprofile">
+                            <CgProfile className="text-xl w-6 flex-shrink-0" />
+                            {!collapsed && <span className="ml-2">Profile</span>}
+                        </NavLink>
+                    </li>
+                    
                     <li>
                         <button
                             onClick={handleLogout}
