@@ -127,13 +127,15 @@ const DashboardPage: React.FC = () => {
                   ] : undefined}
                 />
               </div>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
                 {dashboardData && (
                   <SaleGraph salesData={dashboardData.salesByMonth} />
                 )}
                 <BestSellingItems products={dashboardData?.bestSellingProducts} />
               </div>
-              <RecentOrders />
+              <div className="mt-2">
+                <RecentOrders />
+              </div>
             </>
           )}
         </main>
