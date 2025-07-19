@@ -39,13 +39,15 @@ export default function ProfilePage() {
         // Check if user is authenticated and is an admin
         if (!user) {
           console.log('No user found, redirecting to login');
-          router.push('/login');
+          setError('No user found, redirecting to login');
+          router.push('/admin/adminlogin');
           return;
         }
 
         if (user.role !== 'admin') {
           console.log('User is not admin, redirecting to home');
-          router.push('/');
+          setError(' User is not an admin, redirecting to login');
+          router.push('/admin/adminlogin');
           return;
         }
 
