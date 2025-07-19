@@ -170,7 +170,7 @@ export async function GET(request: NextRequest) {
     const [totalProducts, products] = await Promise.all([
       Product.countDocuments(query),
       Product.find(query)
-        .select('productName description category subCategory regularPrice gallery createdAt _id') // Only select needed fields, include _id explicitly
+        .select('productName description category subCategory regularPrice gallery sizes createdAt _id') // Added sizes field
         .sort({ createdAt: -1 }) // Most recent first
         .skip(skip)
         .limit(limit)

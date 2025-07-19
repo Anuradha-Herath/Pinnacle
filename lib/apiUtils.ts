@@ -141,6 +141,7 @@ export const fetchProducts = async (filters: {
   page?: number;
   limit?: number;
   q?: string;
+  _t?: number; // Cache buster
 }) => {
   const url = buildApiUrl('/api/products', filters);
   return deduplicateRequest(url);

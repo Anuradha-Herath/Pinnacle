@@ -31,6 +31,7 @@ export default function CategoryPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [initialLoad, setInitialLoad] = useState(true); // Track initial load separately
   const [error, setError] = useState<string | null>(null);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [availableSizes, setAvailableSizes] = useState<string[]>([]);
@@ -50,10 +51,18 @@ export default function CategoryPage() {
         
         console.log(`Fetching products for category: ${mainCategory}`);
         
-        // Use the new API utility with deduplication
-        const data = await fetchProducts({
+        // Add timeout to prevent hanging requests
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Request timeout - Please try again')), 10000)
+        );
+        
+        // Use the new API utility with deduplication and timeout
+        const dataPromise = fetchProducts({
           category: mainCategory, // Use decoded value for API
-        }) as { products: Product[] };
+          _t: Date.now(), // Add cache buster for fresh data
+        }) as Promise<{ products: Product[] }>;
+        
+        const data = await Promise.race([dataPromise, timeoutPromise]) as { products: Product[] };
         
         const fetchedProducts = data.products || [];
         
@@ -66,12 +75,15 @@ export default function CategoryPage() {
         let maxPrice = 0;
         
         fetchedProducts.forEach((product: Product) => {
-          product.sizes?.forEach(size => allSizes.add(size));
+          if (product.sizes && Array.isArray(product.sizes)) {
+            product.sizes.forEach(size => allSizes.add(size));
+          }
           
           if (product.regularPrice < minPrice) minPrice = product.regularPrice;
           if (product.regularPrice > maxPrice) maxPrice = product.regularPrice;
         });
         
+        console.log(`Extracted ${allSizes.size} unique sizes:`, Array.from(allSizes));
         setAvailableSizes(Array.from(allSizes));
         setPriceRange({ 
           min: minPrice !== Number.MAX_VALUE ? minPrice : 0,
@@ -89,6 +101,7 @@ export default function CategoryPage() {
         setError(error instanceof Error ? error.message : 'Failed to load products');
       } finally {
         setLoading(false);
+        setInitialLoad(false);
       }
     };
     
@@ -156,6 +169,8 @@ export default function CategoryPage() {
       colors: Array.from(colors || []),
       // Use actual product sizes instead of empty array
       sizes: product.sizes || [],
+      category: product.category,
+      subCategory: product.subCategory,
     };
   });
 
@@ -213,8 +228,11 @@ export default function CategoryPage() {
           <div className="flex-1">
             {/* Loading State */}
             {loading && (
-              <div className="flex justify-center items-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500"></div>
+              <div className="flex flex-col justify-center items-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-black"></div>
+                <p className="mt-4 text-gray-600">
+                  {initialLoad ? `Loading ${mainCategory} products...` : 'Updating filters...'}
+                </p>
               </div>
             )}
             
