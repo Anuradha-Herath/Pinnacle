@@ -6,11 +6,13 @@ import { useAuth } from "@/app/context/AuthContext";
 import { useRouter, useSearchParams } from "next/navigation";
 import { authNotifications } from "@/lib/notificationService";
 import { signIn } from "next-auth/react";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
 
 const LoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   
   const { login, user } = useAuth();
   const router = useRouter();
@@ -86,14 +88,24 @@ const LoginPage = () => {
           />
 
           {/* Password Input */}
-          <input
-            type="password"
-            placeholder="Password"
-            className="w-full px-4 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-gray-800"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
+          <div className="relative">
+            <input
+              type={showPassword ? "text" : "password"}
+              placeholder="Password"
+              className="w-full px-4 py-2 pr-10 border rounded-md focus:outline-none focus:ring-2 focus:ring-gray-800"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700 focus:outline-none"
+              disabled={isLoading}
+            >
+              {showPassword ? <FaEyeSlash size={16} /> : <FaEye size={16} />}
+            </button>
+          </div>
 
           {/* Sign In Button */}
           <button

@@ -31,12 +31,20 @@ export default function AdminProfileEdit() {
   // Fetch current profile data
   useEffect(() => {
     const fetchProfile = async () => {
+      // Wait a bit for auth context to stabilize
+      if (user === undefined) {
+        // Auth context is still loading, don't redirect yet
+        return;
+      }
+
       if (!user) {
+        console.log('No user found, redirecting to login');
         router.push('/login');
         return;
       }
 
       if (user.role !== 'admin') {
+        console.log('User is not admin, redirecting to home');
         router.push('/');
         return;
       }
@@ -58,7 +66,10 @@ export default function AdminProfileEdit() {
         setError("Could not load profile data");
         console.error(err);
       } finally {
-        setLoading(false);
+        // Only set loading to false if we have determined the user state
+        if (user !== undefined) {
+          setLoading(false);
+        }
       }
     };
 
@@ -118,7 +129,14 @@ export default function AdminProfileEdit() {
       <div className="flex">
         <Sidebar />
         <div className="min-h-screen bg-gray-50 p-6 flex-1 flex justify-center items-center">
-          <CircularProgress />
+          <CircularProgress 
+            sx={{ 
+              color: 'orange',
+              '& .MuiCircularProgress-circle': {
+                stroke: 'orange'
+              }
+            }} 
+          />
         </div>
       </div>
     );
@@ -212,7 +230,7 @@ export default function AdminProfileEdit() {
               color="warning"
               disabled={updating}
             >
-              {updating ? <CircularProgress size={24} /> : "Save Changes"}
+              {updating ? <CircularProgress size={24} sx={{ color: 'white' }} /> : "Save Changes"}
             </Button>
           </div>
         </form>

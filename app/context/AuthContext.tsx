@@ -377,9 +377,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       // Also sign out from NextAuth
       await nextAuthSignOut({ redirect: false });
       
-      // Reset state
+      // Reset state immediately and force a hard reset
       setUser(null);
       setHasInitialSync(false); // Reset sync flag on logout
+      setError(null);
+      setLoading(false);
+      
+      // Force a small delay to ensure state is properly cleared
+      await new Promise(resolve => setTimeout(resolve, 100));
       
       // REMOVE THIS TOAST - will be handled in the component
       // toast.success("Logged out successfully");

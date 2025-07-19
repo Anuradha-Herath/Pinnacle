@@ -276,9 +276,23 @@ const Header = () => {
   };
 
   const handleLogout = async () => {
-    await logout();
-    authNotifications.logoutSuccess();
-    router.push("/login");
+    setIsLoggingOut(true);
+    try {
+      await logout();
+      authNotifications.logoutSuccess();
+      router.push("/login");
+    } catch (error) {
+      console.log('Logout error:', error);
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
+
+  const handleAdminProfileClick = () => {
+    setIsNavigatingToProfile(true);
+    router.push("/adminprofile");
+    // Reset loading state after navigation
+    setTimeout(() => setIsNavigatingToProfile(false), 1000);
   };
 
   const getValidWishlistCount = () => {
@@ -296,6 +310,8 @@ const Header = () => {
   const [showDropdown, setShowDropdown] = useState(false);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isNavigatingToProfile, setIsNavigatingToProfile] = useState(false);
   const dropdownTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Category background images
@@ -551,9 +567,19 @@ const Header = () => {
                   <div className="absolute right-0 mt-2 w-48 bg-white text-black shadow-lg rounded-md overflow-hidden z-50">
                     {user.role === "admin" && (
                       <>
-                        <Link href="/adminprofile" className="block px-4 py-2 hover:bg-gray-100">
-                          Profile
-                        </Link>
+                        <button
+                          onClick={handleAdminProfileClick}
+                          className="w-full text-left px-4 py-2 hover:bg-gray-100 flex items-center gap-2"
+                          disabled={isNavigatingToProfile}
+                        >
+                          {isNavigatingToProfile && (
+                            <svg className="animate-spin h-4 w-4 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                          )}
+                          {isNavigatingToProfile ? "Loading..." : "Profile"}
+                        </button>
                         <Link href="/admin/dashboard" className="block px-4 py-2 hover:bg-gray-100">
                           Dashboard
                         </Link>
@@ -564,9 +590,9 @@ const Header = () => {
                         Profile
                       </Link>
                     )}
-                    <Link href="/orders" className="block px-4 py-2 hover:bg-gray-100">
+                    {/* <Link href="/orders" className="block px-4 py-2 hover:bg-gray-100">
                       Orders
-                    </Link>
+                    </Link> */}
                     <Link
                       href="/faq"
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
@@ -575,9 +601,16 @@ const Header = () => {
                     </Link>
                     <button
                       onClick={handleLogout}
-                      className="w-full text-left px-4 py-2 hover:bg-gray-100 border-t border-gray-200"
+                      className="w-full text-left px-4 py-2 hover:bg-gray-100 border-t border-gray-200 flex items-center gap-2"
+                      disabled={isLoggingOut}
                     >
-                      Sign out
+                      {isLoggingOut && (
+                        <svg className="animate-spin h-4 w-4 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                      )}
+                      {isLoggingOut ? "Signing out..." : "Sign out"}
                     </button>
                   </div>
                 )}
