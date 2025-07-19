@@ -79,13 +79,19 @@ const DashboardPage: React.FC = () => {
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+              {/* Information banner */}
+              <div className="bg-blue-50 p-4 rounded-lg text-sm text-blue-700 mb-6 shadow-sm border border-blue-100">
+                <strong>Note:</strong> Dashboard shows only paid orders, while Sales Report may include all orders regardless of payment status.
+              </div>
+              
+              {/* Stats cards section */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 <StatsCard
                   title="Total Active Data"
                   value={dashboardData ? dashboardData.totalActiveData.toString() : "0"}
                   percentage={(dashboardData && dashboardData.totalActiveData > 0) ? "+" + ((dashboardData.totalActiveData / 100) * 6).toFixed(1) : "0"}
                   iconType="chart"
-                  subtitle="Sum of Active & Completed Orders"
+                  subtitle="Sum of Active & Completed Paid Orders"
                   detailCounts={dashboardData ? [
                     { label: "Active", count: dashboardData.activeOrders },
                     { label: "Completed", count: dashboardData.completedOrders }
@@ -97,7 +103,7 @@ const DashboardPage: React.FC = () => {
                   value={dashboardData ? dashboardData.activeOrders.toString() : "0"}
                   percentage={(dashboardData && dashboardData.activeOrders > 0) ? "+" + ((dashboardData.activeOrders / 100) * 7).toFixed(1) : "0"}
                   iconType="bag"
-                  subtitle="Processing, Shipped & Paid"
+                  subtitle="Processing, Shipped & Paid Orders"
                   detailCounts={dashboardData ? [
                     { label: "Processing", count: dashboardData.processingOrders },
                     { label: "Shipped", count: dashboardData.shippedOrders },
@@ -127,15 +133,20 @@ const DashboardPage: React.FC = () => {
                   ] : undefined}
                 />
               </div>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+              
+              {/* Charts and trending products section */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                 {dashboardData && (
-                  <SaleGraph salesData={dashboardData.salesByMonth} />
+                  <div className="bg-white rounded shadow overflow-hidden">
+                    <SaleGraph salesData={dashboardData.salesByMonth} />
+                  </div>
                 )}
-                <BestSellingItems products={dashboardData?.bestSellingProducts} />
+                <div className="bg-white rounded shadow overflow-hidden">
+                  <BestSellingItems products={dashboardData?.bestSellingProducts} />
+                </div>
               </div>
-              <div className="mt-2">
-                <RecentOrders />
-              </div>
+              
+             
             </>
           )}
         </main>

@@ -180,9 +180,9 @@ const SaleGraph: React.FC<SaleGraphProps> = ({ salesData }) => {
   };
 
   return (
-    <div className="bg-white p-3 rounded shadow h-[250px] flex flex-col">
-      <h3 className="text-lg font-semibold mb-2">Order Statistics</h3>
-      <div className="flex-grow" style={{ height: "160px" }}>
+    <div className="p-4 h-full flex flex-col">
+      <h3 className="text-lg font-semibold mb-4">Order Statistics</h3>
+      <div className="flex-grow">
         <Line data={chartData} options={options} />
       </div>
       <div className="mt-auto">
