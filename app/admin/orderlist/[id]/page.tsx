@@ -254,7 +254,6 @@ export default function OrderPage() {
                     disabled={updatingStatus}
                     className="border px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm md:text-base"
                   >
-                    <option value="pending">pending</option>
                     <option value="Paid">Paid</option>
                     <option value="Processing">Processing</option>
                     <option value="Shipped">Shipped</option>
@@ -268,7 +267,6 @@ export default function OrderPage() {
                     disabled={updatingStatus}
                     className="border px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm md:text-base"
                   >
-                    <option value="pending">pending</option>
                     <option value="Paid">Paid</option>
                     <option value="Processing">Processing</option>
                     <option value="Processed">Processed</option>
