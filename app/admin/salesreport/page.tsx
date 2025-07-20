@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import Sidebar from "../../components/Sidebar";
 import TopBar from "@/app/components/admin/TopBar";
 import withAuth from "../../components/withAuth";
@@ -26,9 +26,12 @@ import {
   CalendarIcon,
   ArrowDownAZIcon,
   ActivityIcon,
-  CreditCardIcon
+  CreditCardIcon,
+  FileDownIcon
 } from "lucide-react";
 import { format, subDays, parseISO, isValid } from "date-fns";
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 // Define the Order type according to your data structure
 interface Order {
@@ -225,13 +228,20 @@ function SalesReportPage() {
           
           // Update state with normalized orders
           setOrders(normalizedOrders);
-          setFilteredOrders(normalizedOrders);
           
-          // Calculate metrics
+          // Filter to only show paid orders
+          const paidOrders = normalizedOrders.filter(isPaidOrder);
+          
+          setFilteredOrders(paidOrders);
+          
+          // Calculate metrics with improved logic
           const metricsResult = calculateMetrics(normalizedOrders);
+          
+          // Set metrics
+          // Use filteredOrders.length for totalOrders to match dashboard's count of paid orders
           setSalesMetrics({
             totalRevenue: metricsResult.totalRevenue,
-            totalOrders: metricsResult.totalOrders,
+            totalOrders: paidOrders.length, // Use filtered paid orders count to match dashboard
             averageOrderValue: metricsResult.averageOrderValue,
             totalProductsSold: metricsResult.totalProductsSold
           });
@@ -241,6 +251,9 @@ function SalesReportPage() {
           
           // Process data for charts and product analysis
           processSalesData(normalizedOrders);
+          
+          // Verify revenue calculation (optional)
+          verifyRevenueCalculation(normalizedOrders);
         } else {
           console.error("Failed to retrieve any order data from all API endpoints");
           resetMetrics();
@@ -301,6 +314,15 @@ function SalesReportPage() {
     return normalized as Order;
   };
 
+  // Helper function to check if an order is considered "paid"
+  const isPaidOrder = (order: Order): boolean => {
+    return order.paymentStatus?.toLowerCase() === "paid" || 
+           order.status === "Processing" || 
+           order.status === "Shipped" || 
+           order.status === "Delivered" ||
+           order.status?.toLowerCase() === "paid";
+  };
+
   // Helper function to reset metrics when there's an error
   const resetMetrics = () => {
     setSalesMetrics({
@@ -322,13 +344,18 @@ function SalesReportPage() {
   // Process sales data with enhanced error handling
   const processSalesData = (orders: Order[]) => {
     try {
-      // Calculate sales by date for chart
+      // Calculate sales by date for chart (only count revenue from paid orders)
       const salesMap = new Map<string, {revenue: number, orders: number}>();
       
       orders.forEach(order => {
         // Skip invalid orders
         if (!order.createdAt || !order.amount?.total) {
           console.warn("Skipping order with missing data:", order._id);
+          return;
+        }
+        
+        // Only count paid orders for revenue chart
+        if (!isPaidOrder(order)) {
           return;
         }
         
@@ -347,12 +374,17 @@ function SalesReportPage() {
       
       setSalesByDate(salesData);
       
-      // Calculate top selling products with enhanced validation
+      // Calculate top selling products with enhanced validation (only from paid orders)
       const productMap = new Map<string, { quantity: number; revenue: number }>();
       
       let productsProcessed = 0;
       
       orders.forEach(order => {
+        // Only count products from paid orders
+        if (!isPaidOrder(order)) {
+          return;
+        }
+        
         if (!order.line_items || !Array.isArray(order.line_items)) {
           console.warn(`Order ${order._id} missing line_items array`);
           return;
@@ -382,7 +414,7 @@ function SalesReportPage() {
         });
       });
       
-      console.log(`Processed ${productsProcessed} product line items across all orders`);
+      console.log(`Processed ${productsProcessed} product line items across all paid orders`);
       
       // Get top 10 products by sales
       const topProductsData = Array.from(productMap.entries())
@@ -403,7 +435,7 @@ function SalesReportPage() {
     }
   };
 
-  // Improved function to calculate metrics directly from order data with better validation
+  // Improved function to calculate metrics with better revenue logic
   const calculateMetrics = (orders: Order[]) => {
     console.log(`Calculating metrics for ${orders.length} orders`);
     
@@ -432,68 +464,77 @@ function SalesReportPage() {
         refunded: 0
       };
 
-      // Total revenue: sum of all order totals
-      const totalRevenue = orders.reduce((sum, order) => {
-        // Ensure we have a valid number before adding
+      let totalRevenue = 0;
+      let paidOrdersCount = 0;
+      let totalProductsSold = 0;
+
+      orders.forEach(order => {
         const orderTotal = order.amount?.total;
+        
+        // Skip orders with invalid totals
         if (typeof orderTotal !== 'number' || isNaN(orderTotal)) {
           console.warn(`Order ${order._id || 'unknown'} has invalid total:`, orderTotal);
-          return sum;
+          return;
         }
 
-        // Track revenue by payment status
-        if (order.paymentStatus === "Paid" || order.status === "Paid" || 
-            order.status === "Processing" || order.status === "Shipped" || 
-            order.status === "Delivered") {
+        // Determine order status for revenue calculation
+        const isPaid = isPaidOrder(order);
+        const isPending = order.paymentStatus === "Pending" || order.status === "Pending";
+        const isFailed = order.paymentStatus === "Failed";
+        const isRefunded = order.paymentStatus === "Refunded" || order.status === "Refunded";
+
+        // Track payment breakdown and revenue
+        if (isPaid) {
           paymentTotals.paid += orderTotal;
-        } else if (order.paymentStatus === "Pending" || order.status === "Pending") {
+          totalRevenue += orderTotal; // Add to revenue
+          paidOrdersCount++;
+        } else if (isPending) {
           paymentTotals.pending += orderTotal;
-        } else if (order.paymentStatus === "Failed") {
+          // Decision: Don't include pending in revenue for now
+          // Uncomment the next line if you want to include pending orders in revenue:
+          // totalRevenue += orderTotal;
+        } else if (isFailed) {
           paymentTotals.failed += orderTotal;
-        } else if (order.paymentStatus === "Refunded" || order.status === "Refunded") {
+          // Failed orders don't contribute to revenue
+        } else if (isRefunded) {
           paymentTotals.refunded += orderTotal;
+          totalRevenue -= orderTotal; // Subtract refunded amount
         } else {
-          // Default to paid if status is unclear but we have an amount
+          // Default case - treat as paid if we have an amount
+          console.warn(`Order ${order._id} has unclear status: ${order.status}/${order.paymentStatus}`);
           paymentTotals.paid += orderTotal;
+          totalRevenue += orderTotal;
+          paidOrdersCount++;
         }
-        
-        return sum + orderTotal;
-      }, 0);
-      
-      console.log(`Total revenue calculated: $${totalRevenue.toFixed(2)}`);
-      console.log(`Payment breakdown:`, paymentTotals);
 
-      // Total orders: count of valid orders
-      const totalOrders = orders.length;
-      console.log(`Total orders: ${totalOrders}`);
-
-      // Average order value: total revenue divided by total orders
-      const averageOrderValue = totalOrders > 0 ? totalRevenue / totalOrders : 0;
-      console.log(`Average order value: $${averageOrderValue.toFixed(2)}`);
-
-      // Calculate total products sold across all orders
-      const totalProductsSold = orders.reduce((sum, order) => {
-        if (!order.line_items || !Array.isArray(order.line_items)) {
-          return sum;
-        }
-        return sum + order.line_items.reduce((itemSum, item) => {
-          const quantity = item.quantity;
-          if (typeof quantity !== 'number' || isNaN(quantity)) {
-            return itemSum;
+        // Calculate total products sold (only from paid orders)
+        if (isPaid || (!isPending && !isFailed && !isRefunded)) {
+          if (order.line_items && Array.isArray(order.line_items)) {
+            totalProductsSold += order.line_items.reduce((itemSum, item) => {
+              const quantity = item.quantity;
+              return itemSum + (typeof quantity === 'number' && !isNaN(quantity) ? quantity : 0);
+            }, 0);
           }
-          return itemSum + quantity;
-        }, 0);
-      }, 0);
-      
-      console.log(`Total products sold: ${totalProductsSold}`);
+        }
+      });
+
+      // Calculate average order value based on paid orders only
+      const averageOrderValue = paidOrdersCount > 0 ? totalRevenue / paidOrdersCount : 0;
+
+      console.log(`Revenue calculation complete:`);
+      console.log(`- Total revenue: $${totalRevenue.toFixed(2)}`);
+      console.log(`- Paid orders count: ${paidOrdersCount}`);
+      console.log(`- Total orders: ${orders.length}`);
+      console.log(`- Payment breakdown:`, paymentTotals);
 
       return {
         totalRevenue,
-        totalOrders,
+        totalOrders: paidOrdersCount, // Count of paid orders only
         averageOrderValue,
         totalProductsSold,
         paymentBreakdown: paymentTotals
       };
+
     } catch (error) {
       console.error("Error calculating metrics:", error);
       return {
@@ -511,6 +552,69 @@ function SalesReportPage() {
     }
   };
 
+  // Revenue verification function
+  const verifyRevenueCalculation = (orders: Order[]) => {
+    try {
+      // Calculate revenue from order totals (paid orders only)
+      const revenueFromOrderTotals = orders.reduce((sum, order) => {
+        const orderTotal = order.amount?.total;
+        if (typeof orderTotal === 'number' && !isNaN(orderTotal)) {
+          // Only count paid orders
+          if (isPaidOrder(order)) {
+            return sum + orderTotal;
+          }
+          // Subtract refunded orders
+          if (order.paymentStatus === "Refunded" || order.status === "Refunded") {
+            return sum - orderTotal;
+          }
+        }
+        return sum;
+      }, 0);
+
+      // Calculate revenue from line items (verification)
+      const revenueFromLineItems = orders.reduce((sum, order) => {
+        if (!order.line_items || !Array.isArray(order.line_items)) {
+          return sum;
+        }
+        
+        // Only calculate for paid orders
+        if (!isPaidOrder(order)) {
+          // Handle refunded orders
+          if (order.paymentStatus === "Refunded" || order.status === "Refunded") {
+            const orderLineItemTotal = order.line_items.reduce((itemSum, item) => {
+              const quantity = item.quantity || 0;
+              const unitAmount = item.price_data?.unit_amount || 0;
+              return itemSum + (unitAmount / 100) * quantity;
+            }, 0);
+            return sum - orderLineItemTotal; // Subtract refunded
+          }
+          return sum;
+        }
+        
+        const orderLineItemTotal = order.line_items.reduce((itemSum, item) => {
+          const quantity = item.quantity || 0;
+          const unitAmount = item.price_data?.unit_amount || 0;
+          return itemSum + (unitAmount / 100) * quantity; // Convert cents to dollars
+        }, 0);
+        
+        return sum + orderLineItemTotal;
+      }, 0);
+
+      console.log(`Revenue verification:`);
+      console.log(`- From order totals: $${revenueFromOrderTotals.toFixed(2)}`);
+      console.log(`- From line items: $${revenueFromLineItems.toFixed(2)}`);
+      console.log(`- Difference: $${Math.abs(revenueFromOrderTotals - revenueFromLineItems).toFixed(2)}`);
+
+      // Alert if there's a significant discrepancy
+      const difference = Math.abs(revenueFromOrderTotals - revenueFromLineItems);
+      if (difference > 0.01) {
+        console.warn(`Revenue calculation discrepancy detected: $${difference.toFixed(2)}`);
+      }
+    } catch (error) {
+      console.error("Error in revenue verification:", error);
+    }
+  };
+
   // Export report as CSV
   const exportCSV = () => {
     if (!filteredOrders || filteredOrders.length === 0) {
@@ -520,7 +624,7 @@ function SalesReportPage() {
     
     // Create CSV content
     let csvContent = "data:text/csv;charset=utf-8,";
-    csvContent += "Date,Order Number,Customer,Total,Status\n";
+    csvContent += "Date,Order Number,Customer,Total,Status,Payment Status\n";
     
     filteredOrders.forEach(order => {
       const row = [
@@ -528,7 +632,8 @@ function SalesReportPage() {
         order.orderNumber || '',
         `${order.customer?.firstName || ''} ${order.customer?.lastName || ''}`,
         order.amount?.total || 0,
-        order.status || ''
+        order.status || '',
+        order.paymentStatus || ''
       ].join(",");
       
       csvContent += row + "\n";
@@ -546,12 +651,149 @@ function SalesReportPage() {
 
   // Add a debugging component that can be toggled
   const [showDebug, setShowDebug] = useState(false);
+  
+  // Add a ref for the report content
+  const reportContentRef = useRef<HTMLDivElement>(null);
+  
+  // Function to generate and download PDF
+  const generatePDF = async () => {
+    if (!reportContentRef.current) return;
+    
+    try {
+      // Show loading state
+      setLoading(true);
+      
+      // Get the report container
+      const reportContainer = reportContentRef.current;
+      
+      // Apply color normalization to ensure consistent colors in PDF
+      // This adds a temporary style to fix color rendering issues
+      const normalizeColors = () => {
+        const elements = reportContainer.querySelectorAll('*');
+        elements.forEach(el => {
+          if (el instanceof HTMLElement) {
+            // Store original color if it exists
+            const originalColor = el.style.color;
+            const computedStyle = window.getComputedStyle(el);
+            const computedColor = computedStyle.color;
+            
+            // Force color redraw to ensure correct rendering
+            if (computedColor && computedColor !== 'rgba(0, 0, 0, 0)') {
+              el.setAttribute('data-original-color', originalColor);
+              el.style.color = computedColor;
+            }
+          }
+        });
+      };
+      
+      // Normalize colors before rendering
+      normalizeColors();
+      
+      // Create canvas from the container with improved color settings
+      const canvas = await html2canvas(reportContainer, {
+        scale: 2, // Higher scale for better quality
+        useCORS: true, // Enable CORS for images
+        logging: false,
+        backgroundColor: '#ffffff',
+        allowTaint: true, // Allow tainted canvas for better color reproduction
+        foreignObjectRendering: false, // Disable ForeignObject rendering to fix color issues
+        removeContainer: true, // Remove container after rendering to avoid artifacts
+        imageTimeout: 0, // No timeout for image loading
+      });
+      
+      // Calculate PDF dimensions (maintain aspect ratio)
+      const imgWidth = 210; // A4 width in mm (210mm)
+      const pageHeight = 297; // A4 height in mm (297mm)
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      // Initialize PDF
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      let position = 0;
+      
+      // Add title
+      pdf.setFontSize(16);
+      pdf.text('Sales Report', 105, 15, { align: 'center' });
+      pdf.setFontSize(10);
+      pdf.text(`Generated on ${format(new Date(), 'MMMM d, yyyy')}`, 105, 22, { align: 'center' });
+      
+      // Add date range
+      pdf.text(`Period: ${format(new Date(dateRange.startDate), 'MMMM d, yyyy')} - ${format(new Date(dateRange.endDate), 'MMMM d, yyyy')}`, 105, 28, { align: 'center' });
+      
+      // Add image (starting after the title)
+      position = 35;
+      
+      // If image is larger than page, create multiple pages
+      let heightLeft = imgHeight;
+      
+      // Add first page image with color correction
+      pdf.addImage(
+        canvas.toDataURL('image/jpeg', 1.0), // Using JPEG format for better color reproduction
+        'JPEG',
+        0,
+        position,
+        imgWidth,
+        imgHeight,
+        undefined,
+        'FAST',
+        0
+      );
+      heightLeft -= (pageHeight - position);
+      
+      // Add additional pages if needed
+      while (heightLeft > 0) {
+        position = 0;
+        pdf.addPage();
+        pdf.addImage(
+          canvas.toDataURL('image/jpeg', 1.0), // Using JPEG format for better color reproduction
+          'JPEG',
+          0,
+          position - (pageHeight - position),
+          imgWidth,
+          imgHeight,
+          undefined,
+          'FAST',
+          0
+        );
+        heightLeft -= pageHeight;
+      }
+      
+      // Save the PDF
+      pdf.save(`sales-report-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+      
+      // Restore original colors after PDF generation
+      const restoreColors = () => {
+        const elements = reportContainer.querySelectorAll('[data-original-color]');
+        elements.forEach(el => {
+          if (el instanceof HTMLElement) {
+            const originalColor = el.getAttribute('data-original-color');
+            if (originalColor) {
+              el.style.color = originalColor;
+              el.removeAttribute('data-original-color');
+            }
+          }
+        });
+      };
+      
+      // Restore colors
+      restoreColors();
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      alert('Failed to generate PDF. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="flex">
       <Sidebar />
       <div className="min-h-screen bg-gray-50 p-6 flex-1">
         <TopBar heading="Sales Report" />
+
+        {/* Add note about order counts */}
+        <div className="bg-blue-50 p-3 rounded-lg text-sm text-blue-700 mb-4">
+          <strong>Note:</strong> This report shows only paid orders (including orders with status "paid", "Processing", "Shipped", and "Delivered") within the selected date range, matching the dashboard metrics.
+        </div>
 
         {/* Add debug toggle */}
         <div className="mb-4 flex justify-end">
@@ -568,10 +810,18 @@ function SalesReportPage() {
           <div className="bg-gray-100 p-4 mb-6 rounded-lg border border-gray-300 text-xs">
             <h3 className="font-bold mb-2">Debug Information</h3>
             <p>Total Orders Fetched: {orders.length}</p>
-            <p>Orders After Filtering: {filteredOrders.length}</p>
+            <p>Paid Orders (matching dashboard count): {filteredOrders.length}</p>
+            <p>Dashboard Total Orders Count: {salesMetrics.totalOrders}</p>
             <p>Date Range: {dateRange.startDate} to {dateRange.endDate}</p>
-            <p>Raw Total Revenue: ${salesMetrics.totalRevenue}</p>
-            <p>Raw Average Order: ${salesMetrics.averageOrderValue}</p>
+            <p>Total Revenue (Paid Orders Only): ${salesMetrics.totalRevenue.toFixed(2)}</p>
+            <p>Average Order Value (Paid Orders): ${salesMetrics.averageOrderValue.toFixed(2)}</p>
+            <div className="mt-2">
+              <strong>Payment Breakdown:</strong>
+              <p>Paid: ${paymentBreakdown.paid.toFixed(2)}</p>
+              <p>Pending: ${paymentBreakdown.pending.toFixed(2)}</p>
+              <p>Failed: ${paymentBreakdown.failed.toFixed(2)}</p>
+              <p>Refunded: ${paymentBreakdown.refunded.toFixed(2)}</p>
+            </div>
             <details>
               <summary className="cursor-pointer">Sample Order Data (first 3)</summary>
               <pre className="mt-2 overflow-x-auto">
@@ -639,15 +889,26 @@ function SalesReportPage() {
               </button>
             </div>
             
-            {/* Export Button */}
-            <button 
-              onClick={exportCSV}
-              className="flex items-center ml-auto px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600"
-              disabled={loading || filteredOrders.length === 0}
-            >
-              <ArrowDownAZIcon className="h-4 w-4 mr-2" />
-              Export Report
-            </button>
+            {/* Export Buttons */}
+            <div className="flex ml-auto">
+              <button 
+                onClick={exportCSV}
+                className="flex items-center px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 mr-2"
+                disabled={loading || filteredOrders.length === 0}
+              >
+                <ArrowDownAZIcon className="h-4 w-4 mr-2" />
+                Export CSV
+              </button>
+              
+              <button 
+                onClick={generatePDF}
+                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                disabled={loading || filteredOrders.length === 0}
+              >
+                <FileDownIcon className="h-4 w-4 mr-2" />
+                Download PDF
+              </button>
+            </div>
           </div>
         </div>
 
@@ -657,7 +918,7 @@ function SalesReportPage() {
             <p className="mt-2 text-gray-500">Loading sales data...</p>
           </div>
         ) : (
-          <>
+          <div ref={reportContentRef} className="print-container">
             {/* Sales Summary Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
               {/* Total Revenue Card */}
@@ -677,7 +938,7 @@ function SalesReportPage() {
                   </div>
                 </div>
                 <p className="text-sm text-gray-500 mt-2">
-                  From {salesMetrics.totalOrders.toLocaleString()} orders in selected period
+                  From {filteredOrders.length.toLocaleString()} paid orders in selected period
                 </p>
               </div>
               
@@ -688,6 +949,7 @@ function SalesReportPage() {
                     <h3 className="text-2xl font-bold">
                       {salesMetrics.totalOrders.toLocaleString()}
                     </h3>
+                    <p className="text-xs text-gray-500 mt-1">(Paid orders only)</p>
                   </div>
                   <div className="p-3 bg-orange-100 rounded-lg">
                     <ShoppingBagIcon className="h-8 w-8 text-orange-500" />
@@ -719,61 +981,12 @@ function SalesReportPage() {
               </div>
             </div>
             
-            {/* Payment Status Breakdown */}
-            <div className="bg-white p-6 rounded-lg shadow-md mb-8">
-              <h2 className="text-lg font-semibold mb-4 flex items-center">
-                <CreditCardIcon className="mr-2 h-5 w-5 text-orange-500" />
-                Payment Status Breakdown
-              </h2>
-              
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                <div className="border rounded-lg p-4">
-                  <p className="text-sm text-gray-500">Paid Orders Revenue</p>
-                  <p className="text-xl font-semibold mt-1 text-green-600">
-                    ${paymentBreakdown.paid.toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2
-                    })}
-                  </p>
-                </div>
-                
-                <div className="border rounded-lg p-4">
-                  <p className="text-sm text-gray-500">Pending Payment Revenue</p>
-                  <p className="text-xl font-semibold mt-1 text-yellow-600">
-                    ${paymentBreakdown.pending.toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2
-                    })}
-                  </p>
-                </div>
-                
-                <div className="border rounded-lg p-4">
-                  <p className="text-sm text-gray-500">Failed Payment Revenue</p>
-                  <p className="text-xl font-semibold mt-1 text-red-600">
-                    ${paymentBreakdown.failed.toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2
-                    })}
-                  </p>
-                </div>
-                
-                <div className="border rounded-lg p-4">
-                  <p className="text-sm text-gray-500">Refunded Revenue</p>
-                  <p className="text-xl font-semibold mt-1 text-gray-600">
-                    ${paymentBreakdown.refunded.toLocaleString(undefined, {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2
-                    })}
-                  </p>
-                </div>
-              </div>
-            </div>
             
             {/* Additional Overall Metrics */}
             <div className="bg-white p-6 rounded-lg shadow-md mb-8">
               <h2 className="text-lg font-semibold mb-4 flex items-center">
                 <ActivityIcon className="mr-2 h-5 w-5 text-orange-500" />
-                Overall Sales Performance
+                Overall Sales Performance (All Orders in Date Range)
               </h2>
               
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -911,39 +1124,7 @@ function SalesReportPage() {
               </div>
             </div>
             
-            {/* Top Products Table */}
-            <div className="bg-white p-6 rounded-lg shadow-lg mb-8">
-              <h2 className="text-lg font-semibold mb-4">Top Selling Products</h2>
-              {topProducts.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="bg-gray-100 text-left">
-                        <th className="p-3">Product</th>
-                        <th className="p-3">Quantity Sold</th>
-                        <th className="p-3">Revenue</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {topProducts.map((product, index) => (
-                        <tr key={index} className="border-t">
-                          <td className="p-3">{product.productName}</td>
-                          <td className="p-3">{product.quantity}</td>
-                          <td className="p-3">
-                            <span className="text-orange-500">$</span>
-                            {product.revenue.toFixed(2)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="text-center py-10 text-gray-500">
-                  No product data available for the selected period
-                </div>
-              )}
-            </div>
+            
             
             {/* Recent Orders Table */}
             <div className="bg-white p-6 rounded-lg shadow-lg">
@@ -1001,7 +1182,7 @@ function SalesReportPage() {
                 </table>
               </div>
             </div>
-          </>
+          </div>
         )}
       </div>
     </div>
