@@ -154,7 +154,7 @@ export default function CouponCreate() {
       const statusMap = {
         "active": "Active",
         "inactive": "Inactive",
-        "future plan": "Future"
+        "future plan": "Future Plan"
       };
       
       // Prepare coupon data based on coupon type

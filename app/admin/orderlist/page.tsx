@@ -2,14 +2,23 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CubeIcon, EyeIcon } from "@heroicons/react/24/solid";
+import {
+  CubeIcon,
+  EyeIcon,
+  MagnifyingGlassIcon,
+  CheckCircleIcon,
+  TruckIcon,
+  ArrowPathIcon,
+  GiftIcon,
+  ArrowUturnLeftIcon,
+} from "@heroicons/react/24/solid";
 import Sidebar from "../../components/Sidebar";
-import { ShoppingCartIcon, CheckCircleIcon, TruckIcon } from "lucide-react";
 import TopBar from "@/app/components/admin/TopBar";
 import withAuth from "../../components/withAuth";
 
 // Define the Order type according to your data structure
 interface Order {
+  paymentStatus: string;
   _id: string;
   orderNumber: string;
   createdAt: string;
@@ -41,7 +50,9 @@ function OrdersPage() {
 
   // Function to get count of orders by status
   const getOrderCountByStatus = (status: string) => {
-    return orders.filter((order) => order.status === status).length;
+    return orders.filter(
+      (order) => order.status === status && order.paymentStatus === "paid"
+    ).length;
   };
 
   // Simple fetch orders function
@@ -146,7 +157,7 @@ function OrdersPage() {
           </div>
           <div className="bg-white p-4 rounded-lg shadow-md flex items-center gap-4">
             <div className="p-3 bg-orange-100 rounded-lg">
-              <ShoppingCartIcon className="h-8 w-8 text-orange-500" />
+              <ArrowPathIcon className="h-8 w-8 text-orange-500" />
             </div>
             <div>
               <h2 className="text-lg font-semibold">Orders Processing</h2>
@@ -172,7 +183,7 @@ function OrdersPage() {
         <div className="grid grid-cols-3 gap-6 mb-8">
           <div className="bg-white p-4 rounded-lg shadow-md flex items-center gap-4">
             <div className="p-3 bg-orange-100 rounded-lg">
-              <CubeIcon className="h-8 w-8 text-orange-500" />
+              <GiftIcon className="h-8 w-8 text-orange-500" />
             </div>
             <div>
               <h2 className="text-lg font-semibold">Orders Delivered</h2>
@@ -194,7 +205,7 @@ function OrdersPage() {
           </div>
           <div className="bg-white p-4 rounded-lg shadow-md flex items-center gap-4">
             <div className="p-3 bg-orange-100 rounded-lg">
-              <TruckIcon className="h-8 w-8 text-orange-500" />
+              <ArrowUturnLeftIcon className="h-8 w-8 text-orange-500" />
             </div>
             <div>
               <h2 className="text-lg font-semibold">Refunded</h2>
@@ -211,16 +222,23 @@ function OrdersPage() {
             <h2 className="text-lg font-semibold">All Orders List</h2>
             <div className="flex items-center gap-4">
               {/* Search Bar */}
-              <input
-                type="text"
-                placeholder="🔍 Search by Order ID"
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setCurrentPage(1); // Reset to page 1 when search changes
-                }}
-                className="border px-3 py-2 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-              />
+              <div className="relative inline-block">
+                <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400">
+                  <MagnifyingGlassIcon className="h-5 w-5" />
+                </span>
+                <input
+                  type="text"
+                  placeholder=" Search by Order ID"
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setCurrentPage(1); // Reset to page 1 when search changes
+                  }}
+                  className="pl-7 py-[6px] pr-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
+                  style={{ width: "calc(18ch + 1.75rem)" }} // ch == character width
+                />
+              </div>
+
               {/* Order Status Filter Dropdown */}
               <select
                 value={filterStatus}

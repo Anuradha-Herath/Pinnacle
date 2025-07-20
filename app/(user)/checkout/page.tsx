@@ -7,17 +7,20 @@ import { useCart, CartItem } from "../../context/CartContext";
 import { getValidImageUrl, handleImageError } from "@/lib/imageUtils";
 import Success from "@/app/components/checkout/Success";
 import Cancel from "@/app/components/checkout/Cancel";
+import CustomerInfoAutoFill from "@/app/components/checkout/CustomerInfoAutoFill";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
 import withAuth from "../../components/withAuth";
+import { useAuth } from "@/app/context/AuthContext";
+
 
 function Checkout() {
   const [shipping, setShipping] = useState("ship");
   const [isClient, setIsClient] = useState(false);
-  const { cart, getCartTotal, isLoading, clearCart } = useCart();
-  const cartClearedRef = useRef(false);
-  const pointsProcessedRef = useRef(false);
+  const { cart, getCartTotal, isLoading } = useCart();
+  const { user } = useAuth();
   const router = useRouter();
+  const [isProcessing, setIsProcessing] = useState(false);
 
   // Coupon state
   const [couponCode, setCouponCode] = useState("");
@@ -43,39 +46,26 @@ function Checkout() {
     phone: "",
   });
 
-  // Handle cart clearing only once
-  useEffect(() => {
-    if (isClient && !cartClearedRef.current) {
-      const searchParams = new URLSearchParams(window.location.search);
-      if (searchParams.get("success") === "1") {
-        (async () => {
-          try {
-            console.log("Success parameter detected, clearing cart");
-            cartClearedRef.current = true;
+  // Handle auto-filled customer information
+  const handleCustomerInfoLoaded = (info: any) => {
+    setFormData((prev) => ({
+      ...prev,
+      email: info.email || prev.email,
+      firstName: info.firstName || prev.firstName,
+      lastName: info.lastName || prev.lastName,
+      phone: info.phone || prev.phone,
+      district: info.district || prev.district,
+      address: info.address || prev.address,
+      city: info.city || prev.city,
+      postalCode: info.postalCode || prev.postalCode,
+      deliveryMethod: info.deliveryMethod || prev.deliveryMethod,
+    }));
 
-            await clearCart();
-            console.log("Cart cleared successfully after payment");
-          } catch (error) {
-            console.error("Error clearing cart:", error);
-          }
-        })();
-      }
+    // Update shipping method if delivery method was loaded
+    if (info.deliveryMethod) {
+      setShipping(info.deliveryMethod);
     }
-  }, [isClient, clearCart]);
-
-  // Handle points processing only once
-  useEffect(() => {
-    if (isClient && !pointsProcessedRef.current) {
-      const searchParams = new URLSearchParams(window.location.search);
-      if (searchParams.get("success") === "1") {
-        const orderNumber = searchParams.get("order");
-        if (orderNumber) {
-          pointsProcessedRef.current = true;
-          handlePoints(orderNumber);
-        }
-      }
-    }
-  }, [isClient]);
+  };
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -150,6 +140,7 @@ function Checkout() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsProcessing(true);
 
     // Creating an object with all the form data
     const checkoutData = {
@@ -213,25 +204,6 @@ function Checkout() {
     }
   };
 
-  const handlePoints = async (orderNumber: string | null) => {
-    try {
-      const response = await fetch("/api/orders/points", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ orderNumber: orderNumber }), // Replace with actual order number
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to add points");
-      }
-    } catch (error) {
-      console.error("Error adding points:", error);
-    }
-  };
-
   // Fix for hydration issues - only render cart after component mounts
   useEffect(() => {
     setIsClient(true);
@@ -269,7 +241,6 @@ function Checkout() {
     );
   }
 
-  // Checking URL parameters for success or cancel
   if (
     typeof window !== "undefined" &&
     new URLSearchParams(window.location.search).get("success") === "1"
@@ -289,15 +260,17 @@ function Checkout() {
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Header />
 
+      {/* Auto-fill component - only render for logged-in users */}
+      {user && <CustomerInfoAutoFill onInfoLoaded={handleCustomerInfoLoaded} />}
+
       <main className="flex-grow container mx-auto px-2 sm:px-4 py-4 sm:py-8">
         <h1 className="text-2xl sm:text-3xl font-bold mb-6">Checkout</h1>
 
         <div className="flex flex-col-reverse lg:grid lg:grid-cols-12 gap-4 sm:gap-8">
-          {/* Checkout Form - left, 50% width on desktop */}
+          {/* Checkout Form - left*/}
           <div className="lg:col-span-6 order-1 lg:order-1 w-full">
             <div className="bg-white rounded-lg shadow-md p-3 sm:p-6 h-full flex flex-col">
               <form onSubmit={handleSubmit}>
-                {/* ... (form sections remain unchanged) ... */}
                 <section className="mb-8">
                   <h2 className="text-lg sm:text-xl font-semibold mb-4">
                     Contact Information
@@ -319,6 +292,7 @@ function Checkout() {
                         placeholder="your@email.com"
                         className="w-full p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-black focus:outline-none"
                         required
+                        // disabled={!!user}
                       />
                     </div>
                     <label className="flex items-center gap-2 text-sm text-gray-600">
@@ -410,10 +384,6 @@ function Checkout() {
                           required={shipping === "ship"}
                         >
                           <option value="">Select District</option>
-                          {/* <option value="IN">India</option>
-                          <option value="US">United States</option>
-                          <option value="UK">United Kingdom</option>
-                          <option value="CA">Canada</option> */}
                           <option value="Jaffna">Jaffna</option>
                           <option value="Kilinochchi">Kilinochchi</option>
                           <option value="Mannar">Mannar</option>
@@ -682,9 +652,38 @@ function Checkout() {
 
                 <button
                   type="submit"
-                  className="w-full py-3 bg-black text-white font-medium rounded-md hover:bg-gray-900 transition"
+                  className="w-full py-3 bg-black text-white font-medium rounded-md hover:bg-gray-900 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isProcessing}
                 >
-                  Continue to Payment
+                  {isProcessing ? (
+                    <span className="flex items-center justify-center">
+                      {/* SVG spinner */}
+                      <svg
+                        className="animate-spin h-5 w-5 mr-2 text-white"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        aria-hidden="true"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        />
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                        />
+                      </svg>
+                      Processing...
+                    </span>
+                  ) : (
+                    "Continue to Payment"
+                  )}
                 </button>
 
                 <div className="mt-6 text-center">
@@ -699,7 +698,7 @@ function Checkout() {
             </div>
           </div>
 
-          {/* Order Summary - right, 50% width on desktop */}
+          {/* Order Summary - right*/}
           <div className="lg:col-span-6 order-2 lg:order-2 w-full">
             <div className="bg-white rounded-lg shadow-md p-3 sm:p-6 mb-4 lg:mb-0 h-full flex flex-col">
               <h2 className="text-lg sm:text-xl font-semibold mb-4 pb-2 border-b">
@@ -739,7 +738,8 @@ function Checkout() {
                         </div>
                       </div>
                       <div className="font-medium text-gray-900 text-xs sm:text-base whitespace-nowrap">
-                        {item.discountedPrice !== undefined ? (
+                        {typeof item.discountedPrice === "number" &&
+                        item.discountedPrice < item.price ? (
                           <div className="flex items-center gap-1 sm:gap-2">
                             <p className="text-xs text-gray-500 line-through">
                               ${(item.price * item.quantity).toFixed(2)}
@@ -753,7 +753,7 @@ function Checkout() {
                           </div>
                         ) : (
                           <>${(item.price * item.quantity).toFixed(2)}</>
-                        )}{" "}
+                        )}
                       </div>
                     </div>
                   ))}

@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Image from "next/image";
 import Link from "next/link";
 import { Trash2, Plus, Minus, ShoppingBag } from "lucide-react";
 import { useCart } from "@/app/context/CartContext";
@@ -13,14 +12,24 @@ import { getValidImageUrl, handleImageError } from "@/lib/imageUtils";
 import withAuth from "../../components/withAuth";
 
 const CartPage = () => {
+  // Get cart context functions and state
   const { cart, removeFromCart, updateQuantity, getCartTotal, isLoading } = useCart();
+
+  // Used to verify client-side rendering
   const [isClient, setIsClient] = useState(false);
+
+  // Loading state for checkout button
+  const [isCheckingOut, setIsCheckingOut] = useState(false);
+
+  // Next.js navigation router
   const router = useRouter();
 
+  // Make sure this code runs only client-side (prevents hydration mismatch)
   useEffect(() => {
     setIsClient(true);
   }, []);
 
+  // Return loading spinner while determining client-side rendering
   if (!isClient) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -33,6 +42,7 @@ const CartPage = () => {
     );
   }
 
+  // Return loading spinner while cart data is loading
   if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col">
@@ -48,10 +58,17 @@ const CartPage = () => {
     );
   }
 
+  // Initialize variables
   const cartItems = cart || [];
   const cartTotal = getCartTotal();
 
-  const handleQuantityChange = (id: string, newQuantity: number, size: string | undefined, color: string | undefined) => {
+  // Handle decrement/increment of quantity
+  const handleQuantityChange = (
+    id: string,
+    newQuantity: number,
+    size: string | undefined,
+    color: string | undefined
+  ) => {
     if (newQuantity >= 1) {
       updateQuantity(id, newQuantity, size, color);
     }
@@ -61,21 +78,30 @@ const CartPage = () => {
     }
   };
 
-  const handleRemoveItem = (id: string, name: string, size: string | undefined, color: string | undefined) => {
+  // Handle manual item removal
+  const handleRemoveItem = (
+    id: string,
+    name: string,
+    size: string | undefined,
+    color: string | undefined
+  ) => {
     removeFromCart(id, size, color);
     cartNotifications.itemRemoved();
   };
 
+  // Handle redirect to checkout and show loader
   const handleCheckout = () => {
+    setIsCheckingOut(true); // Start showing loading spinner
     router.push("/checkout");
   };
 
+  // Help format color if it's an image URL or slug
   const getDisplayColorName = (color: string | undefined) => {
     if (!color) return "Default";
-    if (color.startsWith('http') || color.startsWith('/')) {
-      const parts = color.split('/');
+    if (color.startsWith("http") || color.startsWith("/")) {
+      const parts = color.split("/");
       const fileName = parts[parts.length - 1];
-      return fileName.split('.')[0].replace(/-|_/g, ' ');
+      return fileName.split(".")[0].replace(/-|_/g, " ");
     }
     return color;
   };
@@ -87,6 +113,7 @@ const CartPage = () => {
       <main className="flex-grow container mx-auto px-2 sm:px-4 py-4 sm:py-8">
         <h1 className="text-2xl sm:text-3xl font-bold mb-6">Shopping Cart</h1>
 
+        {/* Display empty cart UI */}
         {cartItems.length === 0 ? (
           <div className="text-center py-16">
             <ShoppingBag className="mx-auto h-16 w-16 text-gray-400 mb-4" />
@@ -102,26 +129,19 @@ const CartPage = () => {
             </Link>
           </div>
         ) : (
+          // Cart view layout: items on left, summary on right
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-            {/* Cart Items */}
+            {/* Cart items section */}
             <div className="lg:col-span-2">
               <div className="bg-white rounded-lg shadow overflow-hidden">
                 <div className="overflow-x-auto">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
-                        <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Product
-                        </th>
-                        <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Price
-                        </th>
-                        <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Quantity
-                        </th>
-                        <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Total
-                        </th>
+                        <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Product</th>
+                        <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price</th>
+                        <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quantity</th>
+                        <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
                         <th className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           <span className="sr-only">Actions</span>
                         </th>
@@ -159,9 +179,10 @@ const CartPage = () => {
                                 </div>
                               </div>
                             </td>
+                            {/* Product pricing */}
                             <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                               <div className="text-sm text-gray-900">
-                                {item.discountedPrice !== undefined && item.discountedPrice !== null ? (
+                                {item.discountedPrice !== undefined ? (
                                   <>
                                     <span className="line-through text-gray-500 mr-2">
                                       ${(item.price || 0).toFixed(2)}
@@ -175,17 +196,13 @@ const CartPage = () => {
                                 )}
                               </div>
                             </td>
+                            {/* Quantity controls */}
                             <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                               <div className="flex items-center border rounded-md w-fit mx-auto">
                                 <button
                                   className="px-2 py-1"
                                   onClick={() =>
-                                    handleQuantityChange(
-                                      item.id,
-                                      item.quantity - 1,
-                                      item.size,
-                                      item.color
-                                    )
+                                    handleQuantityChange(item.id, item.quantity - 1, item.size, item.color)
                                   }
                                   aria-label="Decrease quantity"
                                 >
@@ -195,12 +212,7 @@ const CartPage = () => {
                                 <button
                                   className="px-2 py-1"
                                   onClick={() =>
-                                    handleQuantityChange(
-                                      item.id,
-                                      item.quantity + 1,
-                                      item.size,
-                                      item.color
-                                    )
+                                    handleQuantityChange(item.id, item.quantity + 1, item.size, item.color)
                                   }
                                   aria-label="Increase quantity"
                                 >
@@ -208,20 +220,20 @@ const CartPage = () => {
                                 </button>
                               </div>
                             </td>
+                            {/* Total for each product line */}
                             <td className="px-4 sm:px-6 py-4 whitespace-nowrap">
                               <div className="text-sm text-gray-900">
-                                {item.discountedPrice !== undefined && item.discountedPrice !== null ? (
+                                {item.discountedPrice ? (
                                   <>${((item.discountedPrice || 0) * item.quantity).toFixed(2)}</>
                                 ) : (
                                   <>${((item.price || 0) * item.quantity).toFixed(2)}</>
                                 )}
                               </div>
                             </td>
+                            {/* Remove product from cart */}
                             <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                               <button
-                                onClick={() =>
-                                  handleRemoveItem(item.id, item.name, item.size, item.color)
-                                }
+                                onClick={() => handleRemoveItem(item.id, item.name, item.size, item.color)}
                                 className="text-red-600 hover:text-red-800"
                                 aria-label={`Remove ${item.name} from cart`}
                               >
@@ -237,7 +249,7 @@ const CartPage = () => {
               </div>
             </div>
 
-            {/* Order Summary */}
+            {/* Order Summary section */}
             <div>
               <div className="bg-white rounded-lg shadow p-4 sm:p-6">
                 <h2 className="text-base sm:text-lg font-medium mb-6">Order Summary</h2>
@@ -261,19 +273,43 @@ const CartPage = () => {
                   </div>
                 </div>
 
+                {/* Checkout button with spinner */}
                 <button
                   onClick={handleCheckout}
-                  className="w-full mt-6 py-3 bg-black text-white font-medium rounded-md hover:bg-gray-900 transition"
-                  disabled={cartItems.length === 0}
+                  className="w-full mt-6 py-3 bg-black text-white font-medium rounded-md hover:bg-gray-900 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={cartItems.length === 0 || isCheckingOut}
                 >
-                  Checkout
+                  {isCheckingOut ? (
+                    <div className="flex items-center justify-center">
+                      <svg
+                        className="animate-spin h-4 w-4 mr-2 text-white"
+                        xmlns="http://www.w3.org/2000/svg"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                      >
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        />
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                        />
+                      </svg>
+                      checkout...
+                    </div>
+                  ) : (
+                    "Checkout"
+                  )}
                 </button>
 
                 <div className="mt-4 text-center">
-                  <Link
-                    href="/"
-                    className="text-sm text-gray-600 hover:underline"
-                  >
+                  <Link href="/" className="text-sm text-gray-600 hover:underline">
                     or Continue Shopping
                   </Link>
                 </div>

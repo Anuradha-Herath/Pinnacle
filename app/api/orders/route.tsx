@@ -9,7 +9,9 @@ const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 export async function GET(request: Request) {
   try {
     await connectDB();
-    const orders = await Order.find().sort({ createdAt: -1 });
+    const orders = await Order.find({ paymentStatus: "paid" }).sort({
+      createdAt: -1,
+    });
     return NextResponse.json(orders, { status: 200 });
   } catch (error) {
     return NextResponse.json(
@@ -85,11 +87,8 @@ export async function POST(request: NextRequest) {
       0
     );
 
-    if (
-      requestBody.coupon?.code &&
-      requestBody.coupon?.discount > 0
-    ) {
-      // apply only if coupon code and discount > 0 
+    if (requestBody.coupon?.code && requestBody.coupon?.discount > 0) {
+      // apply only if coupon code and discount > 0
       const totalDiscount = subtotal * (requestBody.coupon.discount / 100);
 
       simpleLineItems = requestBody.cart.map((item: any) => {
@@ -125,7 +124,7 @@ export async function POST(request: NextRequest) {
           quantity: item.quantity,
           price_data: {
             currency: "USD",
-            product_data: fullProductName, 
+            product_data: fullProductName,
             unit_amount: discountedUnitAmount,
           },
           metadata: {
@@ -167,7 +166,7 @@ export async function POST(request: NextRequest) {
           quantity: item.quantity,
           price_data: {
             currency: "USD",
-            product_data: fullProductName, 
+            product_data: fullProductName,
             unit_amount: Math.round(item.price * 100),
           },
           metadata: {
@@ -179,7 +178,6 @@ export async function POST(request: NextRequest) {
         };
       });
     }
-    // --- END OF CHANGED PART ---
 
     const stripeCustomerId = await getOrCreateStripeCustomer(
       authResult.user?.email || requestBody.email,
@@ -286,7 +284,7 @@ export async function POST(request: NextRequest) {
           mode: "payment",
           success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/checkout?success=1&order=${newOrder.orderNumber}`,
           cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/checkout?canceled=1`,
-          metadata: { orderId: newOrder._id.toString() },
+          metadata: { orderId: String(newOrder._id) },
         });
 
         // Stripe's checkout URL is put to redirectUrl

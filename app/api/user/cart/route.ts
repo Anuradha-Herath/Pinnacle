@@ -113,45 +113,45 @@ export async function PUT(request: NextRequest) {
 }
 
 // New: Add a special DELETE method just for clearing the cart
-export async function DELETE(request: NextRequest) {
-  try {
-    const authResult = await authenticateUser(request);
+// export async function DELETE(request: NextRequest) {
+//   try {
+//     const authResult = await authenticateUser(request);
     
-    if (!authResult.authenticated) {
-      return NextResponse.json({ 
-        success: false, 
-        error: 'Authentication required' 
-      }, { status: 401 });
-    }
+//     if (!authResult.authenticated) {
+//       return NextResponse.json({ 
+//         success: false, 
+//         error: 'Authentication required' 
+//       }, { status: 401 });
+//     }
     
-    console.log(`DELETE request to clear cart for user ${authResult.user?.id}`);
+//     console.log(`DELETE request to clear cart for user ${authResult.user?.id}`);
     
-    await connectDB();
-    const user = await User.findByIdAndUpdate(
-      authResult.user?.id,
-      { $set: { cart: [] } },
-      { new: true }
-    );
+//     await connectDB();
+//     const user = await User.findByIdAndUpdate(
+//       authResult.user?.id,
+//       { $set: { cart: [] } },
+//       { new: true }
+//     );
     
-    if (!user) {
-      return NextResponse.json({ 
-        success: false, 
-        error: 'User not found' 
-      }, { status: 404 });
-    }
+//     if (!user) {
+//       return NextResponse.json({ 
+//         success: false, 
+//         error: 'User not found' 
+//       }, { status: 404 });
+//     }
     
-    console.log(`Cart successfully cleared via DELETE for user ${authResult.user?.id}`);
+//     console.log(`Cart successfully cleared via DELETE for user ${authResult.user?.id}`);
     
-    return NextResponse.json({
-      success: true,
-      message: 'Cart cleared successfully'
-    });
+//     return NextResponse.json({
+//       success: true,
+//       message: 'Cart cleared successfully'
+//     });
     
-  } catch (error) {
-    console.error('Error clearing cart:', error);
-    return NextResponse.json({ 
-      success: false, 
-      error: 'Failed to clear cart' 
-    }, { status: 500 });
-  }
-}
+//   } catch (error) {
+//     console.error('Error clearing cart:', error);
+//     return NextResponse.json({ 
+//       success: false, 
+//       error: 'Failed to clear cart' 
+//     }, { status: 500 });
+//   }
+// }
