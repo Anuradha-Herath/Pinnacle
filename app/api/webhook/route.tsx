@@ -6,6 +6,7 @@ import { stripe } from "@/lib/stripe";
 import { headers } from "next/headers";
 import connectDB from "@/lib/db";
 import { processLoyaltyPoints } from "@/utils/loyaltyPoints";
+import { reduceInventoryForPaidOrder } from "@/utils/inventoryManager";
 
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
@@ -41,7 +42,7 @@ export async function POST(request: Request) {
       },
       { new: true }
     );
-    
+
     if (updatedOrder) {
       const userId = updatedOrder.userId;
 
@@ -64,9 +65,20 @@ export async function POST(request: Request) {
           await processLoyaltyPoints(updatedOrder.orderNumber);
           console.log("Loyalty points processed");
         } catch (err) {
-          console.error("Failed to process loyalty points:", err);
+          console.log("Failed to process loyalty points:", err);
         }
       }
+
+      // Reduce inventory for paid order
+      if (updatedOrder.orderNumber) {
+        try {
+          await reduceInventoryForPaidOrder(updatedOrder.orderNumber);
+          console.log("Inventory reduced successfully");
+        } catch (err) {
+          console.log("Failed to reduce inventory:", err);
+        }
+      }
+
     }
   }
 
