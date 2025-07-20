@@ -142,12 +142,25 @@ export function routeProtectionMiddleware(request: NextRequest) {
   });
 
   if (isUserProtectedRoute || isAdminProtectedRoute) {
-    // Get the token from cookies
-    const token = request.cookies.get('token')?.value;
-    console.log('Middleware - Token found:', token ? 'Yes' : 'No', 'for path:', pathname);
+    // Get the token from cookies - check both custom token and NextAuth token
+    const customToken = request.cookies.get('token')?.value;
+    const nextAuthToken = request.cookies.get('next-auth.session-token')?.value || 
+                         request.cookies.get('__Secure-next-auth.session-token')?.value;
+    
+    console.log('Middleware - Tokens found:', { 
+      customToken: customToken ? 'Yes' : 'No',
+      nextAuthToken: nextAuthToken ? 'Yes' : 'No',
+      path: pathname
+    });
     console.log('Middleware - Route type:', isAdminProtectedRoute ? 'ADMIN' : 'USER');
 
-    if (!token) {
+    // If we have a NextAuth token but no custom token, allow access for user routes
+    if (!customToken && nextAuthToken && isUserProtectedRoute) {
+      console.log('Middleware - NextAuth session found, allowing user access for path:', pathname);
+      return NextResponse.next();
+    }
+
+    if (!customToken && !nextAuthToken) {
       // No token, redirect to appropriate login page
       const url = request.nextUrl.clone();
       if (isAdminProtectedRoute) {
@@ -161,50 +174,53 @@ export function routeProtectionMiddleware(request: NextRequest) {
       return NextResponse.redirect(url);
     }
 
-    try {
-      // Verify the token using Edge-compatible decoder
-      const decoded = decodeJWT(token);
-      
-      if (!decoded) {
-        throw new Error('Invalid or expired token');
-      }
-      
-      console.log('Middleware - Token decoded successfully:', { id: decoded.id, role: decoded.role, email: decoded.email });
-      
-      // Check admin routes - must have admin role
-      if (isAdminProtectedRoute && decoded.role !== 'admin') {
-        console.log('Middleware - Admin access denied, user role:', decoded.role);
+    // If we have a custom token, verify it
+    if (customToken) {
+      try {
+        // Verify the token using Edge-compatible decoder
+        const decoded = decodeJWT(customToken);
+        
+        if (!decoded) {
+          throw new Error('Invalid or expired token');
+        }
+        
+        console.log('Middleware - Custom token decoded successfully:', { id: decoded.id, role: decoded.role, email: decoded.email });
+        
+        // Check admin routes - must have admin role
+        if (isAdminProtectedRoute && decoded.role !== 'admin') {
+          console.log('Middleware - Admin access denied, user role:', decoded.role);
+          const url = request.nextUrl.clone();
+          url.pathname = '/admin/adminlogin';
+          url.searchParams.set('error', 'Admin privileges required');
+          return NextResponse.redirect(url);
+        }
+        
+        // Check user routes - must be regular user or admin (only check for id, not userId)
+        if (isUserProtectedRoute && !decoded.id) {
+          console.log('Middleware - User access denied, no valid user ID:', decoded);
+          const url = request.nextUrl.clone();
+          url.pathname = '/login';
+          url.searchParams.set('error', 'Valid user authentication required');
+          return NextResponse.redirect(url);
+        }
+        
+        console.log('Middleware - Custom token access granted for path:', pathname);
+        // Token is valid, continue
+        return NextResponse.next();
+      } catch (error) {
+        console.log('Middleware - Custom token verification failed:', error instanceof Error ? error.message : error);
+        // Invalid token, redirect to appropriate login page
         const url = request.nextUrl.clone();
-        url.pathname = '/admin/adminlogin';
-        url.searchParams.set('error', 'Admin privileges required');
+        if (isAdminProtectedRoute) {
+          url.pathname = '/admin/adminlogin';
+          url.searchParams.set('error', 'Session expired. Please log in again');
+        } else {
+          url.pathname = '/login';
+          url.searchParams.set('error', 'Session expired. Please log in again');
+        }
+        url.searchParams.set('redirect', pathname);
         return NextResponse.redirect(url);
       }
-      
-      // Check user routes - must be regular user or admin (only check for id, not userId)
-      if (isUserProtectedRoute && !decoded.id) {
-        console.log('Middleware - User access denied, no valid user ID:', decoded);
-        const url = request.nextUrl.clone();
-        url.pathname = '/login';
-        url.searchParams.set('error', 'Valid user authentication required');
-        return NextResponse.redirect(url);
-      }
-      
-      console.log('Middleware - Access granted for path:', pathname);
-      // Token is valid, continue
-      return NextResponse.next();
-    } catch (error) {
-      console.log('Middleware - Token verification failed:', error instanceof Error ? error.message : error);
-      // Invalid token, redirect to appropriate login page
-      const url = request.nextUrl.clone();
-      if (isAdminProtectedRoute) {
-        url.pathname = '/admin/adminlogin';
-        url.searchParams.set('error', 'Session expired. Please log in again');
-      } else {
-        url.pathname = '/login';
-        url.searchParams.set('error', 'Session expired. Please log in again');
-      }
-      url.searchParams.set('redirect', pathname);
-      return NextResponse.redirect(url);
     }
   }
 
