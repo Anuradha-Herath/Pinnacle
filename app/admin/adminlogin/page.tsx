@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/app/context/AuthContext";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { toast } from "react-hot-toast";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
 
@@ -23,10 +23,8 @@ const AdminLoginPage: React.FC = () => {
   const [isVerifying, setIsVerifying] = useState(false);
   const [adminEmail, setAdminEmail] = useState("");
   
-  const { login, user, checkAuth } = useAuth();
+  const { login, user } = useAuth();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const urlError = searchParams.get('error');
   
   // Add state to handle client-side rendering
   const [isClient, setIsClient] = useState(false);
@@ -168,46 +166,48 @@ const AdminLoginPage: React.FC = () => {
         // Add a small delay to ensure the cookie is set
         setTimeout(async () => {
           try {
-            // Use AuthContext's checkAuth method to update user state
-            const authSuccess = await checkAuth();
+            // Force a fresh auth check with retry mechanism
+            let authSuccess = false;
+            let retryCount = 0;
+            const maxRetries = 3;
             
-            if (authSuccess) {
-              // Wait a bit more for the user state to update
-              setTimeout(() => {
-                // Check if user is now available and is admin
-                if (user && user.role === 'admin') {
-                  setAdminEmail(user.email);
-                  sendVerificationCode(user.email);
+            while (!authSuccess && retryCount < maxRetries) {
+              const authResponse = await fetch('/api/auth/me', {
+                method: 'GET',
+                credentials: 'include',
+                headers: {
+                  'Cache-Control': 'no-cache, no-store, must-revalidate',
+                  'Pragma': 'no-cache',
+                  'Expires': '0',
+                },
+              });
+              
+              if (authResponse.ok) {
+                const authData = await authResponse.json();
+                if (authData.success && authData.user && authData.user.role === 'admin') {
+                  // Instead of direct dashboard redirect, trigger email verification
+                  setAdminEmail(authData.user.email);
+                  await sendVerificationCode(authData.user.email);
                   setIsVerificationStep(true);
                   setIsCheckingRole(false);
+                  authSuccess = true;
                 } else {
-                  // Force another check after state update
-                  setTimeout(async () => {
-                    const userData = await fetch('/api/auth/me', {
-                      method: 'GET',
-                      credentials: 'include',
-                    });
-                    
-                    if (userData.ok) {
-                      const result = await userData.json();
-                      if (result.success && result.user && result.user.role === 'admin') {
-                        setAdminEmail(result.user.email);
-                        await sendVerificationCode(result.user.email);
-                        setIsVerificationStep(true);
-                        setIsCheckingRole(false);
-                      } else {
-                        setError("Access denied. Admin privileges only.");
-                        toast.error("Access denied. Admin privileges only.");
-                        setIsCheckingRole(false);
-                      }
-                    }
-                  }, 500);
+                  setError("Access denied. Admin privileges only.");
+                  toast.error("Access denied. Admin privileges only.");
+                  authSuccess = true; // Stop retrying for permission errors
                 }
-              }, 200);
-            } else {
+              } else {
+                retryCount++;
+                if (retryCount < maxRetries) {
+                  // Wait before retry
+                  await new Promise(resolve => setTimeout(resolve, 300));
+                }
+              }
+            }
+            
+            if (!authSuccess) {
               setError("Authentication verification failed. Please try again.");
               toast.error("Authentication verification failed. Please try again.");
-              setIsCheckingRole(false);
             }
           } catch (authError) {
             console.log("Auth verification error:", authError);
@@ -228,35 +228,6 @@ const AdminLoginPage: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  // Error display component for URL errors
-  const renderUrlErrorMessage = () => {
-    if (!urlError) return null;
-    
-    let errorMessage = "An error occurred. Please try again.";
-    
-    if (urlError === 'Authentication required to access admin area') {
-      errorMessage = "You need to log in to access the admin area.";
-    } else if (urlError === 'Admin privileges required') {
-      errorMessage = "Admin privileges are required to access that page.";
-    } else if (urlError === 'Session expired. Please log in again') {
-      errorMessage = "Your admin session has expired. Please log in again.";
-    } else if (urlError.length > 5) {
-      // If it's a custom error message from middleware, use it directly
-      errorMessage = urlError;
-    }
-    
-    return (
-      <div className="p-3 bg-red-100 text-red-700 rounded-md mb-4 border border-red-300">
-        <div className="flex items-center">
-          <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd"></path>
-          </svg>
-          {errorMessage}
-        </div>
-      </div>
-    );
   };
 
   // Only render the form on the client side to avoid hydration mismatches
@@ -295,9 +266,6 @@ const AdminLoginPage: React.FC = () => {
               <p className="text-sm text-gray-600 mb-6 text-center">
                 Enter your email address and password to access admin panel.
               </p>
-
-              {/* Display URL error messages */}
-              {renderUrlErrorMessage()}
 
               {error && (
                 <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-md text-sm">

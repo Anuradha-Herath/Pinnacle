@@ -13,7 +13,6 @@ import Sidebar from "../../components/Sidebar";
 import Image from "next/image";
 import TopBar from "@/app/components/TopBar";
 import Card from "@/app/components/Card";
-import withAuth from "../../components/withAuth";
 import Pagination from "@/app/components/Pagination";
 
 // Define interface for inventory item
@@ -33,7 +32,7 @@ interface SearchSuggestion {
   image: string;
 }
 
-function InventoryList() {
+export default function InventoryList() {
   const router = useRouter();
   
   // States
@@ -630,9 +629,3 @@ function InventoryList() {
     </div>
   );
 }
-
-// Export with admin authentication protection
-export default withAuth(InventoryList, {
-  requireAdmin: true,
-  redirectTo: '/admin/adminlogin'
-});

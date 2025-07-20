@@ -3,9 +3,8 @@ import { useEffect, useState } from "react";
 import TopBar from "../../components/TopBar";
 import Sidebar from "../../components/Sidebar";
 import ProductForm from "@/app/components/product/ProductForm";
-import withAuth from "../../components/withAuth";
 
-function ProductCreate() {
+export default function ProductCreate() {
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
@@ -34,9 +33,3 @@ function ProductCreate() {
     </div>
   );
 }
-
-// Export with admin authentication protection
-export default withAuth(ProductCreate, {
-  requireAdmin: true,
-  redirectTo: '/admin/adminlogin'
-});

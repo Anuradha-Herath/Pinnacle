@@ -7,7 +7,6 @@ import { BellIcon, Cog6ToothIcon } from "@heroicons/react/24/solid";
 import Image from "next/image";
 import { CircularProgress } from "@mui/material";
 import { useAuth } from "@/app/context/AuthContext";
-import withAuth from "../../components/withAuth";
 
 interface AdminUser {
   _id: string;
@@ -20,7 +19,7 @@ interface AdminUser {
   profileImage?: string;
 }
 
-function ProfilePage() {
+export default function ProfilePage() {
   const router = useRouter();
   const { user } = useAuth();
   const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
@@ -203,9 +202,3 @@ function ProfilePage() {
     </div>
   );
 }
-
-// Export with admin authentication protection
-export default withAuth(ProfilePage, {
-  requireAdmin: true,
-  redirectTo: '/admin/adminlogin'
-});
