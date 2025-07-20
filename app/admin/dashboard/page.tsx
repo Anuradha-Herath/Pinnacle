@@ -79,17 +79,14 @@ const DashboardPage: React.FC = () => {
             </div>
           ) : (
             <>
-              {/* Information banner */}
-              <div className="bg-blue-50 p-4 rounded-lg text-sm text-blue-700 mb-6 shadow-sm border border-blue-100">
-                <strong>Note:</strong> Dashboard shows only paid orders, while Sales Report may include all orders regardless of payment status.
-              </div>
+              
               
               {/* Stats cards section */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 <StatsCard
-                  title="Total Active Data"
-                  value={dashboardData ? dashboardData.totalActiveData.toString() : "0"}
-                  percentage={(dashboardData && dashboardData.totalActiveData > 0) ? "+" + ((dashboardData.totalActiveData / 100) * 6).toFixed(1) : "0"}
+                  title="Total Orders"
+                  value={dashboardData ? dashboardData.totalOrders.toString() : "0"}
+                  percentage={(dashboardData && dashboardData.totalOrders > 0) ? "+" + ((dashboardData.totalOrders / 100) * 6).toFixed(1) : "0"}
                   iconType="chart"
                   subtitle="Sum of Active & Completed Paid Orders"
                   detailCounts={dashboardData ? [

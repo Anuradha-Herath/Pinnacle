@@ -789,10 +789,7 @@ export default function SalesReportPage() {
       <div className="min-h-screen bg-gray-50 p-6 flex-1">
         <TopBar heading="Sales Report" />
 
-        {/* Add note about order counts */}
-        <div className="bg-blue-50 p-3 rounded-lg text-sm text-blue-700 mb-4">
-          <strong>Note:</strong> This report shows only paid orders (including orders with status "paid", "Processing", "Shipped", and "Delivered") within the selected date range, matching the dashboard metrics.
-        </div>
+        
 
         {/* Add debug toggle */}
         <div className="mb-4 flex justify-end">

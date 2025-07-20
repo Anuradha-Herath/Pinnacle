@@ -178,8 +178,39 @@ export default function DiscountCreate() {
 
   const priceInfo = formData.selectionMode === "single" ? calculateDiscountedPrice() : null;
 
+  // Validation function to check if form is valid
+  const isFormValid = () => {
+    // Basic required fields
+    if (!formData.startDate || !formData.endDate || !formData.discountPercentage) {
+      return false;
+    }
+    
+    // Validate product selection based on mode
+    if (formData.selectionMode === "single" && !formData.productId) {
+      return false; // Single product mode requires a product ID
+    } else if (formData.selectionMode === "multipleProducts" && selectedCategoryProducts.length === 0) {
+      return false; // Multiple products mode requires at least one selected product
+    }
+    
+    return true;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validate form before submission
+    if (!isFormValid()) {
+      // Show specific error message about what's missing
+      if (formData.selectionMode === "single" && !formData.productId) {
+        setError("Please select a product before creating a discount.");
+      } else if (formData.selectionMode === "multipleProducts" && selectedCategoryProducts.length === 0) {
+        setError("Please select at least one product before creating a discount.");
+      } else {
+        setError("Please fill out all required fields.");
+      }
+      return;
+    }
+    
     setLoading(true);
     setError("");
 
@@ -250,18 +281,18 @@ export default function DiscountCreate() {
                     <li>Inactive: Current date is after end date</li>
                   </ul>
 
-                  <label className="block text-sm mb-1">Start Date</label>
+                  <label className="block text-sm mb-1">Start Date <span className="text-red-500">*</span></label>
                   <input
                     type="date"
-                    className="w-full border p-2 rounded-xl"
+                    className={`w-full border p-2 rounded-xl ${!formData.startDate ? 'border-red-300' : ''}`}
                     value={formData.startDate}
                     onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
                     required
                   />
-                  <label className="block text-sm mt-4 mb-1">End Date</label>
+                  <label className="block text-sm mt-4 mb-1">End Date <span className="text-red-500">*</span></label>
                   <input
                     type="date"
-                    className="w-full border p-2 rounded-xl"
+                    className={`w-full border p-2 rounded-xl ${!formData.endDate ? 'border-red-300' : ''}`}
                     value={formData.endDate}
                     onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
                     required
@@ -311,12 +342,12 @@ export default function DiscountCreate() {
 
                   {formData.selectionMode === "single" ? (
                     <div className="mb-4">
-                      <label className="block text-sm mb-1">Select Product</label>
+                      <label className="block text-sm mb-1">Select Product <span className="text-red-500">*</span></label>
                       {dataLoading ? (
                         <p className="text-sm text-gray-500">Loading products...</p>
                       ) : (
                         <div className="relative">
-                          <div className="flex items-center border rounded-xl overflow-hidden">
+                          <div className={`flex items-center border rounded-xl overflow-hidden ${!formData.productId && 'border-red-300'}`}>
                             <div className="pl-3 text-gray-400">
                               <MagnifyingGlassIcon className="h-5 w-5" />
                             </div>
@@ -332,6 +363,10 @@ export default function DiscountCreate() {
                               onFocus={handleProductSearchFocus}
                             />
                           </div>
+
+                          {!formData.productId && !showProductDropdown && (
+                            <p className="text-red-500 text-xs mt-1">Please select a product for the discount</p>
+                          )}
 
                           {selectedProduct && (
                             <div className="mt-2 p-3 border rounded-lg flex items-center bg-gray-50">
@@ -460,9 +495,9 @@ export default function DiscountCreate() {
                         </div>
                       </div>
 
-                      <div className="border rounded-md p-4">
+                      <div className={`border rounded-md p-4 ${formData.selectionMode === "multipleProducts" && selectedCategoryProducts.length === 0 ? 'border-red-300' : ''}`}>
                         <div className="flex justify-between items-center mb-3 pb-2 border-b">
-                          <h4 className="font-medium">Select Products</h4>
+                          <h4 className="font-medium">Select Products <span className="text-red-500">*</span></h4>
                           <div className="flex gap-2">
                             <button
                               type="button"
@@ -591,11 +626,11 @@ export default function DiscountCreate() {
                     </div>
                   )}
 
-                  <label className="block text-sm mt-4 mb-1">Discount Percentage</label>
+                  <label className="block text-sm mt-4 mb-1">Discount Percentage <span className="text-red-500">*</span></label>
                   <input
                     type="number"
                     placeholder="Discount %"
-                    className="w-full border p-2 rounded-xl"
+                    className={`w-full border p-2 rounded-xl ${!formData.discountPercentage ? 'border-red-300' : ''}`}
                     value={formData.discountPercentage}
                     onChange={(e) =>
                       setFormData({ ...formData, discountPercentage: e.target.value })
@@ -642,14 +677,17 @@ export default function DiscountCreate() {
             <div className="flex justify-end gap-2 mt-6">
               <button
                 type="submit"
-                className="bg-red-500 text-white px-8 py-2 rounded"
-                disabled={loading}
+                className={`${
+                  isFormValid() ? 'bg-red-500 hover:bg-red-600' : 'bg-red-300 cursor-not-allowed'
+                } text-white px-8 py-2 rounded transition-colors`}
+                disabled={loading || !isFormValid()}
+                title={!isFormValid() ? "Please select a product and fill all required fields" : ""}
               >
                 {loading ? "CREATING..." : "CREATE"}
               </button>
               <button
                 type="button"
-                className="bg-gray-200 px-8 py-2 rounded"
+                className="bg-gray-200 hover:bg-gray-300 px-8 py-2 rounded transition-colors"
                 onClick={() => router.push("/admin/discountlist")}
                 disabled={loading}
               >
