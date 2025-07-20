@@ -104,26 +104,12 @@ const BestSellingItems: React.FC<BestSellingItemsProps> = ({ products = [] }) =>
                       </div>
                     )}
                     <p className="font-semibold text-sm">
-                      {/* Extract only the base product name */}
-                      {(() => {
-                        // If no name, show default
-                        if (!product.name) return `Product ${index + 1}`;
-                        
-                        // If special case, handle accordingly
-                        if (product.name === "Product Name Unavailable") {
-                          return (
-                            <>
-                              Product Name Unavailable
-                              <span className="ml-1 text-xs text-orange-500">(ID: {product.productId.substring(0, 6)})</span>
-                            </>
-                          );
-                        }
-                        
-                        // For normal product names, strip any variant info
-                        // First try to split by common separators
-                        const nameParts = product.name.split(/\s+[-–—]\s+|\s*,\s*/);
-                        return nameParts[0]; // Return just the first part (base product name)
-                      })()}
+                      {product.name
+                        ? product.name
+                            .replace(/\(.*?\)/g, '') // Remove anything in parentheses like (Color:..., Size:...)
+                            .replace(/\s{2,}/g, ' ') // Remove double spaces
+                            .trim()
+                        : `Product ${index + 1}`}
                     </p>
                   </div>
                 </div>
