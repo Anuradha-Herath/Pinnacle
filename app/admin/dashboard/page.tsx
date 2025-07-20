@@ -10,17 +10,30 @@ import RecentOrders from "../../components/RecentOrders";
 import withAuth from "../../components/withAuth";
 import { getDashboardData } from "@/app/api/dashboard/route";
 import { DashboardData } from "@/app/api/dashboard/route";
-
+import { useAuth } from "../../context/AuthContext";
 
 const DashboardPage: React.FC = () => {
+  console.log('Dashboard: Component rendering started');
+  
+  const { user, loading } = useAuth();
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [dataLoading, setDataLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Debug the auth state
+  useEffect(() => {
+    console.log('Dashboard: Auth state changed:', { 
+      user, 
+      loading, 
+      userRole: user?.role,
+      timestamp: new Date().toISOString()
+    });
+  }, [user, loading]);
 
   useEffect(() => {
     async function fetchDashboardData() {
       try {
-        setLoading(true);
+        setDataLoading(true);
         const data = await getDashboardData();
         setDashboardData(data);
         setError(null);
@@ -28,7 +41,7 @@ const DashboardPage: React.FC = () => {
         console.error("Error fetching dashboard data:", err);
         setError("Failed to load dashboard data. Please try again later.");
       } finally {
-        setLoading(false);
+        setDataLoading(false);
       }
     }
 
@@ -70,7 +83,7 @@ const DashboardPage: React.FC = () => {
       <div className="flex-1 flex flex-col overflow-hidden">
         <DashboardHeader />
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 p-6">
-          {loading ? (
+          {dataLoading ? (
             <div className="flex justify-center items-center h-full">
               <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500"></div>
             </div>

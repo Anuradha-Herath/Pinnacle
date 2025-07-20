@@ -1,6 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyToken } from '@/lib/jwt';
+// Remove Node.js JWT library that doesn't work in Edge Runtime
+// import { verifyToken } from '@/lib/jwt';
 import { getToken } from 'next-auth/jwt';
+
+// Simple JWT decoder for Edge runtime (without signature verification)
+function decodeJWT(token: string) {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      return null;
+    }
+    
+    // Decode the payload (second part)
+    const payload = parts[1];
+    // Replace URL-safe characters
+    const base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+    // Add padding if needed
+    const padded = base64 + '=='.substring(0, (4 - base64.length % 4) % 4);
+    
+    const decoded = JSON.parse(atob(padded));
+    
+    // Check if token is expired
+    if (decoded.exp && decoded.exp < Date.now() / 1000) {
+      return null;
+    }
+    
+    return decoded;
+  } catch (error) {
+    console.log('JWT decode error:', error);
+    return null;
+  }
+}
 
 // Types for authentication result
 export interface AuthResult {
@@ -20,7 +50,7 @@ export async function authenticateUser(req: NextRequest): Promise<AuthResult> {
     let token = req.cookies.get('token')?.value;
 
     if (token) {
-      const decoded = verifyToken(token);
+      const decoded = decodeJWT(token);
       if (decoded) {
         return {
           authenticated: true,

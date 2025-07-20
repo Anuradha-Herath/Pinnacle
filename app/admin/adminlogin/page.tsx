@@ -23,7 +23,7 @@ const AdminLoginPage: React.FC = () => {
   const [isVerifying, setIsVerifying] = useState(false);
   const [adminEmail, setAdminEmail] = useState("");
   
-  const { login, user } = useAuth();
+  const { login, user, checkAuth } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const urlError = searchParams.get('error');
@@ -168,48 +168,46 @@ const AdminLoginPage: React.FC = () => {
         // Add a small delay to ensure the cookie is set
         setTimeout(async () => {
           try {
-            // Force a fresh auth check with retry mechanism
-            let authSuccess = false;
-            let retryCount = 0;
-            const maxRetries = 3;
+            // Use AuthContext's checkAuth method to update user state
+            const authSuccess = await checkAuth();
             
-            while (!authSuccess && retryCount < maxRetries) {
-              const authResponse = await fetch('/api/auth/me', {
-                method: 'GET',
-                credentials: 'include',
-                headers: {
-                  'Cache-Control': 'no-cache, no-store, must-revalidate',
-                  'Pragma': 'no-cache',
-                  'Expires': '0',
-                },
-              });
-              
-              if (authResponse.ok) {
-                const authData = await authResponse.json();
-                if (authData.success && authData.user && authData.user.role === 'admin') {
-                  // Instead of direct dashboard redirect, trigger email verification
-                  setAdminEmail(authData.user.email);
-                  await sendVerificationCode(authData.user.email);
+            if (authSuccess) {
+              // Wait a bit more for the user state to update
+              setTimeout(() => {
+                // Check if user is now available and is admin
+                if (user && user.role === 'admin') {
+                  setAdminEmail(user.email);
+                  sendVerificationCode(user.email);
                   setIsVerificationStep(true);
                   setIsCheckingRole(false);
-                  authSuccess = true;
                 } else {
-                  setError("Access denied. Admin privileges only.");
-                  toast.error("Access denied. Admin privileges only.");
-                  authSuccess = true; // Stop retrying for permission errors
+                  // Force another check after state update
+                  setTimeout(async () => {
+                    const userData = await fetch('/api/auth/me', {
+                      method: 'GET',
+                      credentials: 'include',
+                    });
+                    
+                    if (userData.ok) {
+                      const result = await userData.json();
+                      if (result.success && result.user && result.user.role === 'admin') {
+                        setAdminEmail(result.user.email);
+                        await sendVerificationCode(result.user.email);
+                        setIsVerificationStep(true);
+                        setIsCheckingRole(false);
+                      } else {
+                        setError("Access denied. Admin privileges only.");
+                        toast.error("Access denied. Admin privileges only.");
+                        setIsCheckingRole(false);
+                      }
+                    }
+                  }, 500);
                 }
-              } else {
-                retryCount++;
-                if (retryCount < maxRetries) {
-                  // Wait before retry
-                  await new Promise(resolve => setTimeout(resolve, 300));
-                }
-              }
-            }
-            
-            if (!authSuccess) {
+              }, 200);
+            } else {
               setError("Authentication verification failed. Please try again.");
               toast.error("Authentication verification failed. Please try again.");
+              setIsCheckingRole(false);
             }
           } catch (authError) {
             console.log("Auth verification error:", authError);

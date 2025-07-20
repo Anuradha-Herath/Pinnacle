@@ -26,37 +26,59 @@ function withAuth<T extends object>(
     const [showError, setShowError] = useState(false);
 
     useEffect(() => {
-      // Wait for auth context to load
-      if (loading) return;
+      console.log('withAuth: Auth check', { 
+        user: user, 
+        loading: loading,
+        requireAdmin, 
+        userRole: user?.role,
+        userExists: !!user,
+        userKeys: user ? Object.keys(user) : 'no user'
+      });
 
-      // Check if user is authenticated
-      if (!user) {
-        console.log('No user found, redirecting to:', redirectTo);
-        setError(requireAdmin ? 'Admin authentication required' : 'Please log in to access this page');
-        setShowError(true);
-        
-        // Redirect after showing error message
-        setTimeout(() => {
-          router.push(redirectTo);
-        }, 2000);
+      // IMPORTANT: Wait for auth context to finish loading completely
+      if (loading) {
+        console.log('withAuth: Still loading auth context, waiting...');
         return;
       }
 
-      // Check admin role if required
-      if (requireAdmin && user.role !== 'admin') {
-        console.log('Admin access required, user role:', user.role);
-        setError('Admin access required');
-        setShowError(true);
+      // Give extra time for auth context to stabilize after loading
+      const checkTimer = setTimeout(() => {
+        console.log('withAuth: Timer check - ', { user, loading });
         
-        setTimeout(() => {
-          router.push('/admin/adminlogin');
-        }, 2000);
-        return;
-      }
+        // Check if user is authenticated
+        if (!user) {
+          console.log('withAuth: No user found after timer, redirecting to:', redirectTo);
+          setError(requireAdmin ? 'Admin authentication required' : 'Please log in to access this page');
+          setShowError(true);
+          
+          // Redirect after showing error message
+          setTimeout(() => {
+            router.push(redirectTo);
+          }, 2000);
+          return;
+        }
 
-      // Clear any existing errors
-      setError('');
-      setShowError(false);
+        // Check admin role if required
+        if (requireAdmin && user.role !== 'admin') {
+          console.log('withAuth: Admin access required, user role:', user.role, 'Expected: admin');
+          console.log('withAuth: Full user object:', user);
+          setError('Admin access required');
+          setShowError(true);
+          
+          setTimeout(() => {
+            router.push('/admin/adminlogin');
+          }, 2000);
+          return;
+        }
+
+        console.log('withAuth: ✅ Authentication successful, rendering component');
+        // Clear any existing errors
+        setError('');
+        setShowError(false);
+      }, 1000); // Give 1 second for auth context to fully stabilize
+
+      // Cleanup timer if component unmounts
+      return () => clearTimeout(checkTimer);
     }, [user, loading, router]);
 
     // Show error message if authentication failed
