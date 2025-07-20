@@ -6,6 +6,7 @@ import { stripe } from "@/lib/stripe";
 import { headers } from "next/headers";
 import connectDB from "@/lib/db";
 import { processLoyaltyPoints } from "@/utils/loyaltyPoints";
+import { processOrderConfirmationEmail } from "@/utils/webhookEmailProcessor";
 import { reduceInventoryForPaidOrder } from "@/utils/inventoryManager";
 
 const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -59,6 +60,13 @@ export async function POST(request: Request) {
         }
       }
 
+      // Send order confirmation email using the utility function
+      try {
+        await processOrderConfirmationEmail(updatedOrder.orderNumber);
+      } catch (emailError) {
+        console.log("Failed to process order confirmation email:", emailError);
+      }
+
       // Add loyalty points if orderNumber exists
       if (updatedOrder.orderNumber) {
         try {
@@ -84,3 +92,4 @@ export async function POST(request: Request) {
 
   return new NextResponse("ok", { status: 200 });
 }
+        
