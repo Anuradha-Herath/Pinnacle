@@ -42,7 +42,7 @@ export async function GET(req: NextRequest) {
     console.log(`Found ${orders.length} orders for this user`);
     
     // Format orders for consistent display in the profile page
-    const formattedOrders = orders.map((order: any) => ({
+    const formattedOrders = orders.map(order => ({
       _id: order._id,
       orderNumber: order.orderNumber || `ORD-${order._id.toString().substring(0, 8)}`,
       status: order.status || 'processing',

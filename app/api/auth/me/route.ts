@@ -38,10 +38,8 @@ export async function GET(request: NextRequest) {
   try {
     // Authenticate the user
     const authResult = await authenticateUser(request);
-    console.log('API /auth/me - Auth result:', authResult);
     
     if (!authResult.authenticated) {
-      console.log('API /auth/me - Authentication failed:', authResult.error);
       return NextResponse.json({ 
         success: false, 
         error: authResult.error || 'Authentication required' 
@@ -68,12 +66,6 @@ export async function GET(request: NextRequest) {
     }
     
     // Return user data
-    console.log('API /auth/me - Returning user data:', {
-      id: user._id,
-      email: user.email,
-      role: user.role
-    });
-    
     return NextResponse.json({ 
       success: true,
       user: {

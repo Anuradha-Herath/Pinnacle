@@ -6,7 +6,6 @@ import AdminProductListSkeleton from '../../components/AdminProductListSkeleton'
 import TopBar from '../../components/TopBar';
 import { useRouter } from 'next/navigation';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/solid';
-import withAuth from '../../components/withAuth';
 
 import { deduplicateRequest, invalidateProductCaches } from '@/lib/apiUtils';
 
@@ -454,9 +453,5 @@ discountedPrice: product.discountedPrice, // Pass discounted price if it exists
   );
 };
 
-// Export with admin authentication protection
-export default withAuth(ProductsPage, {
-  requireAdmin: true,
-  redirectTo: '/admin/adminlogin'
-});
+export default ProductsPage;
 

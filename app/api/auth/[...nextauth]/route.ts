@@ -95,7 +95,7 @@ export const authOptions: NextAuthOptions = {
             const customToken = generateToken(dbUser);
             
             // Add custom properties
-            token.id = (dbUser._id as any).toString();
+            token.id = dbUser._id.toString();
             token.role = dbUser.role;
             token.customToken = customToken;
           } else {

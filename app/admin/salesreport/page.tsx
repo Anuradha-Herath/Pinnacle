@@ -3,7 +3,6 @@
 import { useEffect, useState, useRef } from "react";
 import Sidebar from "../../components/Sidebar";
 import TopBar from "@/app/components/admin/TopBar";
-import withAuth from "../../components/withAuth";
 import { 
   BarChart,
   Bar,
@@ -69,7 +68,7 @@ interface PaymentBreakdown {
   refunded: number;
 }
 
-function SalesReportPage() {
+export default function SalesReportPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [filteredOrders, setFilteredOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1188,9 +1187,3 @@ function SalesReportPage() {
     </div>
   );
 }
-
-// Export with admin authentication protection
-export default withAuth(SalesReportPage, {
-  requireAdmin: true,
-  redirectTo: '/admin/adminlogin'
-});

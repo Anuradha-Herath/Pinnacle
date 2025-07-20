@@ -6,7 +6,6 @@ import Footer from "@/app/components/Footer";
 import { useAuth } from "@/app/context/AuthContext";
 import { useRouter } from "next/navigation";
 import { CircularProgress, Button } from "@mui/material";
-import withAuth from "../../components/withAuth";
 
 const OrdersListPage = () => {
   const [orders, setOrders] = useState([]);
@@ -129,8 +128,4 @@ const OrdersListPage = () => {
   );
 };
 
-// Export with authentication protection
-export default withAuth(OrdersListPage, {
-  requireAdmin: false,
-  redirectTo: '/login'
-});
+export default OrdersListPage;
