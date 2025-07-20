@@ -64,7 +64,7 @@ const SignupPage = () => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4 border border-black rounded-md p-6">
           <div className="flex space-x-4">
             <input
               type="text"

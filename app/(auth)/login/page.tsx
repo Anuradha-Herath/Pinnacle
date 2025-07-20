@@ -94,7 +94,7 @@ const LoginPage = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-white">
-      <div className="w-full max-w-sm text-center ">
+      <div className="w-full max-w-sm text-center border border-black rounded-md p-6">
         <h1 className="text-5xl font-bold mb-2">LOGIN</h1>
         <p className="text-gray-600 text-sm mb-6">
           If you have an account with us, please log in.
