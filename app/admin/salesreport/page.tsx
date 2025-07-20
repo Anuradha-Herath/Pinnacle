@@ -901,7 +901,7 @@ export default function SalesReportPage() {
               
               <button 
                 onClick={generatePDF}
-                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+                className="flex items-center px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600"
                 disabled={loading || filteredOrders.length === 0}
               >
                 <FileDownIcon className="h-4 w-4 mr-2" />
@@ -1158,13 +1158,24 @@ export default function SalesReportPage() {
                             {order.amount?.total.toFixed(2) || "0.00"}
                           </td>
                           <td className="p-3">
-                            <span className={`inline-block px-2 py-1 rounded-full text-xs font-semibold ${
-                              order.status === "Delivered" ? "bg-green-100 text-green-800" :
-                              order.status === "Shipped" ? "bg-blue-100 text-blue-800" :
-                              order.status === "Processing" ? "bg-yellow-100 text-yellow-800" :
-                              order.status === "Paid" ? "bg-orange-100 text-orange-800" :
-                              "bg-gray-100 text-gray-800"
-                            }`}>
+                            <span
+                        className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${
+                          order.status === "Refunded"
+                            ? "bg-red-300 text-red-800"
+                            : order.status === "Delivered"
+                            ? "bg-orange-300 text-orange-800"
+                            : order.status === "Processed"
+                            ? "bg-blue-300 text-blue-800"
+                            : order.status === "Shipped"
+                            ? "bg-cyan-300 text-cyan-800"
+                            : order.status === "Processing"
+                            ? "bg-yellow-300 text-yellow-800"
+                            : order.status === "Paid"
+                            ? "bg-green-300 text-green-800"
+                            : order.status === "pending"
+                            ? "bg-gray-200 text-black-800"
+                            : "bg-gray-100 text-gray-800"
+                        }`}>
                               {order.status || "Unknown"}
                             </span>
                           </td>
