@@ -247,7 +247,7 @@ discountedPrice: product.discountedPrice, // Pass discounted price if it exists
                     invalidateProductCaches();
                     fetchProducts(currentPage, searchQuery, filter, true);
                   }} 
-                  className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
+                  className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
                   disabled={loading}
                 >
                   {loading ? 'Refreshing...' : 'Refresh'}
