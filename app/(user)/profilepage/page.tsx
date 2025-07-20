@@ -39,6 +39,7 @@ function ProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [editLoading, setEditLoading] = useState(false); // Add edit button loading state
   const [error, setError] = useState("");
   const [dataLoaded, setDataLoaded] = useState(false); // Flag to prevent repeated API calls
   const [lastUserId, setLastUserId] = useState<string | null>(null); // Track last user ID
@@ -185,6 +186,7 @@ function ProfilePage() {
 
   // Handle edit profile redirect
   const handleEditProfile = () => {
+    setEditLoading(true);
     router.push('/profile/edit');
   };
 
@@ -282,9 +284,27 @@ function ProfilePage() {
           </div>
 
           <div>
-          <button className="text-white bg-black px-4 py-2 rounded-md mt-4 hover:bg-gray-800" 
-            onClick={() => router.push('/profile/edit')}
-            > Edit Details
+          <button 
+            className={`text-white px-4 py-2 rounded-md mt-4 flex items-center gap-2 ${
+              editLoading 
+                ? 'bg-gray-600 cursor-not-allowed' 
+                : 'bg-black hover:bg-gray-800'
+            }`}
+            onClick={handleEditProfile}
+            disabled={editLoading}
+          >
+            {editLoading && (
+              <CircularProgress 
+                size={16} 
+                sx={{ 
+                  color: 'white',
+                  '& .MuiCircularProgress-circle': {
+                    stroke: 'white'
+                  }
+                }} 
+              />
+            )}
+            {editLoading ? 'Loading...' : 'Edit Details'}
           </button>
           </div>
         </div>

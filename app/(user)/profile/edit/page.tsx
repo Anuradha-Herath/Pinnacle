@@ -145,9 +145,18 @@ export default function EditProfile() {
       const data = await response.json();
 
       if (response.ok && data.success) {
-        // Update the profile state with new picture URL
-        setProfile(prev => ({ ...prev, profilePicture: data.profilePictureUrl }));
+        // Update the profile state with new picture URL and add cache-busting parameter
+        const newProfilePictureUrl = (data.profilePicture || data.profilePictureUrl) + '?t=' + Date.now();
+        console.log('New profile picture URL:', newProfilePictureUrl);
+        console.log('Previous profile picture:', profile.profilePicture);
+        console.log('API response data:', data);
+        setProfile(prev => ({ ...prev, profilePicture: newProfilePictureUrl }));
         setSuccess('Profile picture updated successfully');
+        
+        // Clear success message after 3 seconds
+        setTimeout(() => {
+          setSuccess('');
+        }, 3000);
       } else {
         setError(data.error || 'Failed to upload profile picture');
       }
@@ -187,6 +196,7 @@ export default function EditProfile() {
             <div className="relative inline-block">
               <div className="w-24 h-24 rounded-full overflow-hidden bg-gray-300 border-4 border-gray-300 mx-auto">
                 <img
+                  key={profile.profilePicture} // Force re-render when URL changes
                   src={profile.profilePicture || '/p9.webp'}
                   alt="Profile"
                   className="w-full h-full object-cover"
@@ -306,7 +316,7 @@ export default function EditProfile() {
                 }
               }}
             >
-              {updating ? <CircularProgress size={24} /> : "Save Changes"}
+              {updating ? <CircularProgress size={24} sx={{ color: 'black' }} /> : "Save Changes"}
             </Button>
           </div>
         </form>

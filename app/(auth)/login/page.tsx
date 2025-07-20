@@ -7,12 +7,15 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { authNotifications } from "@/lib/notificationService";
 import { signIn } from "next-auth/react";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
+import { CircularProgress } from "@mui/material";
 
 const LoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [signupLoading, setSignupLoading] = useState(false);
+  const [forgotPasswordLoading, setForgotPasswordLoading] = useState(false);
   
   const { login, user } = useAuth();
   const router = useRouter();
@@ -77,6 +80,16 @@ const LoginPage = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSignupClick = () => {
+    setSignupLoading(true);
+    router.push("/signup");
+  };
+
+  const handleForgotPasswordClick = () => {
+    setForgotPasswordLoading(true);
+    router.push("/request-reset");
   };
 
   return (
@@ -164,16 +177,23 @@ const LoginPage = () => {
         {/* Sign-up & Forgot Password Links */}
         <p className="text-sm text-gray-600 mt-4">
           Don't have an account?{" "}
-          <Link href="/signup" className="font-semibold hover:underline">
-            Create an account
-          </Link>{" "}
-          or{" "}
-          <Link
-            href="/request-reset"
-            className="font-semibold hover:underline"
+          <button 
+            onClick={handleSignupClick}
+            disabled={signupLoading}
+            className="font-semibold hover:underline inline-flex items-center gap-1 bg-transparent border-0 p-0 text-sm text-gray-600 cursor-pointer disabled:opacity-50"
           >
+            {signupLoading ? <CircularProgress size={12} sx={{ color: 'black' }} /> : null}
+            Create an account
+          </button>{" "}
+          or{" "}
+          <button
+            onClick={handleForgotPasswordClick}
+            disabled={forgotPasswordLoading}
+            className="font-semibold hover:underline inline-flex items-center gap-1 bg-transparent border-0 p-0 text-sm text-gray-600 cursor-pointer disabled:opacity-50"
+          >
+            {forgotPasswordLoading ? <CircularProgress size={12} sx={{ color: 'black' }} /> : null}
             Forgot your password?
-          </Link>
+          </button>
         </p>
       </div>
     </div>
