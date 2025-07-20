@@ -9,6 +9,7 @@ import Header from "@/app/components/Header";
 import Footer from "@/app/components/Footer";
 import { cartNotifications } from "@/lib/notificationService";
 import { getValidImageUrl, handleImageError } from "@/lib/imageUtils";
+import withAuth from "../../components/withAuth";
 
 const CartPage = () => {
   // Get cart context functions and state
@@ -323,4 +324,8 @@ const CartPage = () => {
   );
 };
 
-export default CartPage;
+// Export with authentication protection
+export default withAuth(CartPage, {
+  requireAdmin: false,
+  redirectTo: '/login'
+});

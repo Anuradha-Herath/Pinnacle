@@ -10,7 +10,9 @@ import Cancel from "@/app/components/checkout/Cancel";
 import CustomerInfoAutoFill from "@/app/components/checkout/CustomerInfoAutoFill";
 import toast from "react-hot-toast";
 import { useRouter } from "next/navigation";
+import withAuth from "../../components/withAuth";
 import { useAuth } from "@/app/context/AuthContext";
+
 
 function Checkout() {
   const [shipping, setShipping] = useState("ship");
@@ -857,4 +859,8 @@ function Checkout() {
   );
 }
 
-export default Checkout;
+// Export with authentication protection
+export default withAuth(Checkout, {
+  requireAdmin: false,
+  redirectTo: '/login'
+});

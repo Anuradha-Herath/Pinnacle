@@ -14,6 +14,7 @@ import {
 } from "@heroicons/react/24/solid";
 import Sidebar from "../../components/Sidebar";
 import TopBar from "@/app/components/admin/TopBar";
+import withAuth from "../../components/withAuth";
 
 // Define the Order type according to your data structure
 interface Order {
@@ -30,7 +31,7 @@ interface Order {
   status: string;
 }
 
-export default function OrdersPage() {
+function OrdersPage() {
   const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -382,3 +383,9 @@ export default function OrdersPage() {
     </div>
   );
 }
+
+// Export with admin authentication protection
+export default withAuth(OrdersPage, {
+  requireAdmin: true,
+  redirectTo: '/admin/adminlogin'
+});

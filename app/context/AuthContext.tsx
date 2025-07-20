@@ -238,7 +238,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       if (response.ok) {
         const data = await response.json();
+        console.log('AuthContext - Received data from /api/auth/me:', data);
         if (data.success && data.user) {
+          console.log('AuthContext - Setting user:', data.user);
           setUser(data.user);
           // After successful authentication check, sync local data with server only for non-admin pages
           if (!isAdminPage) {
@@ -246,6 +248,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           }
           return true;
         } else {
+          console.log('AuthContext - No user data in response');
           setUser(null);
           return false;
         }
