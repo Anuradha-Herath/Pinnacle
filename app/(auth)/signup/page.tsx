@@ -46,7 +46,7 @@ const SignupPage = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-white">
-      <div className="w-full max-w-lg text-center">
+      <div className="w-full max-w-lg text-center border border-black rounded-md p-6">
         <h1
           className="text-3xl font-bold mb-2"
           style={{ fontFamily: "Arial, sans-serif" }}
@@ -64,7 +64,7 @@ const SignupPage = () => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4 border border-black rounded-md p-6">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div className="flex space-x-4">
             <input
               type="text"
