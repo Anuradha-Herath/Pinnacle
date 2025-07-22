@@ -60,13 +60,6 @@ export async function POST(request: Request) {
         }
       }
 
-      // Send order confirmation email using the utility function
-      try {
-        await processOrderConfirmationEmail(updatedOrder.orderNumber);
-      } catch (emailError) {
-        console.log("Failed to process order confirmation email:", emailError);
-      }
-
       // Add loyalty points if orderNumber exists
       if (updatedOrder.orderNumber) {
         try {
@@ -75,6 +68,13 @@ export async function POST(request: Request) {
         } catch (err) {
           console.log("Failed to process loyalty points:", err);
         }
+      }
+
+      // Send order confirmation email using the utility function
+      try {
+        await processOrderConfirmationEmail(updatedOrder.orderNumber);
+      } catch (emailError) {
+        console.log("Failed to process order confirmation email:", emailError);
       }
 
       // Reduce inventory for paid order
