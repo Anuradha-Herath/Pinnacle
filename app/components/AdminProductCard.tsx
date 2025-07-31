@@ -161,24 +161,9 @@ const AdminProductCard = ({ product, onDelete }: {
       </div>
 
       {/* Sales & Remaining Products */}
-      <div className="mt-4 bg-gray-100 p-3 rounded-lg">
-        <div className="flex justify-between text-sm font-semibold">
-          <span>Sales</span>
-          <span className="text-red-500 flex items-center">⬆ {product.sales}</span>
-        </div>
-
-        <div className="flex justify-between text-sm font-semibold mt-3">
-          <span>Remaining Products</span>
-          <span className="text-gray-500">{product.remaining}</span>
-        </div>
-        <div className="w-full bg-gray-300 rounded-full h-2 mt-1">
-          <div 
-            className="bg-orange-500 h-2 rounded-full" 
-            style={{ width: `${remainingPercentage}%` }}
-          ></div>
-        </div>
+      
       </div>
-    </div>
+    
       );
 }
 
