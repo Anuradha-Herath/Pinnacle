@@ -108,7 +108,6 @@ const Success = ({ orderNumber }: SuccessProps) => {
                 <div className="flex justify-between items-center">
                   <span className="text-sm sm:text-base text-black flex items-center gap-2">
                     <span>Order points</span>
-                    <span className="text-black">+</span>
                   </span>
                   <span className="text-xl font-extrabold text-black tracking-wide flex items-center gap-1">
                     {pointsData.pointsEarned}

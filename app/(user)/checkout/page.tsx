@@ -239,21 +239,6 @@ function Checkout() {
     );
   }
 
-  if (
-    typeof window !== "undefined" &&
-    new URLSearchParams(window.location.search).get("success") === "1"
-  ) {
-    const orderNumber = new URLSearchParams(window.location.search).get(
-      "order"
-    );
-    return <Success orderNumber={orderNumber || "N/A"} />;
-  } else if (
-    typeof window !== "undefined" &&
-    new URLSearchParams(window.location.search).get("canceled") === "1"
-  ) {
-    return <Cancel />;
-  }
-
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <Header />

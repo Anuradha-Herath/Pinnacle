@@ -282,8 +282,8 @@ export async function POST(request: NextRequest) {
           payment_method_types: ["card"],
           line_items: stripeLineItems,
           mode: "payment",
-          success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/checkout?success=1&order=${newOrder.orderNumber}`,
-          cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/checkout?canceled=1`,
+          success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/success?order=${newOrder.orderNumber}`,
+          cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/cancel`,
           metadata: { orderId: String(newOrder._id) },
         });
 
