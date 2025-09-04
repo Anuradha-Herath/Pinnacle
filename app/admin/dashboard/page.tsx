@@ -7,8 +7,7 @@ import StatsCard from "../../components/StatsCard";
 import SaleGraph from "../../components/SaleGraph";
 import BestSellingItems from "../../components/BestSellingItems";
 import RecentOrders from "../../components/RecentOrders";
-import { getDashboardData } from "@/app/api/dashboard/route";
-import { DashboardData } from "@/app/api/dashboard/route";
+import { getDashboardData, DashboardData } from "@/lib/dashboard";
 
 const DashboardPage: React.FC = () => {
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);

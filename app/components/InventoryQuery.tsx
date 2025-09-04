@@ -5,7 +5,7 @@ import { useState } from 'react';
 export default function InventoryQuery() {
   const [color, setColor] = useState('');
   const [size, setSize] = useState('');
-  const [results, setResults] = useState(null);
+  const [results, setResults] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   
   const handleQuery = async () => {
@@ -90,7 +90,7 @@ export default function InventoryQuery() {
                 </tr>
               </thead>
               <tbody>
-                {results.items.map((item) => (
+                {results.items.map((item: any) => (
                   <tr key={item.id} className="border-t">
                     <td className="p-2">{item.productName}</td>
                     <td className="p-2 text-right">{item.quantity}</td>

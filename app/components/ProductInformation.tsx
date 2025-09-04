@@ -385,7 +385,6 @@ const ProductInformation: React.FC<ProductInformationProps> = ({
         <SizeGuideModal 
           isOpen={isSizeGuideOpen} 
           onClose={() => setIsSizeGuideOpen(false)} 
-          category="apparel"
           sizeChartImage={product.sizeChartImage} // Pass the sizeChartImage to SizeGuideModal
         />
       )}

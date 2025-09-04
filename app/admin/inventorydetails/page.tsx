@@ -3,7 +3,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import Sidebar from "../../components/Sidebar";
 import { BellIcon, Cog6ToothIcon, ClockIcon } from "@heroicons/react/24/solid";
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Image from "next/image";
 
 interface Color {
@@ -25,6 +25,23 @@ interface InventoryItem {
 }
 
 export default function InventoryDetailsPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex">
+        <div className="min-h-screen bg-gray-50 p-6 flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-orange-500 border-r-transparent"></div>
+            <p className="mt-2">Loading...</p>
+          </div>
+        </div>
+      </div>
+    }>
+      <InventoryDetailsContent />
+    </Suspense>
+  );
+}
+
+function InventoryDetailsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const inventoryId = searchParams?.get("id");

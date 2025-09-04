@@ -18,7 +18,7 @@ const connectDB = async () => {
 // GET inventory by product ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { productId: string } }
+  { params }: { params: Promise<{ productId: string }> }
 ) {
   try {
     await connectDB();

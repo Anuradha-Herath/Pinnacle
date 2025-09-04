@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { BellIcon, Cog6ToothIcon, ClockIcon } from "@heroicons/react/24/solid";
 import Sidebar from "../../components/Sidebar";
 
-export default function CouponEdit() {
+function CouponEditContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const couponId = searchParams.get('id');
@@ -524,5 +524,22 @@ export default function CouponEdit() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function CouponEdit() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen bg-gray-100">
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-orange-500 border-r-transparent"></div>
+            <p className="mt-2">Loading...</p>
+          </div>
+        </div>
+      </div>
+    }>
+      <CouponEditContent />
+    </Suspense>
   );
 }

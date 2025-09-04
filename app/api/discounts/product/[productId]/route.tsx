@@ -18,7 +18,7 @@ const connectDB = async () => {
 // GET discounts applicable to a specific product
 export async function GET(
   request: NextRequest,
-  { params }: { params: { productId: string } }
+  { params }: { params: Promise<{ productId: string }> }
 ) {
   try {
     // Get productId parameter asynchronously

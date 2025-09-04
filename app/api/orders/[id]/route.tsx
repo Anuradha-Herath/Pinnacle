@@ -5,7 +5,7 @@ import { sendOrderStatusUpdateEmail } from "@/lib/orderEmailService";
 
 export const GET = async (
   request: Request,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) => {
   const { id } = await context.params;
   try {
@@ -32,7 +32,7 @@ export const GET = async (
 
 export const PUT = async (
   request: Request,
-  context: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) => {
   const { id } = await context.params;
   try {
