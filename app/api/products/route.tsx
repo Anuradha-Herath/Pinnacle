@@ -4,17 +4,11 @@ import Product from '@/models/Product';
 import Inventory from '@/models/Inventory';
 import Discount from '@/models/Discount'; // Add this import
 import cloudinary from "@/lib/cloudinary"; // Uncomment this for image uploads
+import connectDB from '@/lib/optimizedDB'; // Use optimized connection
 
-// Connect to MongoDB
-const connectDB = async () => {
-  try {
-    if (mongoose.connection.readyState === 0) {
-      await mongoose.connect(process.env.MONGODB_URI!);
-    }
-  } catch (error) {
-    console.error('MongoDB connection error:', error);
-    throw new Error('Failed to connect to database');
-  }
+// Helper function to escape regex special characters
+const escapeRegex = (string: string) => {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 };
 
 // Helper function to upload image to Cloudinary
@@ -37,25 +31,54 @@ const uploadToCloudinary = async (imageData: string) => {
   }
 };
 
+// Add CORS headers helper with cache control
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Max-Age': '86400',
+};
+
+// Add cache headers for products - reduced cache time for better freshness
+const cacheHeaders = {
+  'Cache-Control': 'public, max-age=60, stale-while-revalidate=30', // 1 minute cache, 30 seconds stale
+  'CDN-Cache-Control': 'public, max-age=120', // 2 minutes for CDN  
+  'Vary': 'Accept-Encoding',
+};
+
+// Handle OPTIONS request for CORS
+export async function OPTIONS() {
+  return new Response(null, {
+    status: 200,
+    headers: corsHeaders,
+  });
+}
+
 export async function GET(request: NextRequest) {
   try {
     await connectDB();
 
-    // Parse query parameters
+    // Parse query parameters with proper URL decoding
     const searchParams = request.nextUrl.searchParams;
     const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '10');
+    const limit = Math.min(parseInt(searchParams.get('limit') || '10'), 50); // Cap limit at 50 for performance
     const searchQuery = searchParams.get('q');
-    const category = searchParams.get('category');
-    const subCategory = searchParams.get('subCategory');
+    const category = searchParams.get('category') ? decodeURIComponent(searchParams.get('category')!) : null;
+    const subCategory = searchParams.get('subCategory') ? decodeURIComponent(searchParams.get('subCategory')!) : null;
     const productId = searchParams.get('id'); // For fetching a single product
+    const cacheBust = searchParams.get('_t'); // Cache busting parameter
 
-    // Get active discounts
+    // Create cache key for this request (include cache bust parameter)
+    const cacheKey = `products:${JSON.stringify({ page, limit, searchQuery, category, subCategory, productId, cacheBust })}`;
+    
+    console.log(`API: Fetching products with filters:`, { category, subCategory, searchQuery, page, limit, cacheBust });
+
+    // Get active discounts with caching - using lean() for better performance
     const activeDiscounts = await Discount.find({
       status: 'Active',
       startDate: { $lte: new Date().toISOString().split('T')[0] },
       endDate: { $gte: new Date().toISOString().split('T')[0] }
-    });
+    }).lean().exec(); // Use lean() and exec() for better performance
 
     // If fetching a single product by ID
     if (productId) {
@@ -99,6 +122,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         success: true,
         product: productWithDiscount
+      }, {
+        headers: {
+          ...corsHeaders,
+          'Cache-Control': 'public, max-age=300, stale-while-revalidate=120', // 5 minutes cache for single products
+          'CDN-Cache-Control': 'public, max-age=600', // 10 minutes for CDN
+          'Vary': 'Accept-Encoding',
+        },
       });
     }
 
@@ -118,33 +148,50 @@ export async function GET(request: NextRequest) {
       ];
     }
 
-    // Add category filter if provided - use case-insensitive regex matching
+    // Add category filter if provided - use exact case-insensitive matching
     if (category) {
-      query.category = { $regex: new RegExp(`^${category}$`, 'i') };
-      console.log(`Filtering products by category: ${category}`);
+      // Trim whitespace and use exact matching with case insensitivity
+      const trimmedCategory = category.trim();
+      query.category = { $regex: new RegExp(`^${escapeRegex(trimmedCategory)}$`, 'i') };
+      console.log(`API: Filtering products by category: "${trimmedCategory}"`);
     }
 
-    // Add subCategory filter if provided - use case-insensitive regex matching
+    // Add subCategory filter if provided - use exact case-insensitive matching
     if (subCategory) {
-      query.subCategory = { $regex: new RegExp(`^${subCategory}$`, 'i') };
-      console.log(`Filtering products by subCategory: ${subCategory}`);
+      // Trim whitespace and use exact matching with case insensitivity
+      const trimmedSubCategory = subCategory.trim();
+      query.subCategory = { $regex: new RegExp(`^${escapeRegex(trimmedSubCategory)}$`, 'i') };
+      console.log(`API: Filtering products by subCategory: "${trimmedSubCategory}"`);
     }
 
-    // Count total products matching the query for pagination
-    const totalProducts = await Product.countDocuments(query);
+    console.log(`API: Final query:`, JSON.stringify(query, null, 2));
+
+    // Optimize database queries with parallel execution and better indexing
+    const [totalProducts, products] = await Promise.all([
+      Product.countDocuments(query),
+      Product.find(query)
+        .select('productName description category subCategory regularPrice gallery sizes createdAt _id') // Added sizes field
+        .sort({ createdAt: -1 }) // Most recent first
+        .skip(skip)
+        .limit(limit)
+        .lean() // Use lean() for better performance
+        .exec() // Explicitly execute for better performance
+    ]);
     
     // Calculate total pages
     const totalPages = Math.ceil(totalProducts / limit);
-
-    // Fetch products with pagination
-    let products = await Product.find(query)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
     
-    // Calculate discounted prices for all fetched products
-    const productsWithDiscounts = products.map(product => {
-      const productObj = product.toObject();
+    // Optimize gallery selection - only take first image for list view to reduce payload
+    const optimizedProducts = products.map((product: any) => ({
+      ...product,
+      gallery: product.gallery && product.gallery.length > 0 
+        ? [product.gallery[0]] // Only include first image for list performance
+        : []
+    }));
+    
+    // Calculate discounted prices for all fetched products efficiently
+    const productsWithDiscounts = optimizedProducts.map((product: any) => {
+      const productObj = { ...product };
       
       // Find applicable discount
       const discount = activeDiscounts.find(
@@ -172,14 +219,39 @@ export async function GET(request: NextRequest) {
         page,
         limit
       }
+    }, {
+      headers: {
+        ...corsHeaders,
+        // Use different cache headers based on whether this is a fresh request
+        ...(cacheBust ? {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0'
+        } : cacheHeaders),
+      },
     });
 
   } catch (error) {
     console.error('Error fetching products:', error);
+    
+    // Provide more specific error messages
+    let errorMessage = 'Failed to fetch products';
+    if (error instanceof mongoose.Error.ValidationError) {
+      errorMessage = 'Invalid query parameters';
+    } else if (error instanceof mongoose.Error.CastError) {
+      errorMessage = 'Invalid product ID format';
+    } else if (error instanceof Error) {
+      errorMessage = error.message;
+    }
+    
     return NextResponse.json({ 
       success: false, 
-      error: 'Failed to fetch products' 
-    }, { status: 500 });
+      error: errorMessage,
+      timestamp: new Date().toISOString()
+    }, { 
+      status: 500,
+      headers: corsHeaders,
+    });
   }
 }
 
@@ -296,7 +368,18 @@ export async function POST(request: Request) {
       message: "Product created and added to inventory", 
       product: newProduct,
       inventory: newInventory
-    }, { status: 201 });
+    }, { 
+      status: 201,
+      headers: {
+        ...corsHeaders,
+        // Add cache invalidation headers
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+        // Add a timestamp to help with cache busting
+        'X-Cache-Bust': Date.now().toString(),
+      }
+    });
   } catch (error) {
     console.error("Server error:", error);
     return NextResponse.json({ 

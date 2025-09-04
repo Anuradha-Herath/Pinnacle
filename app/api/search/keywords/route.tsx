@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
     const products = await Product.find({
       $or: [
         { productName: { $regex: searchPattern } },
-        { description: { $regex: searchPattern } },
+        
         { category: { $regex: searchPattern } },
         { subCategory: { $regex: searchPattern } },
         { tag: { $regex: searchPattern } },
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
       const productName = product.productName || '';
       const words = productName.split(/\s+/);
       
-      words.forEach(word => {
+      words.forEach((word: string) => {
         // Only add words that match the query pattern and are at least 3 characters
         if (word.length >= 3 && searchPattern.test(word)) {
           keywordSet.add(word);

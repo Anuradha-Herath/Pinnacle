@@ -19,8 +19,9 @@ export async function GET(request: NextRequest) {
     await connectDB();
     
     const searchParams = request.nextUrl.searchParams;
-    const color = searchParams.get('color');
-    const size = searchParams.get('size');
+    // Access search parameters asynchronously
+    const color = await searchParams.get('color');
+    const size = await searchParams.get('size');
     
     // Build filter based on what's requested
     let filter: any = {};
@@ -49,7 +50,7 @@ export async function GET(request: NextRequest) {
     
     // Calculate total quantity for the specified combination
     let totalQuantity = 0;
-    let itemDetails = [];
+    let itemDetails: { id: string; productName: string; quantity: number }[] = [];
     
     items.forEach(item => {
       let quantity = 0;
@@ -65,7 +66,7 @@ export async function GET(request: NextRequest) {
       totalQuantity += quantity;
       
       itemDetails.push({
-        id: item._id,
+        id: item._id.toString(),
         productName: item.productName,
         quantity
       });

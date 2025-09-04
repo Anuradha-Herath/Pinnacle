@@ -153,6 +153,19 @@ const Chatbot: React.FC = () => {
         signal: controller.signal
       });
       clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        if (response.status === 429) {
+          setChatHistory(prev => [...prev, {
+            isUser: false,
+            text: "I'm receiving too many requests right now. Please wait a moment and try again.",
+            timestamp: new Date()
+          }]);
+          return;
+        }
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
       const data = await response.json();
       if (data.success) {
         const processedResponse = processResponseWithRecommendations(data.response);
@@ -237,28 +250,28 @@ const Chatbot: React.FC = () => {
   const suggestedPrompts = [
     {
       text: "What's your return policy?",
-      category: "faq"
+      category: "faq",
     },
     {
       text: "How long does shipping take?",
-      category: "faq"
+      category: "faq",
     },
     {
       text: "What should I wear to a summer wedding?",
-      category: "outfit"
+      category: "outfit",
     },
     {
       text: "Do you offer free shipping?",
-      category: "faq"
+      category: "faq",
     },
     {
       text: "How do I find my size?",
-      category: "faq"
+      category: "faq",
     },
     {
-      text: "Build me a casual weekend outfit",
-      category: "outfit"
-    }
+      text: "Suggest a male outfit",
+      category: "outfit",
+    },
   ];
 
   const handleSuggestedPrompt = (prompt: string) => {

@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { BellIcon, Cog6ToothIcon, ClockIcon } from "@heroicons/react/24/solid";
 import Sidebar from "../../components/Sidebar";
 import { useRouter, useSearchParams } from "next/navigation";
+import { PLACEHOLDER_IMAGE } from "@/lib/imageUtils";
 
 interface ItemDetails {
   id: string;
@@ -12,7 +13,7 @@ interface ItemDetails {
   price?: number; // Add price field
 }
 
-export default function DiscountView() {
+function DiscountViewContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const discountId = searchParams?.get("id");
@@ -73,7 +74,7 @@ export default function DiscountView() {
               if (productData.product) {
                 const galleryImage = productData.product.gallery && productData.product.gallery.length > 0
                   ? productData.product.gallery[0].src
-                  : "/placeholder.png";
+                  : PLACEHOLDER_IMAGE;
                 
                 setItemDetails({
                   id: productData.product._id,
@@ -91,7 +92,7 @@ export default function DiscountView() {
                 setItemDetails({
                   id: categoryData.category._id,
                   name: categoryData.category.title,
-                  image: categoryData.category.thumbnailImage || "/placeholder.png"
+                  image: categoryData.category.thumbnailImage || PLACEHOLDER_IMAGE
                 });
               }
             }
@@ -354,5 +355,22 @@ export default function DiscountView() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function DiscountView() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen bg-gray-100">
+        <div className="flex-1 flex justify-center items-center">
+          <div className="text-center">
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-orange-500 border-r-transparent"></div>
+            <p className="mt-2">Loading...</p>
+          </div>
+        </div>
+      </div>
+    }>
+      <DiscountViewContent />
+    </Suspense>
   );
 }

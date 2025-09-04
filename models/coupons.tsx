@@ -32,7 +32,7 @@ const CouponSchema = new Schema(
     status: { 
       type: String, 
       required: [true, 'Please provide a status'],
-      enum: ['Active', 'Inactive', 'Expired', 'Future'],
+      enum: ['Active', 'Inactive', 'Expired', 'Future Plan'],
       default: 'Active'
     },
     description: { 

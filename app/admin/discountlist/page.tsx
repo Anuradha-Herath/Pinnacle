@@ -1,14 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { 
-  EyeIcon, 
-  PencilIcon, 
-  TrashIcon, 
-  BellIcon, 
-  Cog6ToothIcon, 
-  ClockIcon, 
   PlusIcon, 
   CheckCircleIcon,
   XCircleIcon,
@@ -16,6 +10,13 @@ import {
 } from "@heroicons/react/24/solid";
 import Sidebar from "../../components/Sidebar";
 import TopBar from "../../components/TopBar";
+import Pagination from "@/app/components/Pagination";
+import Card from "@/app/components/Card";
+import DiscountTableBody from "@/app/components/DiscountTableBody";
+import { PLACEHOLDER_IMAGE } from "@/lib/imageUtils";
+
+// Remove the duplicate constant since we're importing it
+
 
 export default function DiscountList() {
   const router = useRouter();
@@ -70,19 +71,35 @@ export default function DiscountList() {
   const [loadingItems, setLoadingItems] = useState<Set<string>>(new Set());
 
   const parseDate = (dateString: string) => {
+    if (!dateString) return null;
+    
     try {
       // Try to parse the date string directly
       const date = new Date(dateString);
       
       // Check if the date is valid
       if (isNaN(date.getTime())) {
-        console.error(`Invalid date: ${dateString}`);
+        // Try to handle different date formats
+        if (dateString.includes('-')) {
+          // Try YYYY-MM-DD format
+          const [year, month, day] = dateString.split('-').map(Number);
+          if (year && month && day) {
+            return new Date(year, month - 1, day);
+          }
+        } else if (dateString.includes('/')) {
+          // Try MM/DD/YYYY format
+          const [month, day, year] = dateString.split('/').map(Number);
+          if (year && month && day) {
+            return new Date(year, month - 1, day);
+          }
+        }
+        console.warn(`Could not parse date: ${dateString}`);
         return null;
       }
       
       return date;
     } catch (error) {
-      console.error(`Error parsing date: ${dateString}`, error);
+      console.warn(`Error parsing date: ${dateString}`, error);
       return null;
     }
   };
@@ -97,34 +114,89 @@ export default function DiscountList() {
   useEffect(() => {
     // Fetch discounts from API
     const fetchDiscounts = async () => {
+      // Reset state
+      setError("");
+      setLoading(true);
+      
       try {
+        // Use AbortController for timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+        
         console.log("Fetching discounts...");
-        const response = await fetch('/api/discounts');
+        const response = await fetch('/api/discounts', {
+          signal: controller.signal,
+          cache: 'no-cache' // Ensure we get fresh data
+        }).catch(error => {
+          if (error.name === 'AbortError') {
+            throw new Error("Request timed out. Server might be overloaded.");
+          }
+          throw error;
+        });
+        
+        clearTimeout(timeoutId);
         
         if (!response.ok) {
-          const errorData = await response.json();
-          console.error("API error response:", errorData);
-          throw new Error(`Failed to fetch discounts: ${response.status} ${response.statusText}`);
+          let errorMessage = `Failed to fetch discounts: ${response.status} ${response.statusText}`;
+          try {
+            const errorData = await response.json();
+            console.error("API error response:", errorData);
+            if (errorData && errorData.error) {
+              errorMessage = errorData.error;
+            }
+          } catch (e) {
+            // Ignore JSON parsing errors for error responses
+          }
+          throw new Error(errorMessage);
         }
         
         const data = await response.json();
-        console.log("Received discount data:", data);
+        
+        // Validate data structure
+        if (!data || !Array.isArray(data.discounts)) {
+          console.warn("Unexpected API response structure:", data);
+          throw new Error("Received invalid data from server");
+        }
         
         const fetchedDiscounts = data.discounts || [];
-        setDiscounts(fetchedDiscounts);
-        setFilteredDiscounts(fetchedDiscounts);
         
-        // Calculate discount counts
-        const active: number = fetchedDiscounts.filter((d: Discount) => d.status === "Active").length;
-        const inactive: number = fetchedDiscounts.filter((d: Discount) => d.status === "Inactive").length;
-        const futurePlan: number = fetchedDiscounts.filter((d: Discount) => d.status === "Future Plan").length;
+        // Filter out any invalid discount entries
+        const validDiscounts = fetchedDiscounts.filter((d: any) => 
+          d && typeof d === 'object' && d._id && d.product && d.status
+        );
         
-        setActiveDiscounts(active);
-        setExpiredDiscounts(inactive);
-        setFuturePlanDiscounts(futurePlan);
+        // Update state with valid data
+        setDiscounts(validDiscounts);
+        setFilteredDiscounts(validDiscounts);
+        
+        // Calculate discount counts with error handling
+        try {
+          const active: number = validDiscounts.filter((d: Discount) => d.status === "Active").length;
+          const inactive: number = validDiscounts.filter((d: Discount) => d.status === "Inactive").length;
+          const futurePlan: number = validDiscounts.filter((d: Discount) => d.status === "Future Plan").length;
+          
+          setActiveDiscounts(active);
+          setExpiredDiscounts(inactive);
+          setFuturePlanDiscounts(futurePlan);
+        } catch (countError) {
+          console.error("Error calculating counts:", countError);
+          // Don't throw - we still have the discount data
+        }
+        
+        // Clear any previous error
+        setError("");
       } catch (err) {
-        console.error("Error details:", err);
+        console.error("Error fetching discounts:", err);
         setError(err instanceof Error ? err.message : "Failed to load discounts");
+        
+        // Set empty arrays to prevent errors with undefined
+        setDiscounts([]);
+        setFilteredDiscounts([]);
+        
+        // Reset counts
+        setActiveDiscounts(0);
+        setExpiredDiscounts(0);
+        setFuturePlanDiscounts(0);
       } finally {
         setLoading(false);
       }
@@ -133,136 +205,274 @@ export default function DiscountList() {
     fetchDiscounts();
   }, []);
 
-  // Optimized fetch for product/category details - parallel fetching
-  useEffect(() => {
-    if (discounts.length === 0) return;
+  // Optimized fetch for product/category details - with rate limiting and error handling
+  const fetchItemDetails = useCallback(async () => {
+    if (!discounts || discounts.length === 0) return;
     
-    const fetchItemDetails = async () => {
-      // Track which items we're currently loading
-      const itemsToLoad = new Set<string>();
-      
+    // Set a maximum number of items to fetch at once to prevent too many requests
+    const MAX_CONCURRENT_FETCHES = 5;
+    
+    // Ensure we have a valid cache object
+    const safeCache = itemDetailsCache || {};
+    
+    try {
       // Filter to only fetch items we don't already have in cache
       const uncachedProductIds = discounts
-        .filter(discount => discount.type === 'Product' && !itemDetailsCache[discount.product])
-        .map(discount => discount.product);
+        .filter((discount: Discount) => 
+          discount.type === 'Product' && 
+          discount.product && 
+          discount.product !== 'undefined' &&
+          discount.product !== 'null' &&
+          !safeCache[discount.product]
+        )
+        .map((discount: Discount) => discount.product)
+        // Remove duplicates
+        .filter((id: string, index: number, self: string[]) => self.indexOf(id) === index);
       
       const uncachedCategoryIds = discounts
-        .filter(discount => discount.type === 'Category' && !itemDetailsCache[discount.product])
-        .map(discount => discount.product);
+        .filter((discount: Discount) => 
+          discount.type === 'Category' && 
+          discount.product && 
+          discount.product !== 'undefined' &&
+          discount.product !== 'null' &&
+          !safeCache[discount.product]
+        )
+        .map((discount: Discount) => discount.product)
+        // Remove duplicates
+        .filter((id: string, index: number, self: string[]) => self.indexOf(id) === index);
       
       // If nothing new to fetch, exit early
       if (uncachedProductIds.length === 0 && uncachedCategoryIds.length === 0) {
-        setItemDetails(itemDetailsCache);
+        setItemDetails(safeCache);
         return;
       }
       
-      // Mark all uncached items as loading
-      setLoadingItems(new Set([...uncachedProductIds, ...uncachedCategoryIds]));
+      // Limit the number of IDs we fetch at once
+      const limitedProductIds = uncachedProductIds.slice(0, MAX_CONCURRENT_FETCHES);
+      const limitedCategoryIds = uncachedCategoryIds.slice(0, MAX_CONCURRENT_FETCHES);
       
-      // Fetch product details in parallel
-      if (uncachedProductIds.length > 0) {
-        const productPromises = uncachedProductIds.map(async (productId) => {
-          try {
-            const response = await fetch(`/api/products/${productId}`);
-            if (response.ok) {
-              const data = await response.json();
-              if (data.product) {
-                const galleryImage = data.product.gallery && data.product.gallery.length > 0
-                  ? data.product.gallery[0].src
-                  : "/placeholder.png";
-                  
+      // Mark items as loading
+      setLoadingItems(new Set([...limitedProductIds, ...limitedCategoryIds]));
+      
+      // Helper function to fetch with timeout
+      const fetchWithTimeout = async (url: string, options = {}) => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        
+        try {
+          const response = await fetch(url, { 
+            ...options,
+            signal: controller.signal 
+          });
+          clearTimeout(timeoutId);
+          return response;
+        } catch (err) {
+          clearTimeout(timeoutId);
+          throw err;
+        }
+      };
+      
+      // Fetch product details with rate limiting
+      let newProductDetails = {} as Record<string, ItemDetails>;
+      if (limitedProductIds.length > 0) {
+        // Process in batches of 2 to prevent overwhelming the server
+        for (let i = 0; i < limitedProductIds.length; i += 2) {
+          const batchIds = limitedProductIds.slice(i, i + 2);
+          
+          const productPromises = batchIds.map(async (productId: string) => {
+            if (!productId) return null;
+            
+            try {
+              const response = await fetchWithTimeout(`/api/products/${productId}`);
+              
+              if (response.ok) {
+                const data = await response.json();
+                if (data.product) {
+                  const galleryImage = data.product.gallery && data.product.gallery.length > 0
+                    ? data.product.gallery[0].src
+                    : PLACEHOLDER_IMAGE;
+                    
+                  return {
+                    id: productId,
+                    details: {
+                      id: data.product._id || productId,
+                      name: data.product.productName || 'Unknown Product',
+                      image: galleryImage
+                    }
+                  };
+                }
+              } else {
+                // Create placeholder data for failed fetches
                 return {
                   id: productId,
                   details: {
-                    id: data.product._id,
-                    name: data.product.productName,
-                    image: galleryImage
+                    id: productId,
+                    name: 'Product ID: ' + productId.substring(0, 8) + '...',
+                    image: PLACEHOLDER_IMAGE
                   }
                 };
               }
+              return null;
+            } catch (err) {
+              console.warn(`Error fetching product ${productId}:`, err);
+              // Return placeholder data to avoid continually trying to fetch
+              return {
+                id: productId,
+                details: {
+                  id: productId,
+                  name: 'Product ID: ' + productId.substring(0, 8) + '...',
+                  image: PLACEHOLDER_IMAGE
+                }
+              };
             }
-            return null;
-          } catch (err) {
-            console.error(`Error fetching product ${productId}:`, err);
-            return null;
-          }
-        });
-        
-        // Wait for all product fetches to complete
-        const productResults = await Promise.all(productPromises);
-        const newProductDetails = productResults
-          .filter(result => result !== null)
-          .reduce((acc, result) => {
-            if (result) acc[result.id] = result.details;
-            return acc;
-          }, {} as Record<string, ItemDetails>);
+          });
           
+          const batchResults = await Promise.all(productPromises);
+          const batchDetails = batchResults
+            .filter(result => result !== null)
+            .reduce((acc, result) => {
+              if (result) acc[result.id] = result.details;
+              return acc;
+            }, {} as Record<string, ItemDetails>);
+            
+          newProductDetails = { ...newProductDetails, ...batchDetails };
+          
+          // Add small delay between batches
+          if (i + 2 < limitedProductIds.length) {
+            await new Promise(resolve => setTimeout(resolve, 300));
+          }
+        }
+        
         // Update cache with new product details
         setItemDetailsCache(prev => ({...prev, ...newProductDetails}));
       }
       
-      // Fetch category details in parallel
-      if (uncachedCategoryIds.length > 0) {
-        const categoryPromises = uncachedCategoryIds.map(async (categoryId) => {
-          try {
-            const response = await fetch(`/api/categories/${categoryId}`);
-            if (response.ok) {
-              const data = await response.json();
-              if (data.category) {
+      // Fetch category details with rate limiting
+      let newCategoryDetails = {} as Record<string, ItemDetails>;
+      if (limitedCategoryIds.length > 0) {
+        // Process in batches of 2
+        for (let i = 0; i < limitedCategoryIds.length; i += 2) {
+          const batchIds = limitedCategoryIds.slice(i, i + 2);
+          
+          const categoryPromises = batchIds.map(async (categoryId: string) => {
+            if (!categoryId) return null;
+            
+            try {
+              const response = await fetchWithTimeout(`/api/categories/${categoryId}`);
+              
+              if (response.ok) {
+                const data = await response.json();
+                if (data.category) {
+                  return {
+                    id: categoryId,
+                    details: {
+                      id: data.category._id || categoryId,
+                      name: data.category.title || 'Unknown Category',
+                      image: data.category.thumbnailImage || PLACEHOLDER_IMAGE
+                    }
+                  };
+                }
+              } else {
+                // Create placeholder data for failed fetches
                 return {
                   id: categoryId,
                   details: {
-                    id: data.category._id,
-                    name: data.category.title,
-                    image: data.category.thumbnailImage || "/placeholder.png"
+                    id: categoryId,
+                    name: 'Category ID: ' + categoryId.substring(0, 8) + '...',
+                    image: PLACEHOLDER_IMAGE
                   }
                 };
               }
+              return null;
+            } catch (err) {
+              console.warn(`Error fetching category ${categoryId}:`, err);
+              // Return placeholder data to avoid continually trying to fetch
+              return {
+                id: categoryId,
+                details: {
+                  id: categoryId,
+                  name: 'Category ID: ' + categoryId.substring(0, 8) + '...',
+                  image: PLACEHOLDER_IMAGE
+                }
+              };
             }
-            return null;
-          } catch (err) {
-            console.error(`Error fetching category ${categoryId}:`, err);
-            return null;
-          }
-        });
-        
-        // Wait for all category fetches to complete
-        const categoryResults = await Promise.all(categoryPromises);
-        const newCategoryDetails = categoryResults
-          .filter(result => result !== null)
-          .reduce((acc, result) => {
-            if (result) acc[result.id] = result.details;
-            return acc;
-          }, {} as Record<string, ItemDetails>);
+          });
           
+          const batchResults = await Promise.all(categoryPromises);
+          const batchDetails = batchResults
+            .filter(result => result !== null)
+            .reduce((acc, result) => {
+              if (result) acc[result.id] = result.details;
+              return acc;
+            }, {} as Record<string, ItemDetails>);
+            
+          newCategoryDetails = { ...newCategoryDetails, ...batchDetails };
+          
+          // Add small delay between batches
+          if (i + 2 < limitedCategoryIds.length) {
+            await new Promise(resolve => setTimeout(resolve, 300));
+          }
+        }
+        
         // Update cache with new category details
         setItemDetailsCache(prev => ({...prev, ...newCategoryDetails}));
       }
       
-      // Clear loading state
+      // Combine all fetched details and update the main state
+      const allNewDetails = { ...newProductDetails, ...newCategoryDetails };
+      setItemDetails(prev => ({...prev, ...allNewDetails}));
       setLoadingItems(new Set());
-    };
-    
-    // Set itemDetails from cache immediately while we fetch new data
+    } catch (error) {
+      console.error("Error in fetchItemDetails:", error);
+      setLoadingItems(new Set());
+    }
+  }, [discounts, itemDetailsCache]);
+
+  useEffect(() => {
+    // Set itemDetails from cache immediately
     setItemDetails(itemDetailsCache);
     
     // Then fetch any missing details
     fetchItemDetails();
-  }, [discounts, itemDetailsCache]);
+  }, [itemDetailsCache, fetchItemDetails]);
 
   // Apply pagination when filtered discounts or page changes
   useEffect(() => {
-    applyPagination(filteredDiscounts);
-    // Calculate total pages
+    // Guard against empty arrays causing pagination issues
+    if (!filteredDiscounts || filteredDiscounts.length === 0) {
+      setDisplayedDiscounts([]);
+      setTotalPages(1);
+      return;
+    }
+    
+    // Apply pagination safely
     const total = Math.ceil(filteredDiscounts.length / itemsPerPage);
     setTotalPages(total > 0 ? total : 1);
+    
+    // Ensure current page is valid
+    const validCurrentPage = Math.min(currentPage, total);
+    if (validCurrentPage !== currentPage) {
+      setCurrentPage(validCurrentPage);
+    } else {
+      applyPagination(filteredDiscounts);
+    }
   }, [currentPage, filteredDiscounts, itemsPerPage]);
   
   // Handle pagination
   const applyPagination = (items: Discount[]) => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    setDisplayedDiscounts(items.slice(startIndex, endIndex));
+    if (!items || items.length === 0) {
+      setDisplayedDiscounts([]);
+      return;
+    }
+    
+    try {
+      const startIndex = (currentPage - 1) * itemsPerPage;
+      const endIndex = startIndex + itemsPerPage;
+      setDisplayedDiscounts(items.slice(startIndex, endIndex));
+    } catch (error) {
+      console.error("Pagination error:", error);
+      setDisplayedDiscounts([]);
+    }
   };
   
   // Handle pagination navigation
@@ -309,83 +519,107 @@ export default function DiscountList() {
   };
 
 
-  // Apply filter function with improved date handling
+  // Apply filter function with robust date handling
   const applyFilter = (discountList: Discount[], filter: string) => {
+    if (!discountList || !Array.isArray(discountList)) {
+      console.warn("Invalid discount list provided to filter function");
+      setFilteredDiscounts([]);
+      return;
+    }
+    
     setCurrentFilter(filter);
     
     const now = new Date();
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
     
-    console.log(`Applying filter: ${filter}`);
-    console.log(`Total discounts before filtering: ${discountList.length}`);
+    // Only log in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`Applying filter: ${filter}`);
+      console.log(`Total discounts before filtering: ${discountList.length}`);
+    }
     
     let filtered: Discount[] = [];
     
-    switch(filter) {
-      case "This Month":
-        // Filter discounts with start date in current month
-        filtered = discountList.filter(discount => {
-          const startDate = parseDate(discount.startDate);
-          if (!startDate) return false;
+    try {
+      switch(filter) {
+        case "This Month":
+          // Filter discounts with start date in current month
+          filtered = discountList.filter(discount => {
+            try {
+              // Skip invalid discounts
+              if (!discount || !discount.startDate) return false;
+              
+              const startDate = parseDate(discount.startDate);
+              if (!startDate) return false;
+              
+              const isThisMonth = startDate.getMonth() === currentMonth && 
+                                startDate.getFullYear() === currentYear;
+                                
+              return isThisMonth;
+            } catch (e) {
+              return false;
+            }
+          });
+          break;
           
-          const isThisMonth = startDate.getMonth() === currentMonth && 
-                             startDate.getFullYear() === currentYear;
-                             
-          if (isThisMonth) {
-            console.log(`Matching discount (This Month): ${discount.product}, Date: ${discount.startDate}`);
-          }
+        case "Last Month":
+          // Last month calculation
+          const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+          const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
           
-          return isThisMonth;
-        });
-        break;
-        
-      case "Last Month":
-        // Last month calculation
-        const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
-        const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
-        
-        // Filter discounts with start date in last month
-        filtered = discountList.filter(discount => {
-          const startDate = parseDate(discount.startDate);
-          if (!startDate) return false;
+          // Filter discounts with start date in last month
+          filtered = discountList.filter(discount => {
+            try {
+              // Skip invalid discounts
+              if (!discount || !discount.startDate) return false;
+              
+              const startDate = parseDate(discount.startDate);
+              if (!startDate) return false;
+              
+              const isLastMonth = startDate.getMonth() === lastMonth && 
+                                startDate.getFullYear() === lastMonthYear;
+              
+              return isLastMonth;
+            } catch (e) {
+              return false;
+            }
+          });
+          break;
           
-          const isLastMonth = startDate.getMonth() === lastMonth && 
-                             startDate.getFullYear() === lastMonthYear;
+        case "Last 3 Months":
+          // Calculate date 3 months ago
+          const threeMonthsAgo = new Date();
+          threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
           
-          if (isLastMonth) {
-            console.log(`Matching discount (Last Month): ${discount.product}, Date: ${discount.startDate}`);
-          }
+          // Filter discounts created within last 3 months
+          filtered = discountList.filter(discount => {
+            try {
+              // Skip invalid discounts
+              if (!discount) return false;
+              
+              // Use createdAt if available, otherwise fall back to startDate
+              const dateField = discount.createdAt || discount.startDate;
+              if (!dateField) return false;
+              
+              const creationDate = parseDate(dateField);
+              if (!creationDate) return false;
+              
+              const isWithinLast3Months = creationDate >= threeMonthsAgo && creationDate <= now;
+              
+              return isWithinLast3Months;
+            } catch (e) {
+              return false;
+            }
+          });
+          break;
           
-          return isLastMonth;
-        });
-        break;
-        
-      case "Last 3 Months":
-        // Calculate date 3 months ago
-        const threeMonthsAgo = new Date();
-        threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
-        
-        // Filter discounts created within last 3 months
-        filtered = discountList.filter(discount => {
-          // Use createdAt if available, otherwise fall back to startDate
-          const dateField = discount.createdAt || discount.startDate;
-          const creationDate = parseDate(dateField);
-          
-          if (!creationDate) return false;
-          
-          const isWithinLast3Months = creationDate >= threeMonthsAgo && creationDate <= now;
-          
-          if (isWithinLast3Months) {
-            console.log(`Matching discount (Last 3 Months): ${discount.product}, Creation Date: ${dateField}`);
-          }
-          
-          return isWithinLast3Months;
-        });
-        break;
-        
-      default:
-        filtered = discountList;
+        default:
+          filtered = [...discountList];
+      }
+    } catch (error) {
+      console.error("Error applying filter:", error);
+      filtered = [...discountList]; // Fallback to showing all discounts
     }
     
     console.log(`Filtered discounts count: ${filtered.length}`);
@@ -445,8 +679,10 @@ export default function DiscountList() {
     return (
       <div className="flex">
         <Sidebar />
-        <div className="min-h-screen bg-gray-50 p-6 flex-1 flex justify-center items-center">
-          <p>Loading discounts...</p>
+        <div className="min-h-screen bg-gray-50 p-6 flex-1 flex flex-col justify-center items-center">
+          <div className="w-16 h-16 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+          <p className="text-lg font-medium text-gray-700">Loading discounts...</p>
+          <p className="text-sm text-gray-500 mt-2">This may take a moment</p>
         </div>
       </div>
     );
@@ -481,51 +717,37 @@ export default function DiscountList() {
 
         {/* Discount Stats - Updated to include Future Plans with icons and clickable functionality */}
         <div className="grid grid-cols-3 gap-6 mb-6">
-          <div
-            className={getCardStyle("Active")}
-            onClick={() => handleFilterByStatus("Active")}
-          >
-            <div>
-              <p className="text-gray-700 text-lg font-semibold">
-                Active Discounts
-              </p>
-              <p className="text-gray-900 text-2xl font-bold">
-                {activeDiscounts}
-              </p>
-            </div>
-            <CheckCircleIcon className="h-10 w-10 text-green-500" />
+            <Card
+              title="Active Discounts"
+              count={activeDiscounts}
+              status="Active"
+              activeFilter={statusFilter}
+              onClick={handleFilterByStatus}
+              bgColor="bg-green-100"
+              textColor="green-500"
+              icon={<CheckCircleIcon className="h-8 w-8 text-green-500" />}
+            />
+            <Card
+              title="Expired Discounts"
+              count={expiredDiscounts}
+              status="Inactive"
+              activeFilter={statusFilter}
+              onClick={handleFilterByStatus}
+              bgColor="bg-red-100"
+              textColor="red-500"
+              icon={<XCircleIcon className="h-8 w-8 text-red-500" />}
+            />
+            <Card
+              title="Future Plan Discounts"
+              count={futurePlanDiscounts}
+              status="Future Plan"
+              activeFilter={statusFilter}
+              onClick={handleFilterByStatus}
+              bgColor="bg-blue-100"
+              textColor="blue-500"
+              icon={<CalendarIcon className="h-8 w-8 text-blue-500" />}
+            />
           </div>
-
-          <div
-            className={getCardStyle("Inactive")}
-            onClick={() => handleFilterByStatus("Inactive")}
-          >
-            <div>
-              <p className="text-gray-700 text-lg font-semibold">
-                Expired Discounts
-              </p>
-              <p className="text-gray-900 text-2xl font-bold">
-                {expiredDiscounts}
-              </p>
-            </div>
-            <XCircleIcon className="h-10 w-10 text-red-500" />
-          </div>
-
-          <div
-            className={getCardStyle("Future Plan")}
-            onClick={() => handleFilterByStatus("Future Plan")}
-          >
-            <div>
-              <p className="text-gray-700 text-lg font-semibold">
-                Future Plan Discounts
-              </p>
-              <p className="text-gray-900 text-2xl font-bold">
-                {futurePlanDiscounts}
-              </p>
-            </div>
-            <CalendarIcon className="h-10 w-10 text-blue-500" />
-          </div>
-        </div>
 
         {/* Discount Table */}
         <div className="bg-white p-6 rounded-lg shadow-lg">
@@ -580,133 +802,28 @@ export default function DiscountList() {
                 <th className="p-3 text-right">Action</th>
               </tr>
             </thead>
-            <tbody>
-              {displayedDiscounts.length > 0 ? (
-                displayedDiscounts.map((discount) => (
-                  <tr key={discount._id} className="border-t">
-                    <td className="p-3">
-                      <div className="flex items-center">
-                        {itemDetails[discount.product] ? (
-                          <>
-                            <div className="h-10 w-10 relative mr-3 overflow-hidden rounded bg-gray-100">
-                              {loadingItems.has(discount.product) ? (
-                                <div className="absolute inset-0 flex items-center justify-center">
-                                  <div className="w-5 h-5 border-2 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
-                                </div>
-                              ) : (
-                                <img
-                                  src={itemDetails[discount.product].image}
-                                  alt={itemDetails[discount.product].name}
-                                  className="h-full w-full object-cover"
-                                  onError={(e) => {
-                                    (e.target as HTMLImageElement).src = '/placeholder.png';
-                                  }}
-                                  loading="eager"
-                                />
-                              )}
-                            </div>
-                            <span className="font-medium">
-                              {itemDetails[discount.product].name}
-                            </span>
-                          </>
-                        ) : (
-                          <>
-                            <div className="h-10 w-10 relative mr-3 overflow-hidden rounded bg-gray-100 flex items-center justify-center">
-                              <div className="w-5 h-5 border-2 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
-                            </div>
-                            <span>{discount.product}</span>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                    <td className="p-3">{discount.type}</td>
-                    <td className="p-3">{discount.percentage}%</td>
-                    <td className="p-3">{discount.startDate}</td>
-                    <td className="p-3">{discount.endDate}</td>
-                    <td className="p-3">
-                      <span
-                        className={`inline-block px-3 py-1 rounded-full text-sm font-semibold 
-                        ${
-                          discount.status === "Active"
-                            ? "bg-green-300 text-green-800"
-                            : discount.status === "Future Plan"
-                            ? "bg-blue-300 text-blue-800"
-                            : "bg-orange-300 text-orange-800"
-                        }`}
-                      >
-                        {discount.status}
-                      </span>
-                    </td>
-                    <td className="p-3 flex gap-2 justify-end">
-                      <button
-                        onClick={() => handleViewDiscount(discount._id)}
-                        className="p-2 bg-orange-400 text-white rounded-md hover:bg-orange-600"
-                      >
-                        <EyeIcon className="h-5 w-5" />
-                      </button>
-                      <button
-                        onClick={() => handleEditDiscount(discount._id)}
-                        className="p-2 bg-orange-400 text-white rounded-md hover:bg-orange-600"
-                      >
-                        <PencilIcon className="h-5 w-5" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteDiscount(discount._id)}
-                        className="p-2 bg-orange-400 text-white rounded-md hover:bg-orange-600"
-                      >
-                        <TrashIcon className="h-5 w-5" />
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={7} className="p-3 text-center">
-                    {error ? (
-                      <p className="text-red-500">{error}</p>
-                    ) : statusFilter ? (
-                      <p>No {statusFilter} discounts found.</p>
-                    ) : (
-                      <p>No discounts found. Create your first discount!</p>
-                    )}
-                  </td>
-                </tr>
-              )}
-            </tbody>
+            <DiscountTableBody
+              discounts={displayedDiscounts}
+              itemDetails={itemDetails}
+              loadingItems={loadingItems}
+              error={error}
+              statusFilter={statusFilter}
+              onView={handleViewDiscount}
+              onEdit={handleEditDiscount}
+              onDelete={handleDeleteDiscount}
+            />
           </table>
 
           {/* Pagination */}
-          {filteredDiscounts.length > 0 && (
-            <div className="flex justify-center mt-6">
-              <div className="flex items-center gap-2">
-                <button
-                  className={`px-4 py-2 rounded-md ${
-                    currentPage === 1
-                      ? "bg-orange-200 text-gray-700 cursor-not-allowed"
-                      : "bg-orange-500 text-white hover:bg-orange-600"
-                  }`}
-                  onClick={handlePreviousPage}
-                  disabled={currentPage === 1}
-                >
-                  Previous
-                </button>
-                <span className="mx-2 text-gray-600">
-                  Page {currentPage} of {totalPages}
-                </span>
-                <button
-                  className={`px-4 py-2 rounded-md ${
-                    currentPage === totalPages
-                      ? "bg-orange-200 text-gray-700 cursor-not-allowed"
-                      : "bg-orange-500 text-white hover:bg-orange-600"
-                  }`}
-                  onClick={handleNextPage}
-                  disabled={currentPage === totalPages}
-                >
-                  Next
-                </button>
-              </div>
-            </div>
+          {discounts.length > 0 && (
+            <Pagination
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPrevious={handlePreviousPage}
+              onNext={handleNextPage}
+            />
           )}
+
         </div>
       </div>
     </div>

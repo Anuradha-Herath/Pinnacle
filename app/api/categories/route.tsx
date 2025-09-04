@@ -2,19 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import Category from '@/models/Category';
 import cloudinary from '@/lib/cloudinary';
-
-// Connect to MongoDB using Mongoose
-const connectDB = async () => {
-  try {
-    if (mongoose.connection.readyState === 0) {
-      await mongoose.connect(process.env.MONGODB_URI!);
-      console.log('Connected to MongoDB via Mongoose');
-    }
-  } catch (error) {
-    console.error('MongoDB connection error:', error);
-    throw new Error('Failed to connect to database');
-  }
-};
+import connectDB from '@/lib/optimizedDB'; // Use optimized connection
 
 // Helper function to upload image to Cloudinary
 const uploadToCloudinary = async (imageData: string) => {
@@ -36,18 +24,74 @@ const uploadToCloudinary = async (imageData: string) => {
   }
 };
 
+// Add CORS headers helper with cache control
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Max-Age': '86400',
+};
+
+// Add cache headers for categories (relatively stable data)
+const cacheHeaders = {
+  'Cache-Control': 'public, max-age=300, stale-while-revalidate=60', // 5 minutes cache, 1 minute stale
+  'CDN-Cache-Control': 'public, max-age=600', // 10 minutes for CDN
+  'Vary': 'Accept-Encoding',
+};
+
+// Handle OPTIONS request for CORS
+export async function OPTIONS() {
+  return new Response(null, {
+    status: 200,
+    headers: corsHeaders,
+  });
+}
+
 // GET all categories
 export async function GET() {
   try {
-    await connectDB();
+    // Connect with proper error handling
+    try {
+      await connectDB();
+      console.log('Database connected for categories');
+      
+      // Verify connection is actually ready
+      if (mongoose.connection.readyState !== 1) {
+        throw new Error(`Database not ready for categories. ReadyState: ${mongoose.connection.readyState}`);
+      }
+    } catch (dbError) {
+      console.error('Database connection failed for categories:', dbError);
+      return NextResponse.json({ 
+        error: "Database connection failed",
+        details: dbError instanceof Error ? dbError.message : String(dbError)
+      }, { 
+        status: 500,
+        headers: corsHeaders,
+      });
+    }
+    
     const categories = await Category.find().sort({ createdAt: -1 });
     
-    return NextResponse.json({ categories });
+    return NextResponse.json({ categories }, {
+      headers: {
+        ...corsHeaders,
+        ...cacheHeaders,
+      },
+    });
   } catch (error) {
-    console.error("Error fetching categories:", error);
+    console.error("DETAILED ERROR fetching categories:", {
+      error: error,
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    
     return NextResponse.json({ 
-      error: error instanceof Error ? error.message : "Failed to fetch categories" 
-    }, { status: 500 });
+      error: error instanceof Error ? error.message : "Failed to fetch categories",
+      details: process.env.NODE_ENV === 'development' && error instanceof Error ? error.stack : undefined
+    }, { 
+      status: 500,
+      headers: corsHeaders,
+    });
   }
 }
 

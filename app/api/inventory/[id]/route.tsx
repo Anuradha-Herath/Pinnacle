@@ -18,13 +18,16 @@ const connectDB = async () => {
 // GET single inventory item
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
     
+    // Access id asynchronously
+    const { id } = await params;
+    
     // Fetch inventory with product details
-    const inventoryItem = await Inventory.findById(params.id);
+    const inventoryItem = await Inventory.findById(id);
     
     if (!inventoryItem) {
       return NextResponse.json({ error: "Inventory item not found" }, { status: 404 });
@@ -46,18 +49,40 @@ export async function GET(
 // DELETE inventory item
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
     
-    const inventoryItem = await Inventory.findByIdAndDelete(params.id);
+    // Access id asynchronously
+    const { id } = await params;
     
-    if (!inventoryItem) {
-      return NextResponse.json({ error: "Inventory item not found" }, { status: 404 });
+    // Check if the ID is for a product (query param) or inventory item (path param)
+    const url = new URL(request.url);
+    const isProductId = url.searchParams.get("productId") === "true";
+    
+    let inventoryItem;
+    
+    if (isProductId) {
+      // Delete by product ID
+      console.log(`Deleting inventory by product ID: ${id}`);
+      inventoryItem = await Inventory.findOneAndDelete({ productId: id });
+    } else {
+      // Delete by inventory ID
+      console.log(`Deleting inventory by ID: ${id}`);
+      inventoryItem = await Inventory.findByIdAndDelete(id);
     }
     
-    return NextResponse.json({ message: "Inventory item deleted successfully" });
+    if (!inventoryItem) {
+      return NextResponse.json({ 
+        error: isProductId ? "No inventory item found for this product" : "Inventory item not found" 
+      }, { status: 404 });
+    }
+    
+    return NextResponse.json({ 
+      message: "Inventory item deleted successfully",
+      deletedItem: inventoryItem
+    });
   } catch (error) {
     console.error("Error deleting inventory item:", error);
     return NextResponse.json({ 

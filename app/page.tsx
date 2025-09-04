@@ -3,18 +3,24 @@
 import React, { useState, useEffect } from "react";
 import Header from "./components/Header";
 import ProductCarousel from "./components/ProductCarousel";
+import TrendingCarousel from "./components/TrendingCarousel";
 import Footer from "./components/Footer";
 import Link from "next/link";
 import HeaderPlaceholder from "./components/HeaderPlaceholder";
+import { getBrowserInfo, logBrowserInfo } from "@/lib/browserUtils";
+import { logPerformanceMetrics, measureApiCallTime } from "@/lib/performanceUtils";
+import { fetchCustomerProducts } from "@/lib/apiUtils";
+import { prefetchTrendingWhenIdle } from "@/lib/prefetching";
 
 const HomePage = () => {
-  const [products, setProducts] = useState([]);
-  const [trendingProducts, setTrendingProducts] = useState([]);
+  const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [genderLoading, setGenderLoading] = useState(false);
   const [accessoriesLoading, setAccessoriesLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedGender, setSelectedGender] = useState<'men' | 'women'>('women');
+  const [retryCount, setRetryCount] = useState(0);
+  const maxRetries = 3;
   
   // Categories we want to display - use lowercase consistently
   const categories = ["mens", "womens", "accessories"];
@@ -24,19 +30,46 @@ const HomePage = () => {
     accessories: []
   });
 
-  // Function to fetch all products and categorize them
-  const fetchProducts = async () => {
+  // Enhanced fetch function for Edge browser compatibility with caching
+  const edgeCompatibleFetch = async (url: string, options: RequestInit = {}) => {
+    const browserInfo = getBrowserInfo();
+    
+    const defaultHeaders = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+    };
+    
+    const enhancedOptions: RequestInit = {
+      method: 'GET',
+      mode: 'cors',
+      credentials: 'same-origin',
+      cache: 'force-cache', // Use cache when available
+      headers: {
+        ...defaultHeaders,
+        ...options.headers,
+      },
+      ...options,
+    };
+    
+    // For Edge browser, add additional safeguards
+    if (typeof browserInfo === 'object' && browserInfo.isEdge) {
+      console.log('Using Edge-optimized fetch for:', url);
+      enhancedOptions.referrerPolicy = 'strict-origin-when-cross-origin';
+    }
+    
+    return fetch(url, enhancedOptions);
+  };
+
+  // Function to fetch all products and categorize them with retry logic
+  const fetchProducts = async (attempt = 1) => {
     try {
       setLoading(true);
+      setError(null);
       
-      // Fetch all products
-      const response = await fetch('/api/customer/products');
+      console.log(`Fetching all products (attempt ${attempt}/${maxRetries})`);
       
-      if (!response.ok) {
-        throw new Error('Failed to fetch products');
-      }
-      
-      const data = await response.json();
+      // Fetch all products using the improved API utilities
+      const data = await fetchCustomerProducts({}) as { products: any[] };
       
       if (data.products && data.products.length > 0) {
         setProducts(data.products);
@@ -69,19 +102,45 @@ const HomePage = () => {
         });
         
         setCategoryProducts(productsByCategory);
+      } else {
+        console.warn('No products returned from API');
+        setCategoryProducts({
+          mens: [],
+          womens: [],
+          accessories: []
+        });
       }
       
-      // Fetch trending products (newly created + recently stocked)
-      const trendingResponse = await fetch('/api/customer/trending');
+      // Trending products are now handled by the TrendingCarousel component
       
-      if (trendingResponse.ok) {
-        const trendingData = await trendingResponse.json();
-        setTrendingProducts(trendingData.products || []);
-      }
+      setRetryCount(0); // Reset retry count on success
       
     } catch (err) {
       console.error('Error fetching products:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load products');
+      
+      if (err instanceof Error) {
+        if (err.message.includes('timeout') || err.name === 'AbortError') {
+          if (attempt < maxRetries) {
+            console.log(`Request timed out, retrying... (${attempt}/${maxRetries})`);
+            setRetryCount(attempt);
+            setTimeout(() => fetchProducts(attempt + 1), 2000); // Retry after 2 seconds
+            return;
+          } else {
+            setError('Request timed out after multiple attempts. Please refresh the page.');
+          }
+        } else {
+          if (attempt < maxRetries) {
+            console.log(`Request failed, retrying... (${attempt}/${maxRetries})`);
+            setRetryCount(attempt);
+            setTimeout(() => fetchProducts(attempt + 1), 2000);
+            return;
+          } else {
+            setError(`Failed to load products after ${maxRetries} attempts: ${err.message}`);
+          }
+        }
+      } else {
+        setError('Failed to load products');
+      }
     } finally {
       setLoading(false);
     }
@@ -91,19 +150,17 @@ const HomePage = () => {
   const fetchProductsByCategory = async (category: string) => {
     try {
       setGenderLoading(true);
+      setError(null);
       
       // Convert 'men'/'women' to match API parameter ('Men'/'Women')
       const apiCategory = category === 'men' ? 'Men' : 'Women';
       
-      // Fetch products filtered by category
-      const response = await fetch(`/api/customer/products?category=${apiCategory}`);
+      console.log(`Fetching products for category: ${apiCategory}`);
       
-      if (!response.ok) {
-        throw new Error(`Failed to fetch ${apiCategory} products`);
-      }
+      // Use the improved API utilities for better caching and error handling
+      const data = await fetchCustomerProducts({ category: apiCategory }) as { products: any[] };
       
-      const data = await response.json();
-      console.log(`Fetched ${apiCategory} products:`, data.products?.length || 0);
+      console.log(`Fetched ${data.products?.length || 0} ${apiCategory} products`);
       
       // Update just the specific category in our state
       if (data.products) {
@@ -111,38 +168,97 @@ const HomePage = () => {
           ...prev,
           [category + 's']: data.products
         }));
+      } else {
+        console.warn(`No products returned for ${apiCategory}`);
+        setCategoryProducts(prev => ({
+          ...prev,
+          [category + 's']: []
+        }));
       }
       
     } catch (err) {
       console.error(`Error fetching ${category} products:`, err);
+      
+      if (err instanceof Error) {
+        console.error('Error details:', {
+          message: err.message,
+          name: err.name,
+          stack: err.stack
+        });
+        
+        if (err.message.includes('500')) {
+          setError(`Server error while loading ${category} products. Please try refreshing the page.`);
+        } else if (err.message.includes('timeout') || err.name === 'AbortError') {
+          setError(`Request timed out while loading ${category} products. Please check your connection.`);
+        } else {
+          setError(`Failed to load ${category} products. Please try again.`);
+        }
+      } else {
+        setError(`Failed to load ${category} products`);
+      }
+      
+      // Set empty array on error to prevent infinite loading state
+      setCategoryProducts(prev => ({
+        ...prev,
+        [category + 's']: []
+      }));
     } finally {
       setGenderLoading(false);
     }
   };
 
-  // Improved fetchAccessoriesProducts with better error handling
+  // Improved fetchAccessoriesProducts with better error handling and API consistency
   const fetchAccessoriesProducts = async () => {
     try {
       setAccessoriesLoading(true);
       
-      // Ensure consistent casing by using "Accessories" exactly
-      console.log('Fetching accessories products...');
+      console.log('Fetching accessories products using improved API...');
       
-      const response = await fetch(`/api/customer/products?category=Accessories`);
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch accessories products: ${response.status}`);
+      // Try both capitalized and lowercase variations since there might be a case mismatch
+      let data;
+      try {
+        // First try lowercase
+        data = await fetchCustomerProducts({ category: 'accessories' }) as { products: any[] };
+        console.log(`Fetched ${data.products?.length || 0} accessories products (lowercase)`);
+      } catch (lowercaseError) {
+        console.log('Lowercase "accessories" failed, trying "Accessories"...', lowercaseError);
+        try {
+          data = await fetchCustomerProducts({ category: 'Accessories' }) as { products: any[] };
+          console.log(`Fetched ${data.products?.length || 0} accessories products (capitalized)`);
+        } catch (capitalizedError) {
+          console.log('Both lowercase and capitalized "accessories" failed, trying general filter...');
+          throw capitalizedError; // Re-throw to trigger fallback logic
+        }
       }
       
-      const data = await response.json();
+      // Use the same API utilities as other product fetching for consistency
+      // const data = await fetchCustomerProducts({ category: 'Accessories' }) as { products: any[] };
+      
       console.log(`Fetched ${data.products?.length || 0} accessories products`);
       
       // Debug the categories to make sure matching is working
       if (data.products?.length > 0) {
-        console.log('Accessories product categories:', 
-          data.products.map((p: any) => p.category));
+        console.log('Accessories product details:', 
+          data.products.map((p: any) => ({ 
+            name: p.name || p.productName, 
+            category: p.category,
+            id: p.id 
+          })));
       } else {
         console.log('No accessories products found in the API response');
+        
+        // Debug: Check if accessories exist in the general product list
+        const allAccessories = products.filter(p => 
+          p.category && p.category.toLowerCase().includes('accessor')
+        );
+        console.log('Accessories found in general products:', allAccessories.length);
+        if (allAccessories.length > 0) {
+          console.log('Sample accessories from general list:', 
+            allAccessories.slice(0, 3).map(p => ({ 
+              name: p.name || p.productName, 
+              category: p.category 
+            })));
+        }
       }
       
       // Update state only if we have products or an empty array
@@ -153,10 +269,36 @@ const HomePage = () => {
       
     } catch (err) {
       console.error(`Error fetching accessories products:`, err);
-      // On error, ensure we don't leave the carousel in a loading state
+      
+      // Provide more detailed error information
+      if (err instanceof Error) {
+        console.error('Accessories error details:', {
+          message: err.message,
+          stack: err.stack,
+        });
+        
+        // Try to provide a fallback using the general products list
+        if (products.length > 0) {
+          console.log('Attempting fallback: filtering accessories from general products...');
+          const accessoriesFromGeneral = products.filter(p => 
+            p.category && p.category.toLowerCase().includes('accessor')
+          );
+          
+          if (accessoriesFromGeneral.length > 0) {
+            console.log(`Found ${accessoriesFromGeneral.length} accessories in fallback`);
+            setCategoryProducts(prev => ({
+              ...prev,
+              accessories: accessoriesFromGeneral.slice(0, 10) // Limit to 10 for performance
+            }));
+            return; // Don't set empty array if we found fallback items
+          }
+        }
+      }
+      
+      // Only set empty array if no fallback worked
       setCategoryProducts(prev => ({
         ...prev,
-        accessories: [] // Reset to empty array on error
+        accessories: []
       }));
     } finally {
       setAccessoriesLoading(false);
@@ -165,6 +307,15 @@ const HomePage = () => {
 
   // Initial product fetch
   useEffect(() => {
+    // Log browser info for debugging
+    logBrowserInfo();
+    
+    // Start performance monitoring
+    logPerformanceMetrics();
+    
+    // Prefetch trending products data when browser is idle for better performance
+    prefetchTrendingWhenIdle();
+    
     const loadAllData = async () => {
       // First fetch all products
       await fetchProducts();
@@ -198,12 +349,26 @@ const HomePage = () => {
 
       {/* Main Content */}
       <div className="flex-grow">
-        {/* Trending Products - Newly Created + Recently Stocked */}
-        <ProductCarousel
-          title="Trending Products"
-          products={trendingProducts.length > 0 ? trendingProducts : []}
-          loading={loading}
-        />
+        {/* Error Message */}
+        {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mx-4 md:mx-8 my-4">
+            <div className="flex items-center justify-between">
+              <span>{error}</span>
+              <button 
+                onClick={() => {
+                  setError(null);
+                  fetchProducts();
+                }}
+                className="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600"
+              >
+                Retry
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Trending Products - Newly Created + Recently Stocked - Optimized Component */}
+        <TrendingCarousel />
 
         {/* Large Shop Now Images */}
         <div className="flex flex-col md:flex-row gap-6 md:gap-8 my-12 md:my-16 px-4 md:px-8 justify-center">

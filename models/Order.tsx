@@ -1,4 +1,9 @@
-import mongoose, { Schema } from "mongoose";
+import mongoose, { Schema, Model } from "mongoose";
+
+// Basic Order interface for typing purposes
+interface OrderModel extends mongoose.Document {
+  [key: string]: any;
+}
 
 // Schema for line items in the order
 const LineItemSchema = new Schema({
@@ -35,6 +40,10 @@ const LineItemSchema = new Schema({
 
 // Main Order schema
 const OrderSchema = new Schema({
+  userId: {
+      type: String,
+      required: true,
+    },
   // Customer information
   customer: {
     email: {
@@ -67,7 +76,7 @@ const OrderSchema = new Schema({
       required: true,
     },
     address: {
-      country: String,
+      district: String,
       address: String,
       city: String,
       postalCode: String,
@@ -96,21 +105,51 @@ const OrderSchema = new Schema({
   // Order status
   status: {
     type: String,
-    enum: ["pending", "Processing", "shipped", "delivered", "cancelled"],
+    enum: ["pending", "Paid" ,"Processing", "Shipped","Processed", "Delivered"],
     default: "pending",
   },
 
   // Payment status
   paymentStatus: {
     type: String,
-    enum: ["pending", "paid", "failed", "refunded"],
+    enum: ["pending", "paid"],
     default: "pending",
+  },
+
+  // Coupon code
+  coupon: {
+    code: {
+      type: String,
+      default: null,
+    },
+    discount: {
+      type: Number,
+      default: 0,
+    },
+    description: {
+      type: String,
+      default: null,
+    },
+  },
+
+  // Stripe customer ID
+  metadata: {
+    customerId: {
+      type: String,
+      required: true,
+    },
   },
 
   // Order identifier
   orderNumber: {
     type: String,
     unique: true,
+  },
+
+  // Loyalty points earned
+  pointsEarned: {
+    type: Number,
+    default: 0,
   },
 
   // Timestamps
@@ -133,5 +172,13 @@ OrderSchema.pre("save", function (next) {
 });
 
 // Create and export the Order model
-const Order = mongoose.models.Order || mongoose.model("Order", OrderSchema);
+let Order: Model<OrderModel>;
+
+// Check if mongoose.models exists before accessing it
+if (mongoose.models && mongoose.models.Order) {
+  Order = mongoose.models.Order as Model<OrderModel>;
+} else {
+  Order = mongoose.model<OrderModel>("Order", OrderSchema);
+}
+
 export default Order;

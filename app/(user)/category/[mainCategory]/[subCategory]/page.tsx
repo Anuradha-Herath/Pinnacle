@@ -7,6 +7,7 @@ import Header from "@/app/components/Header";
 import Footer from "@/app/components/Footer";
 import ProductCard from "@/app/components/ProductCard";
 import FilterSidebar, { FilterOptions } from "@/app/components/FilterSidebar";
+import { fetchProducts } from "@/lib/apiUtils";
 
 // Define types
 interface Product {
@@ -29,6 +30,7 @@ export default function SubCategoryPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [initialLoad, setInitialLoad] = useState(true); // Track initial load separately
   const [error, setError] = useState<string | null>(null);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [availableSizes, setAvailableSizes] = useState<string[]>([]);
@@ -42,17 +44,30 @@ export default function SubCategoryPage() {
   
   // Fetch products
   useEffect(() => {
-    const fetchProducts = async () => {
+    const fetchProductsData = async () => {
       try {
         setLoading(true);
-        const response = await fetch(`/api/products?category=${encodedMainCategory}&subCategory=${encodedSubCategory}`);
+        setError(null);
         
-        if (!response.ok) {
-          throw new Error('Failed to fetch products');
-        }
+        console.log(`Fetching products for ${mainCategory}/${subCategory}`);
         
-        const data = await response.json();
+        // Add timeout to prevent hanging requests
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Request timeout - Please try again')), 10000)
+        );
+        
+        // Use the new API utility with deduplication and timeout
+        const dataPromise = fetchProducts({
+          category: mainCategory, // Use decoded values for API
+          subCategory: subCategory,
+          _t: Date.now(), // Add cache buster for fresh data
+        }) as Promise<{ products: Product[] }>;
+        
+        const data = await Promise.race([dataPromise, timeoutPromise]) as { products: Product[] };
+        
         const fetchedProducts = data.products || [];
+        
+        console.log(`Fetched ${fetchedProducts.length} products for ${mainCategory}/${subCategory}`);
         setProducts(fetchedProducts);
         
         // Extract available sizes and price range from products
@@ -61,12 +76,15 @@ export default function SubCategoryPage() {
         let maxPrice = 0;
         
         fetchedProducts.forEach((product: Product) => {
-          product.sizes?.forEach(size => allSizes.add(size));
+          if (product.sizes && Array.isArray(product.sizes)) {
+            product.sizes.forEach(size => allSizes.add(size));
+          }
           
           if (product.regularPrice < minPrice) minPrice = product.regularPrice;
           if (product.regularPrice > maxPrice) maxPrice = product.regularPrice;
         });
         
+        console.log(`Extracted ${allSizes.size} unique sizes:`, Array.from(allSizes));
         setAvailableSizes(Array.from(allSizes));
         setPriceRange({ 
           min: minPrice !== Number.MAX_VALUE ? minPrice : 0,
@@ -84,13 +102,14 @@ export default function SubCategoryPage() {
         setError(error instanceof Error ? error.message : 'Failed to load products');
       } finally {
         setLoading(false);
+        setInitialLoad(false);
       }
     };
     
     if (encodedMainCategory && encodedSubCategory) {
-      fetchProducts();
+      fetchProductsData();
     }
-  }, [encodedMainCategory, encodedSubCategory]);
+  }, [encodedMainCategory, encodedSubCategory, mainCategory, subCategory]);
   
   // Apply filters when products or filters change
   useEffect(() => {
@@ -149,6 +168,8 @@ export default function SubCategoryPage() {
       image: product.gallery && product.gallery.length > 0 ? product.gallery[0].src : "/placeholder.png",
       colors: Array.from(colors || []),
       sizes: product.sizes || [],
+      category: product.category,
+      subCategory: product.subCategory,
     };
   });
 
@@ -164,7 +185,7 @@ export default function SubCategoryPage() {
         <div className="mb-6">
           <h1 className="text-3xl font-bold">{subCategory}</h1>
           <p className="text-gray-500">
-            <span className="cursor-pointer hover:text-orange-500" onClick={() => window.history.back()}>
+            <span className="cursor-pointer hover:text-gray-700" onClick={() => window.history.back()}>
               {mainCategory}
             </span> / {subCategory}
           </p>
@@ -213,8 +234,11 @@ export default function SubCategoryPage() {
           <div className="flex-1">
             {/* Loading State */}
             {loading && (
-              <div className="flex justify-center items-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-orange-500"></div>
+              <div className="flex flex-col justify-center items-center h-64">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-black"></div>
+                <p className="mt-4 text-gray-600">
+                  {initialLoad ? `Loading ${mainCategory} > ${subCategory} products...` : 'Updating filters...'}
+                </p>
               </div>
             )}
             

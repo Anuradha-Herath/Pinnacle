@@ -21,8 +21,9 @@ export async function GET(request: NextRequest) {
     await connectDB();
     
     const searchParams = request.nextUrl.searchParams;
-    const status = searchParams.get('status');
-    const search = searchParams.get('search');
+    // Access search parameters asynchronously
+    const status = await searchParams.get('status');
+    const search = await searchParams.get('search');
     
     // Build filter
     const filter: Record<string, any> = {};
@@ -92,7 +93,7 @@ export async function PUT(request: NextRequest) {
     }
     
     // Create a complete update object with all fields
-    const updatePayload = {
+    const updatePayload: Record<string, any> = {
       stock: body.stock,
       status: newStatus,
     };

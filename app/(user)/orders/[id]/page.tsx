@@ -37,7 +37,24 @@ interface Order {
   status: string;
   createdAt: string;
   updatedAt: string;
-  pointsEarned: number; // Add this field
+  pointsEarned: number;
+  
+  // Add missing properties that are referenced in the code
+  customer?: {
+    fullName?: string;
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    phone?: string;
+    address?: string;
+  };
+  user?: {
+    firstName?: string;
+    lastName?: string;
+    email?: string;
+    id?: string;
+  };
+  userId?: string;
 }
 
 export default function OrderDetail() {
@@ -102,6 +119,27 @@ export default function OrderDetail() {
       month: 'long',
       day: 'numeric'
     });
+  };
+
+  // Safely get customer name with multiple fallbacks
+  const getCustomerName = () => {
+    // Check if order exists at all
+    if (!order) return "Customer";
+    
+    // Try different ways the customer data might be structured
+    if (order.customer?.fullName) {
+      return order.customer.fullName;
+    } else if (order.customer?.firstName || order.customer?.lastName) {
+      return `${order.customer.firstName || ''} ${order.customer.lastName || ''}`.trim();
+    } else if (order.user?.firstName || order.user?.lastName) {
+      return `${order.user.firstName || ''} ${order.user.lastName || ''}`.trim();
+    } else if (order.userId || order.user) {
+      // If we only have the ID, show a generic name with truncated ID
+      const userId = (order.userId || order.user)?.toString();
+      return userId ? `Customer ${userId.substring(0, 6)}...` : "Customer";
+    } else {
+      return "Customer";
+    }
   };
 
   if (loading) {

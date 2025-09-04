@@ -1,12 +1,117 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar from "../../components/Sidebar";
 import { BellIcon, Cog6ToothIcon } from "@heroicons/react/24/solid";
 import Image from "next/image";
+import { CircularProgress } from "@mui/material";
+import { useAuth } from "@/app/context/AuthContext";
+
+interface AdminUser {
+  _id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  registrationDate: string;
+  lastLogin: string;
+  profileImage?: string;
+}
 
 export default function ProfilePage() {
   const router = useRouter();
+  const { user } = useAuth();
+  const [adminUser, setAdminUser] = useState<AdminUser | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Fetch admin user data
+    const fetchAdminProfile = async () => {
+      try {
+        // Check if user is authenticated and is an admin
+        if (!user) {
+          router.push('/login');
+          return;
+        }
+
+        if (user.role !== 'admin') {
+          router.push('/');
+          return;
+        }
+
+        // Fetch profile data from API
+        const response = await fetch('/api/profile');
+        if (!response.ok) {
+          throw new Error('Failed to fetch admin profile data');
+        }
+
+        const data = await response.json();
+        
+        if (data.success) {
+          // Format the user data
+          setAdminUser({
+            _id: data.user._id,
+            firstName: data.user.firstName || '',
+            lastName: data.user.lastName || '',
+            email: data.user.email || '',
+            phone: data.user.phone || 'Not provided',
+            registrationDate: new Date(data.user.createdAt || Date.now()).toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            }),
+            lastLogin: new Date(data.user.lastLogin || Date.now()).toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            }),
+            profileImage: data.user.profileImage || '/download.jpg'
+          });
+        } else {
+          throw new Error(data.error || 'Failed to fetch profile data');
+        }
+      } catch (err) {
+        console.error('Error fetching admin profile:', err);
+        setError('Failed to load admin profile data');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAdminProfile();
+  }, [user, router]);
+
+  if (loading) {
+    return (
+      <div className="flex">
+        <Sidebar />
+        <div className="min-h-screen bg-gray-50 p-6 flex-1 flex justify-center items-center">
+          <CircularProgress />
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex">
+        <Sidebar />
+        <div className="min-h-screen bg-gray-50 p-6 flex-1 flex justify-center items-center">
+          <div className="text-red-500 text-center">
+            <p className="text-xl mb-4">{error}</p>
+            <button 
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-orange-500 text-white rounded-lg"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex">
@@ -33,28 +138,43 @@ export default function ProfilePage() {
         <div className="max-w-5xl mx-auto bg-white rounded-2xl shadow-lg overflow-hidden">
           <div className="h-60 flex items-center justify-center relative" style={{ backgroundImage: 'url(/profilebackground.jpg)', backgroundSize: 'cover', backgroundPosition: 'center' }}>
             <div className="absolute -bottom-12">
-              <Image src="/download.jpg" alt="Profile" width={80} height={80} className="h-40 w-40 rounded-full object-cover" />
+              <Image 
+                src={adminUser?.profileImage || "/download.jpg"} 
+                alt="Profile" 
+                width={80} 
+                height={80} 
+                className="h-40 w-40 rounded-full object-cover" 
+              />
             </div>
           </div>
           <div className="flex p-10 pt-20">
             <div className="w-1/2 text-left">
-              <h2 className="text-2xl font-semibold pb-4">Dilusha Prabashwara</h2>
-              <p className="text-lg text-gray-600 leading-relaxed"><strong>Email:</strong><br /> DilushaP23@gmail.com</p>
-              <p className="text-lg text-gray-600 leading-relaxed"><strong>Phone:</strong><br /> +94723455608</p>
+              <h2 className="text-3xl font-semibold pb-4">
+                {adminUser?.firstName} {adminUser?.lastName}
+              </h2>
+              <p className="text-lg text-gray-600 mb-8">
+                <strong>Email:</strong><br /> {adminUser?.email}
+              </p>
+              <p className="text-lg text-gray-600 leading-relaxed">
+                <strong>Phone:</strong><br /> {adminUser?.phone}
+              </p>
             </div>
             <div className="w-px bg-white mx-10 pr-20"></div>
-            <div className="w-1/2 text-right pr-20 flex flex-col justify-end">
-              <p className="text-left text-lg text-gray-600"><strong>Address:</strong><br /> 103/2, Union Place, Colombo 07</p>
-              <p className="text-left text-lg text-gray-600"><strong>Registration Date:</strong> <br />Jun 28th, 2020</p>
-              <p className="text-left text-lg text-gray-600"><strong>Last Login Date:</strong><br /> Dec 22nd, 2024</p>
+            <div className="w-1/2 text-right pr-20 flex flex-col justify-end ">
+              <p className="text-left text-lg text-gray-600 mb-8">
+                <strong>Registration Date:</strong> <br />{adminUser?.registrationDate}
+              </p>
+              <p className="text-left text-lg text-gray-600">
+                <strong>Last Login Date:</strong><br /> {adminUser?.lastLogin}
+              </p>
             </div>
           </div>
           
           <div className="p-8 flex justify-end">
             <button 
-              onClick={() => router.push("/admin/dashboard")}
-              className="px-10 py-4 bg-gray-300 text-gray-700 rounded-lg">
-              BACK
+              onClick={() => router.push("/admin/adminprofile/profileedit")}
+              className="px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 ">
+              EDIT
             </button>
           </div>
         </div>

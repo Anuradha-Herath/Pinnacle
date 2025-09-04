@@ -1,12 +1,9 @@
 "use client";
 import { useState, useEffect } from "react";
-import { FiEdit } from "react-icons/fi";
-import { FaCrown } from "react-icons/fa";
-import { Button, Link, CircularProgress } from "@mui/material";
+import { GiCrown } from "react-icons/gi";
+import { Button, CircularProgress } from "@mui/material";
 import Header from "../../components/Header";
 import Footer from "../../components/Footer";
-import ReviewButton from "../../components/ViewDetailsButtonInReivew";
-import ProfilePageToNav from "../../components/ProfilePageToNav";
 import { useAuth } from "@/app/context/AuthContext";
 import { useRouter } from "next/navigation";
 
@@ -21,7 +18,10 @@ interface Order {
   }[];
   createdAt: string;
   totalPrice: number;
-  pointsEarned: number; // Add the pointsEarned field
+  subtotal: number;
+  shippingCost: number;
+  pointsEarned: number;
+  orderNumber: string;
 }
 
 interface UserProfile {
@@ -31,6 +31,7 @@ interface UserProfile {
   phone: string;
   address: string;
   points: number;
+  profilePicture: string;
 }
 
 export default function ProfilePage() {
@@ -38,9 +39,21 @@ export default function ProfilePage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [dataLoaded, setDataLoaded] = useState(false); // Flag to prevent repeated API calls
+  
+  // Add pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [ordersPerPage] = useState(5);
   
   const { user } = useAuth();
   const router = useRouter();
+
+  // Function to get crown color based on points
+  const getCrownColor = (points: number) => {
+    if (points >= 1000) return "text-yellow-500"; // Gold/Yellow
+    if (points >= 500) return "text-gray-400"; // Silver
+    return "text-black"; // Black
+  };
 
   // Fetch user profile and orders
   useEffect(() => {
@@ -51,9 +64,27 @@ export default function ProfilePage() {
         return;
       }
 
+      // If data is already loaded, don't fetch again
+      if (dataLoaded) {
+        setLoading(false);
+        return;
+      }
+
       try {
-        // Fetch user profile
-        const profileRes = await fetch('/api/profile');
+        // Add timeout to prevent hanging requests
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
+
+        // Fetch user profile with caching headers
+        const profileRes = await fetch('/api/profile', {
+          headers: {
+            'Cache-Control': 'max-age=300', // Cache for 5 minutes
+          },
+          signal: controller.signal,
+        });
+        
+        clearTimeout(timeoutId);
+        
         if (!profileRes.ok) throw new Error('Failed to fetch profile data');
         
         const profileData = await profileRes.json();
@@ -64,32 +95,73 @@ export default function ProfilePage() {
             email: profileData.user.email,
             phone: profileData.user.phone || '',
             address: profileData.user.address || '',
-            points: profileData.user.points || 0
+            points: profileData.user.points || 0,
+            profilePicture: profileData.user.profilePicture || '/p9.webp'
           });
         }
 
-        // Fetch user orders
-        const ordersRes = await fetch('/api/profile/orders');
+        // Fetch user orders from the new endpoint with caching
+        const ordersController = new AbortController();
+        const ordersTimeoutId = setTimeout(() => ordersController.abort(), 15000);
+        
+        const ordersRes = await fetch('/api/profile/user-orders', {
+          headers: {
+            'Cache-Control': 'max-age=300', // Cache for 5 minutes
+          },
+          signal: ordersController.signal,
+        });
+        
+        clearTimeout(ordersTimeoutId);
+        
         if (!ordersRes.ok) throw new Error('Failed to fetch orders');
         
         const ordersData = await ordersRes.json();
+        console.log("Orders data received:", ordersData); // For debugging
+        
         if (ordersData.success) {
+          // Orders are already formatted in the API response
           setOrders(ordersData.orders);
         }
+
+        // Mark data as loaded
+        setDataLoaded(true);
       } catch (err) {
-        setError("Failed to load profile data");
-        console.error(err);
+        if (err instanceof Error && err.name === 'AbortError') {
+          setError("Request timed out. Please try again.");
+        } else {
+          setError("Failed to load profile data");
+        }
+        console.log(err);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchProfileData();
-  }, [user, router]);
+    // Only fetch if we have a user and haven't loaded data yet
+    if (user && !dataLoaded) {
+      fetchProfileData();
+    } else if (user && dataLoaded) {
+      // If we have user and data is loaded, just set loading to false
+      setLoading(false);
+    }
+  }, [user?.id, dataLoaded]); // Removed router from dependencies to prevent unnecessary re-renders
 
   // Handle edit profile redirect
   const handleEditProfile = () => {
     router.push('/profile/edit');
+  };
+
+  // Calculate pagination values
+  const indexOfLastOrder = currentPage * ordersPerPage;
+  const indexOfFirstOrder = indexOfLastOrder - ordersPerPage;
+  const currentOrders = orders.slice(indexOfFirstOrder, indexOfLastOrder);
+  const totalPages = Math.ceil(orders.length / ordersPerPage);
+
+  // Function to handle page changes
+  const handlePageChange = (pageNumber: number) => {
+    setCurrentPage(pageNumber);
+    // Scroll back to top of orders section
+    document.getElementById('orders-section')?.scrollIntoView({ behavior: 'smooth' });
   };
 
   // Loading state
@@ -126,21 +198,34 @@ export default function ProfilePage() {
       <Header />
       <div className="max-w-4xl mx-auto p-6">
         <div className="flex items-center gap-4 mb-6">
-          <div className="w-16 h-16 bg-gray-300 rounded-full"></div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            {profile?.firstName} {profile?.lastName} {(profile?.points ?? 0) >= 200 && <FaCrown className="text-yellow-500" title="Premium customer" />}
+          <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-300 border-2 border-gray-300">
+            <img
+              src={profile?.profilePicture || '/p9.webp'}
+              alt="Profile"
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                e.currentTarget.src = '/p9.webp';
+              }}
+            />
+          </div>
+          <h1 className="text-3xl font-bold flex items-center gap-2">
+            {profile?.firstName} {profile?.lastName}
+            {profile && (
+              <GiCrown 
+                className={`ml-2 text-6xl ${getCrownColor(profile.points)}`}
+                title={`Points: ${profile.points} - ${
+                  profile.points >= 1000 ? 'Gold Crown' : 
+                  profile.points >= 500 ? 'Silver Crown' : 
+                  'Bronze Crown'
+                }`}
+              />
+            )}
           </h1>
         </div>
-        <div className="flex justify-end space-x-6 text-lg font-semibold">
-          <Link href="/wishlist" className="hover:underline">
-            Wishlist
-          </Link>
-          <Link href="/payment-options" className="hover:underline">
-            Payment Options
-          </Link>
-        </div>
-        <div className="bg-gray-100 p-4 rounded-lg mt-6 shadow-md">
-          <h2 className="font-semibold text-lg mb-2">Customer Details</h2>
+        
+        <div className=" p-4 rounded-lg mt-6 shadow-md bg-gray-100">
+          <div>
+          <h2 className="font-semibold text-2xl mb-2">Customer Details</h2>
           <p>
             <strong>Name:</strong> {profile?.firstName} {profile?.lastName}
           </p>
@@ -150,28 +235,24 @@ export default function ProfilePage() {
           <p>
             <strong>Phone:</strong> {profile?.phone || 'Not provided'}
           </p>
-          <p>
-            <strong>Delivery Address:</strong> {profile?.address || 'Not provided'}
-          </p>
-          <Button className="mt-3 flex items-center gap-2" onClick={handleEditProfile}>
-            <FiEdit /> Edit Details
-          </Button>
-        </div>
-        <div className="grid grid-cols-2 gap-4 mt-6">
-          <div className="bg-gray-100 p-4 rounded-lg shadow-md text-center">
-            <div className="text-2xl">&#x1F4B3;</div>
-            <p>Collect coupon to get discounts!</p>
-            <Button className="mt-2">Collect</Button>
           </div>
-          <div className="bg-gray-100 p-4 rounded-lg shadow-md text-center">
-            <div className="text-2xl">&#x2728;</div>
-            <p className="text-3xl font-bold">{profile?.points || 0}</p>
-            <p>Reward Points</p>
+
+          <div>
+          <button className="text-white bg-black px-4 py-2 rounded-md mt-4 hover:bg-gray-800" 
+            onClick={() => router.push('/profile/edit')}
+            > Edit Details
+          </button>
           </div>
         </div>
-        <div className="mt-10">
+
+        <div className="flex justify-center mt-6 mb-6">
+          <div className="bg-gray-200 rounded-lg p-6 text-center shadow-md">
+            <p className="text-black font-bold text-lg">Total points: {profile?.points || 0}</p>
+          </div>
+        </div>
+        
+        <div id="orders-section" className="mt-10">
           <h2 className="text-2xl font-bold mb-4">My Orders</h2>
-          <ProfilePageToNav />
         </div>
         
         {orders.length === 0 ? (
@@ -186,51 +267,154 @@ export default function ProfilePage() {
             </Button>
           </div>
         ) : (
-          orders.map((order) => (
-            <div
-              key={order._id}
-              className="bg-gray-100 p-4 rounded-lg shadow-md mb-4"
-            >
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold">Order #{order._id.substring(0, 8)}</h3>
-                <span className="bg-black text-white px-3 py-1 rounded-lg">
-                  {order.status}
-                </span>
-              </div>
-              {order.orderItems.map((item, index) => (
-                <div key={index} className="flex items-center gap-4 mt-4">
-                  <img
-                    src={item.image}
-                    alt={item.name}
-                    className="w-16 h-16 rounded-lg"
-                  />
+          <>
+            {/* Display only current page orders */}
+            {currentOrders.map((order) => (
+              <div
+                key={order._id}
+                className="bg-gray-100 p-4 rounded-lg shadow-md mb-4"
+              >
+                <div className="flex justify-between items-center">
                   <div>
-                    <p className="font-semibold">{item.name}</p>
-                    <p className="text-lg font-bold">
-                      Rs. {item.price.toFixed(2)}
+                    <h3 className="text-lg font-semibold">
+                      Order #{order.orderNumber || order._id.substring(0, 8)}
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      Placed on: {new Date(order.createdAt).toLocaleDateString('en-US', {
+                        year: 'numeric', month: 'long', day: 'numeric'
+                      })}
                     </p>
                   </div>
-                  <p className="ml-auto">Qty: {item.quantity}</p>
-                </div>
-              ))}
-              {order.pointsEarned > 0 && (
-                <div className="mt-2">
-                  <span className="text-green-600 text-sm font-medium">
-                    You earned {order.pointsEarned} reward points from this order!
+                  <span className={`px-3 py-1 rounded-lg text-white ${
+                    order.status?.toLowerCase() === 'paid' ? 'bg-green-500' :
+                    order.status?.toLowerCase() === 'shipped' ? 'bg-blue-500' :
+                    order.status?.toLowerCase() === 'delivered' ? 'bg-orange-500' :
+                    order.status?.toLowerCase() === 'refunded' ? 'bg-red-500' :
+                    order.status?.toLowerCase() === 'processing' ? 'bg-yellow-500 text-gray-300' : 
+                    'bg-gray-600'
+                  }`}>
+                    {order.status ? order.status.charAt(0).toUpperCase() + order.status.slice(1).toLowerCase() : 'Processing'}
                   </span>
                 </div>
-              )}
-              <ReviewButton status={order.status} />
-              <div className="text-right mt-2">
+
+                {/* Order items - handle both structures */}
+                {Array.isArray(order.orderItems) && order.orderItems.map((item, index) => (
+                  <div key={index} className="flex items-center gap-4 mt-4">
+                    <img
+                      src={item.image || '/placeholder.jpg'}
+                      alt={item.name}
+                      className="w-16 h-16 rounded-lg object-cover"
+                    />
+                    <div>
+                      <p className="font-semibold">{item.name}</p>
+                      <p className="text-lg font-bold">
+                        Rs. {typeof item.price === 'number' ? item.price.toFixed(2) : 'N/A'}
+                      </p>
+                    </div>
+                    <p className="ml-auto">Qty: {item.quantity}</p>
+                  </div>
+                ))}
+
+                {/* Order Summary */}
+                <div className="mt-4 pt-4 border-t border-gray-300">
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <p className="text-sm text-gray-600">Subtotal:</p>
+                      <p className="text-sm font-semibold">
+                        Rs. {typeof order.subtotal === 'number' ? order.subtotal.toFixed(2) : '0.00'}
+                      </p>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <p className="text-sm text-gray-600">Shipping Cost:</p>
+                      <p className="text-sm font-semibold">
+                        Rs. {typeof order.shippingCost === 'number' ? order.shippingCost.toFixed(2) : '0.00'}
+                      </p>
+                    </div>
+                    <div className="flex justify-between items-center pt-2 border-t border-gray-200">
+                      <p className="text-lg font-bold text-black">Total:</p>
+                      <p className="text-lg font-bold text-black">
+                        Rs. {typeof order.totalPrice === 'number' ? order.totalPrice.toFixed(2) : '0.00'}
+                      </p>
+                    </div>
+                    {order.pointsEarned > 0 && (
+                      <div className="flex justify-between items-center pt-1">
+                        <p className="text-sm text-black font-semibold">Points Earned:</p>
+                        <p className="text-sm text-black font-semibold">{order.pointsEarned}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                
+
+                {/* Remove the ReviewButton component - customers will go directly to review page */}
+                
+              </div>
+            ))}
+            
+            {/* Pagination controls */}
+            {totalPages > 1 && (
+              <div className="flex justify-center mt-6 gap-2 ">
                 <Button 
-                  className="text-sm font-semibold hover:underline"
-                  onClick={() => router.push(`/orders/${order._id}`)}
+                  variant="outlined"
+                  disabled={currentPage === 1}
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  sx={{ 
+                    borderColor: 'black', 
+                    color: 'black',
+                    '&:hover': { 
+                      borderColor: 'black', 
+                      backgroundColor: 'rgba(0, 0, 0, 0.04)' 
+                    }
+                  }}
                 >
-                  View Details
+                  Previous
+                </Button>
+                
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(number => (
+                  <Button
+                    key={number}
+                    variant={currentPage === number ? "contained" : "outlined"}
+                    onClick={() => handlePageChange(number)}
+                    sx={
+                      currentPage === number 
+                        ? { 
+                            backgroundColor: 'black', 
+                            color: 'white',
+                            '&:hover': { backgroundColor: '#333333' }
+                          } 
+                        : { 
+                            borderColor: 'black', 
+                            color: 'black',
+                            '&:hover': { 
+                              borderColor: 'black', 
+                              backgroundColor: 'rgba(8, 8, 8, 0.04)' 
+                            }
+                          }
+                    }
+                  >
+                    {number}
+                  </Button>
+                ))}
+                
+                <Button 
+                  variant="outlined"
+                  disabled={currentPage === totalPages}
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  sx={{ 
+                    borderColor: 'black', 
+                    color: 'black',
+                    '&:hover': { 
+                      borderColor: 'black', 
+                      backgroundColor: 'rgba(0, 0, 0, 0.04)' 
+                    }
+                  }}
+                >
+                  Next
                 </Button>
               </div>
-            </div>
-          ))
+            )}
+          </>
         )}
       </div>
       <Footer />

@@ -45,31 +45,58 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState<string | null>(null);
 
-  // Check for discounts when component mounts
+  // Check for discounts when component mounts - OPTIMIZED VERSION
   useEffect(() => {
-    const checkForDiscounts = async () => {
-      try {
-        const response = await fetch(`/api/discounts/product/${product.id}`);
-        if (response.ok) {
-          const data = await response.json();
-          if (data.discount && data.discount.active) {
-            // Calculate the discounted price
-            const percentage = data.discount.percentage;
-            const discountAmount = (product.price * percentage) / 100;
-            const discounted = product.price - discountAmount;
-            
-            setHasDiscount(true);
-            setDiscountedPrice(discounted);
-            setDiscountPercentage(percentage);
-          }
+    const checkForDiscounts = () => {
+      // Reset discount state first
+      setHasDiscount(false);
+      setDiscountedPrice(null);
+      setDiscountPercentage(null);
+
+      // First check if product already has discountedPrice directly in its data
+      if (product.discountedPrice !== undefined && 
+          product.discountedPrice > 0 && 
+          product.price > product.discountedPrice) {
+        // Calculate percentage based on the provided discountedPrice
+        const percentage = Math.round(((product.price - product.discountedPrice) / product.price) * 100);
+        
+        // Only apply discount if percentage is valid and positive
+        if (percentage > 0 && percentage <= 100) {
+          setHasDiscount(true);
+          setDiscountedPrice(product.discountedPrice);
+          setDiscountPercentage(percentage);
         }
-      } catch (error) {
-        console.error("Error checking discounts:", error);
+        return;
       }
+      
+      // If there's a discount property on the product, use it directly
+      if (product.discount && 
+          product.discount.percentage > 0 && 
+          product.discount.discountedPrice && 
+          product.discount.discountedPrice > 0) {
+        
+        // Validate the discount percentage
+        if (product.discount.percentage > 0 && product.discount.percentage <= 100) {
+          setHasDiscount(true);
+          setDiscountedPrice(product.discount.discountedPrice);
+          setDiscountPercentage(product.discount.percentage);
+        }
+        return;
+      }
+
+      // If we reach here, there's no valid discount - state is already reset above
     };
     
-    checkForDiscounts();
-  }, [product.id, product.price]);
+    // Only check for discounts if the product has a valid ID and price
+    if (product.id && product.price) {
+      checkForDiscounts();
+    } else {
+      // Reset discount state for invalid products
+      setHasDiscount(false);
+      setDiscountedPrice(null);
+      setDiscountPercentage(null);
+    }
+  }, [product.id, product.price, product.discountedPrice, product.discount]);
 
   // Ensure we have valid data with defaults
   const productWithDefaults = {
@@ -114,12 +141,6 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
     const finalDiscountedPrice = product.discountedPrice !== undefined 
       ? product.discountedPrice 
       : (hasDiscount && discountedPrice !== null ? discountedPrice : undefined);
-    
-    console.log("Adding product to cart with prices:", {
-      regular: product.price,
-      discounted: finalDiscountedPrice,
-      hasDiscount: hasDiscount
-    });
     
     // Important: Pass false to prevent duplicate notifications
     addToCart({
@@ -223,9 +244,9 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
       )}
 
       {/* Discount Badge - Moved to top right below wishlist heart */}
-      {hasDiscount && discountPercentage && (
-        <div className="absolute top-12 right-3 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full z-10">
-          -{discountPercentage}%
+      {hasDiscount && discountPercentage !== null && discountPercentage > 0 && (
+        <div className="absolute top-12 right-3 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full z-10 animate-fadeIn">
+          -{Math.round(discountPercentage)}%
         </div>
       )}
 
@@ -248,14 +269,14 @@ const ProductCard = ({ product, hideWishlist }: ProductCardProps) => {
         {hasDiscount && discountedPrice !== null ? (
           <>
             <p className="text-red-600 font-semibold">
-              ${discountedPrice.toFixed(2)}
+              ${(discountedPrice || 0).toFixed(2)}
             </p>
             <p className="text-gray-500 text-sm line-through ml-2">
-              ${product.price.toFixed(2)}
+              ${(product.price || 0).toFixed(2)}
             </p>
           </>
         ) : (
-          <p className="text-gray-600">${product.price.toFixed(2)}</p>
+          <p className="text-gray-600">${(product.price || 0).toFixed(2)}</p>
         )}
       </div>
 

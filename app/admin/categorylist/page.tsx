@@ -1,10 +1,13 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Sidebar from "../../components/Sidebar";
 import TopBar from "../../components/TopBar";
-import { PencilIcon, TrashIcon, EyeIcon } from "@heroicons/react/24/solid";
+import { PencilIcon, TrashIcon, EyeIcon, ArrowPathIcon } from "@heroicons/react/24/solid";
+import { adminCategoryCache } from "@/lib/adminCategoryCache";
+import { useRequestDeduplication } from "@/hooks/useRequestDeduplication";
+import { usePerformanceMonitor } from "@/hooks/usePerformanceMonitor";
 
 interface Category {
   _id: string;
@@ -18,62 +21,104 @@ interface Category {
 
 export default function CategoryList() {
   const router = useRouter();
+  const { deduplicatedFetch } = useRequestDeduplication();
+  usePerformanceMonitor('CategoryList');
+  
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>("All"); // Add filter state
 
+  // Optimized fetch with caching and deduplication
+  const fetchCategories = useCallback(async (forceRefresh = false) => {
+    const cacheKey = "admin_categories";
+    
+    try {
+      setLoading(true);
+      console.log(`Fetching categories. Force refresh: ${forceRefresh}`);
+      
+      // Always fetch fresh data for admin operations to avoid stale data issues
+      if (!forceRefresh) {
+        const cachedData = adminCategoryCache.get<Category[]>(cacheKey);
+        if (cachedData && !adminCategoryCache.isStale(cacheKey)) {
+          console.log(`Using fresh cached data. Count: ${cachedData.length}`);
+          setCategories(cachedData);
+          setLoading(false);
+          return;
+        }
+      }
+
+      // Clear any existing cache before fetching
+      if (forceRefresh) {
+        adminCategoryCache.invalidate();
+        console.log('Cache cleared before fresh fetch');
+      }
+
+      console.log('Fetching fresh data from API');
+      
+      // Use direct fetch for admin operations to avoid deduplication delays
+      const response = await fetch("/api/categories", {
+        method: 'GET',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.categories) {
+        console.log(`Fresh data received. Count: ${data.categories.length}`);
+        setCategories(data.categories);
+        // Cache the data with very short cache time for admin operations
+        adminCategoryCache.set(cacheKey, data.categories, 30 * 1000); // 30 seconds only
+        console.log('Data cached with short TTL');
+      }
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+      setError(error instanceof Error ? error.message : "An unknown error occurred");
+      // Clear cache on error to prevent serving stale data
+      adminCategoryCache.invalidate();
+      console.log('Cache invalidated due to error');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   // Fetch categories on component mount
   useEffect(() => {
-    const fetchCategories = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch("/api/categories");
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch categories");
-        }
-
-        const data = await response.json();
-        setCategories(data.categories);
-      } catch (error) {
-        console.error("Error fetching categories:", error);
-        setError(error instanceof Error ? error.message : "An unknown error occurred");
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchCategories();
-  }, []);
+  }, [fetchCategories]);
+
+  // Memoized filtered categories to prevent unnecessary recalculations
+  const filteredCategories = useMemo(() => {
+    return filter === "All"
+      ? categories
+      : categories.filter(category => category.mainCategory.includes(filter));
+  }, [categories, filter]);
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10); // Show 10 inventory items per page
-  const [totalPages, setTotalPages] = useState(1);
-
-  // Update useEffect to calculate total pages when categories or filter changes
-  useEffect(() => {
-    // Calculate total pages based on filtered categories
-    const filtered = filter === "All" 
-      ? categories 
-      : categories.filter(category => category.mainCategory.includes(filter));
-    
-    setTotalPages(Math.ceil(filtered.length / itemsPerPage));
-  }, [categories, filter, itemsPerPage]);
-
-  // Get paginated categories
-  const getPaginatedCategories = () => {
-    // First filter the categories
-    const filtered = filter === "All"
-      ? categories
-      : categories.filter(category => category.mainCategory.includes(filter));
-    
-    // Then apply pagination
+  
+  // Memoized pagination calculations
+  const { totalPages, paginatedCategories } = useMemo(() => {
+    const totalPages = Math.ceil(filteredCategories.length / itemsPerPage);
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
-    return filtered.slice(startIndex, endIndex);
-  };
+    const paginatedCategories = filteredCategories.slice(startIndex, endIndex);
+    
+    return { totalPages, paginatedCategories };
+  }, [filteredCategories, currentPage, itemsPerPage]);
+
+  // Reset to first page when filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter]);
 
   // Pagination control handlers
   const handlePreviousPage = () => {
@@ -92,17 +137,42 @@ export default function CategoryList() {
   const handleDeleteCategory = async (id: string) => {
     if (confirm("Are you sure you want to delete this category?")) {
       try {
-        const response = await fetch(`/api/categories/${id}`, {
-          method: "DELETE",
+        console.log(`Attempting to delete category with ID: ${id}`);
+        
+        // Immediately remove from UI for better UX
+        setCategories(prevCategories => {
+          const filtered = prevCategories.filter((category) => category._id !== id);
+          console.log(`Categories updated optimistically. Before: ${prevCategories.length}, After: ${filtered.length}`);
+          return filtered;
         });
 
+        // Clear all cache immediately
+        adminCategoryCache.invalidate(); // Clear entire cache
+        console.log('All caches cleared');
+        
+        const response = await fetch(`/api/categories/${id}`, {
+          method: "DELETE",
+          headers: {
+            'Cache-Control': 'no-cache',
+          },
+        });
+
+        console.log(`Delete response status: ${response.status}`);
+
         if (!response.ok) {
-          throw new Error("Failed to delete category");
+          // Revert the optimistic update on error
+          fetchCategories(true).catch(console.error);
+          const errorData = await response.json().catch(() => ({ error: "Failed to delete category" }));
+          console.error(`Delete failed with error:`, errorData);
+          throw new Error(errorData.error || "Failed to delete category");
         }
 
-        // Remove the category from the list
-        setCategories(categories.filter((category) => category._id !== id));
+        const successData = await response.json().catch(() => ({ message: "Category deleted successfully" }));
+        console.log(`Delete success:`, successData);
 
+        // Force a fresh fetch to ensure consistency
+        await fetchCategories(true);
+        
         alert("Category deleted successfully");
       } catch (error) {
         console.error("Error deleting category:", error);
@@ -110,14 +180,6 @@ export default function CategoryList() {
       }
     }
   };
-
-  // Get filtered categories - updated to handle array of categories
-  const filteredCategories = filter === "All"
-    ? categories
-    : categories.filter(category => category.mainCategory.includes(filter));
-
-  // Get the current page's categories
-  const paginatedCategories = getPaginatedCategories();
 
   return (
     <div className="flex">
@@ -129,7 +191,7 @@ export default function CategoryList() {
           {/* Header with Filter */}
           <div className="flex justify-between items-center mb-6">
             <div className="flex items-center space-x-4">
-              <h1 className="text-2xl font-bold">Categories</h1>
+              <h1 className="text-2xl font-bold">Categories ({categories.length})</h1>
 
               {/* Main Category Filter */}
               <div className="ml-4">
@@ -146,12 +208,26 @@ export default function CategoryList() {
               </div>
             </div>
 
-            <button
-              onClick={() => router.push("/admin/categorycreate")}
-              className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors"
-            >
-              Add New Category
-            </button>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => {
+                  adminCategoryCache.invalidate(); // Clear entire cache
+                  setError(null); // Clear any errors
+                  fetchCategories(true);
+                }}
+                className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors flex items-center"
+                disabled={loading}
+              >
+                <ArrowPathIcon className={`h-4 w-4 mr-1 ${loading ? 'animate-spin' : ''}`} />
+                {loading ? "Refreshing..." : "Refresh"}
+              </button>
+              <button
+                onClick={() => router.push("/admin/categorycreate")}
+                className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors"
+              >
+                Add New Category
+              </button>
+            </div>
           </div>
 
           {/* Loading state */}
@@ -165,12 +241,24 @@ export default function CategoryList() {
           {!loading && error && (
             <div className="bg-red-100 text-red-700 p-4 rounded-md text-center">
               <p>{error}</p>
-              <button
-                onClick={() => window.location.reload()}
-                className="mt-2 underline hover:no-underline"
-              >
-                Retry
-              </button>
+              <div className="mt-4 space-x-2">
+                <button
+                  onClick={() => {
+                    setError(null);
+                    adminCategoryCache.invalidate(); // Clear entire cache
+                    fetchCategories(true);
+                  }}
+                  className="bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600 transition-colors"
+                >
+                  Retry
+                </button>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="bg-gray-500 text-white py-2 px-4 rounded hover:bg-gray-600 transition-colors"
+                >
+                  Hard Refresh
+                </button>
+              </div>
             </div>
           )}
 

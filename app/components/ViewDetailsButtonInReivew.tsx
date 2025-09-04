@@ -1,19 +1,41 @@
-import Link from 'next/link';
-import React from 'react';
+import { Button } from "@mui/material";
+import { useRouter } from "next/navigation";
 
-const ReviewButton = ({ status }: { status: string }) => {  
-    if (status === "Delivered") {
-        return (
-          <div className="text-right mt-2">
-            <Link href="/toreview">
-              <button className="text-sm bg-gray-600 text-white px-3 py-1 rounded-lg hover:bg-gray-700 mb-1">
-                Review This Item
-              </button>
-            </Link>
-          </div>
-        );
-      }
-      return null;
+interface ReviewButtonProps {
+  status: string | undefined;
 }
+
+const ReviewButton: React.FC<ReviewButtonProps> = ({ status }) => {
+  const router = useRouter();
+  
+  // Only show review button for delivered orders
+  if (status?.toLowerCase() !== 'delivered') {
+    return null;
+  }
+  
+  return (
+    <div className="mt-4 text-right ">
+      <Button 
+        onClick={() => router.push('/productReview')}
+        variant="contained"
+        disableElevation
+        sx={{ 
+          backgroundColor: 'black ', 
+          color: 'white',
+          '&:hover': { 
+            backgroundColor: '#333 !important' // Slightly lighter black on hover for better UX
+          },
+          fontWeight: 'large',
+          padding: '6px 10px',
+          boxShadow: 'none',
+          textTransform: 'none',
+          borderRadius: '10px', // Adding rounded corners to the button
+        }}
+      >
+        Review
+      </Button>
+    </div>
+  );
+};
 
 export default ReviewButton;

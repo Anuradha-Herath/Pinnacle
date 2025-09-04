@@ -2,9 +2,12 @@
 import { useState, useEffect, useRef } from 'react';
 import Sidebar from '../../components/Sidebar';
 import AdminProductCart from '../../components/AdminProductCard';
+import AdminProductListSkeleton from '../../components/AdminProductListSkeleton';
 import TopBar from '../../components/TopBar';
 import { useRouter } from 'next/navigation';
 import { MagnifyingGlassIcon } from '@heroicons/react/24/solid';
+
+import { deduplicateRequest, invalidateProductCaches } from '@/lib/apiUtils';
 
 interface Product {
   _id: string;
@@ -32,29 +35,64 @@ const ProductsPage = () => {
   const [totalPages, setTotalPages] = useState(1);
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
+  const [navigating, setNavigating] = useState(false); // Add navigation loading state
   const router = useRouter();
 const [filter, setFilter] = useState('All'); // Add state for filter
   const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
 
-  const fetchProducts = async (page = 1, query = searchQuery, category = filter) => {
+  const fetchProducts = async (page = 1, query = searchQuery, category = filter, forceFresh = false) => {
     try {
       setLoading(true);
+      setError(null); // Clear previous errors
+      
       // Include the search query in the API call if it exists
       const queryParam = query ? `&q=${encodeURIComponent(query)}` : '';
-const categoryParam = category && category !== 'All' ? `&category=${encodeURIComponent(category)}` : '';
-      const response = await fetch(`/api/products?page=${page}&limit=${itemsPerPage}${queryParam}${categoryParam}`);
+      const categoryParam = category && category !== 'All' ? `&category=${encodeURIComponent(category)}` : '';
+      // Add cache busting parameter if forced fresh or if coming from product creation
+      const cacheBustParam = forceFresh || window.location.search.includes('_t=') ? `&_t=${Date.now()}` : '';
+      const url = `/api/products?page=${page}&limit=${itemsPerPage}${queryParam}${categoryParam}${cacheBustParam}`;
       
-      if (!response.ok) {
-        throw new Error('Failed to fetch products');
+      // Add timeout for faster failure detection
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+      
+      try {
+        // Use deduplicated request to prevent duplicate API calls, but bypass cache if forced fresh
+        const data: any = forceFresh 
+          ? await fetch(url, { 
+              cache: 'no-store',
+              signal: controller.signal,
+              headers: {
+                'Cache-Control': 'no-cache, no-store, must-revalidate',
+                'Pragma': 'no-cache'
+              }
+            }).then(res => {
+              if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+              return res.json();
+            })
+          : await deduplicateRequest(url, { signal: controller.signal });
+        
+        clearTimeout(timeoutId);
+        
+        if (data.success) {
+          setProducts(data.products || []);
+          setTotalPages(data.pagination?.pages || 1);
+        } else {
+          throw new Error(data.error || 'Failed to fetch products');
+        }
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        throw fetchError;
       }
       
-      const data = await response.json();
-      setProducts(data.products);
-      setTotalPages(data.pagination.pages);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      if (err instanceof Error && err.name === 'AbortError') {
+        setError('Request timed out. Please try again.');
+      } else {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+      }
       console.error('Error fetching products:', err);
     } finally {
       setLoading(false);
@@ -62,7 +100,16 @@ const categoryParam = category && category !== 'All' ? `&category=${encodeURICom
   };
 
   useEffect(() => {
-    fetchProducts(currentPage);
+    // Check if we're coming from product creation/edit (cache bust parameter)
+    const shouldForceFresh = window.location.search.includes('_t=');
+    fetchProducts(currentPage, searchQuery, filter, shouldForceFresh);
+    
+    // Clean up the URL if we had cache bust parameter
+    if (shouldForceFresh) {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('_t');
+      window.history.replaceState({}, '', url.toString());
+    }
   }, [currentPage, itemsPerPage]);
 
   // Close suggestions when clicking outside
@@ -84,12 +131,10 @@ const categoryParam = category && category !== 'All' ? `&category=${encodeURICom
     const fetchSuggestions = async () => {
       if (searchQuery.length >= 2) {
         try {
-          const response = await fetch(`/api/search/suggestions?q=${encodeURIComponent(searchQuery)}&limit=5`);
-          if (response.ok) {
-            const data = await response.json();
-            setSuggestions(data.suggestions);
-            setShowSuggestions(true);
-          }
+          const url = `/api/search/suggestions?q=${encodeURIComponent(searchQuery)}&limit=5`;
+          const data: any = await deduplicateRequest(url);
+          setSuggestions(data.suggestions);
+          setShowSuggestions(true);
         } catch (error) {
           console.error('Error fetching suggestions:', error);
         }
@@ -120,8 +165,8 @@ const categoryParam = category && category !== 'All' ? `&category=${encodeURICom
     if (products.length === 1 && currentPage > 1) {
       setCurrentPage(currentPage - 1);
     } else {
-      // Otherwise just refresh the current page
-      fetchProducts(currentPage, searchQuery);
+      // Otherwise just refresh the current page with forced fresh data
+      fetchProducts(currentPage, searchQuery, filter, true);
     }
   };
 
@@ -196,12 +241,28 @@ discountedPrice: product.discountedPrice, // Pass discounted price if it exists
           <header className="mb-6">
             <div className="flex justify-between items-center mb-4">
               <h1 className="text-2xl font-bold">All Products</h1>
-              <button 
-                onClick={() => router.push('/admin/productcreate')} 
-                className="bg-orange-500 text-white px-4 py-2 rounded-lg"
-              >
-                Add New Product
-              </button>
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => {
+                    invalidateProductCaches();
+                    fetchProducts(currentPage, searchQuery, filter, true);
+                  }} 
+                  className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition-colors"
+                  disabled={loading}
+                >
+                  {loading ? 'Refreshing...' : 'Refresh'}
+                </button>
+                <button 
+                  onClick={() => {
+                    setNavigating(true);
+                    router.push('/admin/productcreate');
+                  }} 
+                  className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors"
+                  disabled={navigating}
+                >
+                  {navigating ? 'Loading...' : 'Add New Product'}
+                </button>
+              </div>
             </div>
             
             {/* Search bar with suggestions */}
@@ -298,20 +359,17 @@ discountedPrice: product.discountedPrice, // Pass discounted price if it exists
 
 
 
-          {/* Loading state */}
-          {loading && (
-            <div className="text-center py-10">
-              <p>Loading products...</p>
-            </div>
-          )}
+          {/* Loading State - Show skeleton instead of simple loading text */}
+          {loading && <AdminProductListSkeleton />}
 
           {/* Error state */}
           {error && (
-            <div className="text-center py-10">
-              <p className="text-red-500">Error: {error}</p>
+            <div className="bg-red-50 border border-red-200 rounded-lg p-6 text-center">
+              <div className="text-red-600 font-semibold mb-2">Error Loading Products</div>
+              <div className="text-red-500 mb-4">{error}</div>
               <button 
-                onClick={() => window.location.reload()} 
-                className="mt-4 px-4 py-2 bg-blue-500 text-white rounded-md"
+                onClick={() => fetchProducts(currentPage, searchQuery, filter, true)}
+                className="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition-colors"
               >
                 Try Again
               </button>
@@ -320,16 +378,21 @@ discountedPrice: product.discountedPrice, // Pass discounted price if it exists
 
           {/* Empty state */}
           {!loading && !error && formattedProducts.length === 0 && (
-            <div className="text-center py-10">
-              <p className="text-gray-500">
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
+              <div className="text-gray-600 font-semibold mb-2">No Products Found</div>
+              <div className="text-gray-500 mb-4">
                 {searchQuery ? `No products found matching "${searchQuery}"` : "No products found. Create your first product!"}
-              </p>
+              </div>
               {!searchQuery && (
                 <button 
-                  onClick={() => router.push('/admin/productcreate')} 
-                  className="mt-4 px-4 py-2 bg-orange-500 text-white rounded-md"
+                  onClick={() => {
+                    setNavigating(true);
+                    router.push('/admin/productcreate');
+                  }}
+                  className="bg-orange-500 text-white px-4 py-2 rounded-lg hover:bg-orange-600 transition-colors"
+                  disabled={navigating}
                 >
-                  Add New Product
+                  {navigating ? 'Loading...' : 'Add New Product'}
                 </button>
               )}
               {searchQuery && (

@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
     const products = await Product.find({
       $or: [
         { productName: { $regex: searchPattern } },
-        { description: { $regex: searchPattern } },
+        
         { category: { $regex: searchPattern } },
         { subCategory: { $regex: searchPattern } },
         { tag: { $regex: searchPattern } },

@@ -23,10 +23,44 @@ export async function GET() {
     await connectDB();
     console.log('Database connected, fetching coupons...');
     
+    // First, update coupon statuses based on current date - similar to discounts
+    const today = new Date().toISOString().split('T')[0]; // Get current date in YYYY-MM-DD format
+    
+    // Update expired active coupons to Inactive
+    const expiredResult = await Coupon.updateMany(
+      { 
+        status: 'Active', 
+        endDate: { $lt: today } 
+      },
+      { 
+        $set: { status: 'Inactive' } 
+      }
+    );
+    
+    console.log(`Updated ${expiredResult.modifiedCount} expired coupons to Inactive status`);
+    
+    // Update future coupons to Active when their start date has arrived
+    const futureResult = await Coupon.updateMany(
+      { 
+        status: 'Future Plan', 
+        startDate: { $lte: today },
+        endDate: { $gte: today }
+      },
+      { 
+        $set: { status: 'Active' } 
+      }
+    );
+    
+    console.log(`Updated ${futureResult.modifiedCount} future coupons to Active status`);
+    
+    // Then fetch all coupons (now with correct statuses)
     const coupons = await Coupon.find({}).sort({ createdAt: -1 });
     console.log(`Found ${coupons.length} coupons`);
     
-    return NextResponse.json({ coupons });
+    return NextResponse.json({ 
+      coupons,
+      updated: expiredResult.modifiedCount > 0 || futureResult.modifiedCount > 0
+    });
   } catch (error) {
     console.error("Error fetching coupons:", error);
     return NextResponse.json({ 
@@ -44,6 +78,18 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     console.log('Creating new coupon with data:', body);
     
+    // Calculate the status based on dates - similar to discounts
+    const currentDate = new Date().toISOString().split('T')[0]; // Get current date in YYYY-MM-DD format
+    let couponStatus;
+    
+    if (new Date(body.startDate) > new Date(currentDate)) {
+      couponStatus = 'Future Plan';
+    } else if (new Date(body.endDate) < new Date(currentDate)) {
+      couponStatus = 'Inactive';
+    } else {
+      couponStatus = 'Active';
+    }
+    
     const newCoupon = new Coupon({
       product: body.product,
       price: body.price,
@@ -51,8 +97,15 @@ export async function POST(request: NextRequest) {
       code: body.code,
       startDate: body.startDate,
       endDate: body.endDate,
-      status: body.status,
+      status: couponStatus, // Use calculated status instead of body.status
       description: body.description || '',
+      customerEligibility: body.customerEligibility || 'all',
+      limit: body.limit || '0',
+      oneTimeUse: body.oneTimeUse || false,
+      // Include other fields from the coupon model
+      couponType: body.couponType,
+      discountType: body.discountType,
+      minOrderValue: body.minOrderValue
     });
     
     console.log('Saving coupon to database...');
@@ -80,12 +133,33 @@ export async function PUT(request: NextRequest) {
     const body = await request.json();
     console.log('Updating coupon with data:', body);
     
-    const updatedCoupon = await Coupon.findByIdAndUpdate(body.id, body, { new: true });
+    // Calculate the status based on dates - similar to discounts
+    const currentDate = new Date().toISOString().split('T')[0]; // Get current date in YYYY-MM-DD format
+    let couponStatus;
+    
+    if (new Date(body.startDate) > new Date(currentDate)) {
+      couponStatus = 'Future Plan';
+    } else if (new Date(body.endDate) < new Date(currentDate)) {
+      couponStatus = 'Inactive';
+    } else {
+      couponStatus = 'Active';
+    }
+    
+    // Update the coupon with calculated status
+    const updatedCoupon = await Coupon.findByIdAndUpdate(
+      body.id, 
+      { 
+        ...body, 
+        status: couponStatus // Override with calculated status
+      }, 
+      { new: true }
+    );
+    
     if (!updatedCoupon) {
       return NextResponse.json({ error: "Coupon not found" }, { status: 404 });
     }
     
-    console.log('Coupon updated successfully');
+    console.log('Coupon updated successfully with status:', couponStatus);
     return NextResponse.json({ 
       message: "Coupon updated successfully", 
       coupon: updatedCoupon 

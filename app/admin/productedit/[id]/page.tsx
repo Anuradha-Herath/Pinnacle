@@ -6,6 +6,8 @@ import Sidebar from "../../../components/Sidebar";
 import ProductForm from "@/app/components/product/ProductForm";
 import { initialProductFormData } from "@/app/hooks/product/useProductForm";
 
+import { deduplicateRequest } from '@/lib/apiUtils';
+
 export default function ProductEdit() {
   const { id } = useParams();
   const [isClient, setIsClient] = useState(false);
@@ -21,11 +23,9 @@ export default function ProductEdit() {
     const fetchProduct = async () => {
       try {
         setIsLoading(true);
-        const res = await fetch(`/api/products/${id}`);
         
-        if (!res.ok) throw new Error("Failed to fetch product");
-        
-        const data = await res.json();
+        // Use deduplicated request for better performance
+        const data: any = await deduplicateRequest(`/api/products/${id}`);
         const product = data.product;
 
         // Process gallery with additional images

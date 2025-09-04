@@ -59,7 +59,8 @@ export async function POST(request: NextRequest) {
     // Create reset URL - Get base URL from request to match the correct port
     const host = request.headers.get('host') || 'localhost:3001';
     const protocol = host.includes('localhost') ? 'http' : 'https';
-    const resetURL = `${protocol}://${host}/password-reset/${resetToken}`;
+    const adminParam = user.role === 'admin' ? '?from=admin' : '';
+    const resetURL = `${protocol}://${host}/password-reset/${resetToken}${adminParam}`;
     
     // For development, log the reset URL to console
     if (process.env.NODE_ENV === 'development') {
@@ -72,11 +73,21 @@ export async function POST(request: NextRequest) {
         to: user.email,
         subject: 'Password Reset Request',
         html: `
-          <h1>Password Reset</h1>
-          <p>You requested a password reset for your Pinnacle account. Click the link below to reset your password:</p>
-          <a href="${resetURL}" target="_blank">Reset Password</a>
-          <p>This link will expire in 1 hour.</p>
-          <p>If you didn't request this, please ignore this email.</p>
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+            <h1 style="color: #000; ">Password Reset</h1>
+            <p style="color: #333; font-size: 16px;">You requested a password reset for your Pinnacle account.</p>
+            <p style="color: #333; font-size: 16px;">Click the button below to reset your password:</p>
+            
+            <div style=" margin: 30px 0;">
+              <a href="${resetURL}" 
+                 style="background-color: #000; color: white; padding: 12px 30px; text-decoration: none; border-radius: 5px; font-size: 16px; display: inline-block; border: 1px solid #000;">
+                Reset Password
+              </a>
+            </div>
+            
+            <p style="color: #666; font-size: 14px;">This link will expire in 1 hour.</p>
+            <p style="color: #666; font-size: 14px;">If you didn't request this, please ignore this email.</p>
+          </div>
         `
       });
     } catch (err) {

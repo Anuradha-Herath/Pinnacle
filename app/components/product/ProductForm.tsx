@@ -1,6 +1,7 @@
 import React from "react";
 import { useRouter } from "next/navigation";
 import { useProductForm, initialProductFormData } from "@/app/hooks/product/useProductForm";
+import { invalidateProductCaches } from "@/lib/apiUtils";
 import ProductBasicInfoForm from "./ProductBasicInfoForm";
 import ProductAttributesForm from "./ProductAttributesForm";
 import SizeChartUploader from "./SizeChartUploader";
@@ -85,10 +86,20 @@ export default function ProductForm({
         throw new Error(errorData.error || `Failed to ${isEdit ? 'update' : 'create'} product`);
       }
       
+      const result = await res.json();
+      console.log(`Product ${isEdit ? 'updated' : 'created'} successfully:`, result);
+      
+      // Invalidate related caches to ensure fresh data
+      invalidateProductCaches();
+      
+      // Show success message
       alert(`Product ${isEdit ? 'updated' : 'created'} successfully! Redirecting to product list...`);
-      setTimeout(() => {
-        router.push("/admin/productlist");
-      }, 500);
+      
+      // Add cache busting parameter to ensure fresh data is loaded
+      const cacheBustParam = `?_t=${Date.now()}`;
+      
+      // Immediate redirect with cache busting
+      router.push(`/admin/productlist${cacheBustParam}`);
       
     } catch (error) {
       console.error(`Error ${isEdit ? 'updating' : 'saving'} product:`, error);

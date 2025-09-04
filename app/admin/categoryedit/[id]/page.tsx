@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import Sidebar from "../../../components/Sidebar";
 import TopBar from "../../../components/TopBar";
 import { PhotoIcon } from "@heroicons/react/24/solid";
+import { adminCategoryCache } from "@/lib/adminCategoryCache";
+import { useRequestDeduplication } from "@/hooks/useRequestDeduplication";
 
 interface Category {
   _id: string;
@@ -13,7 +15,7 @@ interface Category {
   description: string;
   priceRange: string;
   thumbnailImage: string;
-  mainCategory: string;
+  mainCategory: string | string[];
 }
 
 export default function CategoryEdit() {
@@ -21,6 +23,7 @@ export default function CategoryEdit() {
   const params = useParams();
   const id = params?.id as string;
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { deduplicatedFetch } = useRequestDeduplication();
   
   // Form state
   const [categoryTitle, setCategoryTitle] = useState("");
@@ -31,41 +34,67 @@ export default function CategoryEdit() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [mainCategory, setMainCategory] = useState<string>("");
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+
+  // Optimized fetch category data with caching
+  const fetchCategory = useCallback(async () => {
+    if (!id) return;
+    
+    const cacheKey = `admin_category_${id}`;
+    
+    try {
+      setLoading(true);
+      
+      // Check cache first
+      const cachedData = adminCategoryCache.get<Category>(cacheKey);
+      if (cachedData) {
+        populateForm(cachedData);
+        setLoading(false);
+        return;
+      }
+
+      const data = await deduplicatedFetch(`/api/categories/${id}`);
+      const category = data.category;
+      
+      // Cache the data
+      adminCategoryCache.set(cacheKey, category, 10 * 60 * 1000); // 10 minutes for individual categories
+      
+      populateForm(category);
+      
+    } catch (error) {
+      console.error("Error fetching category:", error);
+      setError(error instanceof Error ? error.message : "Failed to load category");
+    } finally {
+      setLoading(false);
+    }
+  }, [id, deduplicatedFetch]);
+
+  // Helper function to populate form with category data
+  const populateForm = useCallback((category: Category) => {
+    setCategoryTitle(category.title);
+    setDescription(category.description || "");
+    setPriceRange(category.priceRange || "");
+    // Handle mainCategory - convert to array if needed
+    const mainCategoryArray = Array.isArray(category.mainCategory) 
+      ? category.mainCategory 
+      : category.mainCategory ? [category.mainCategory] : [];
+    setSelectedCategories(mainCategoryArray);
+    setOriginalThumbnailUrl(category.thumbnailImage || null);
+  }, []);
+
+  // Handle checkbox changes for category selection
+  const handleCategoryChange = (category: string) => {
+    setSelectedCategories(prev => 
+      prev.includes(category)
+        ? prev.filter(cat => cat !== category) // Remove if already selected
+        : [...prev, category] // Add if not selected
+    );
+  };
 
   // Fetch category data
   useEffect(() => {
-    const fetchCategory = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch(`/api/categories/${id}`);
-        
-        if (!response.ok) {
-          throw new Error("Failed to fetch category");
-        }
-        
-        const data = await response.json();
-        const category = data.category;
-        
-        // Set form fields
-        setCategoryTitle(category.title);
-        setDescription(category.description || "");
-        setPriceRange(category.priceRange || "");
-        setMainCategory(category.mainCategory || "");
-        setOriginalThumbnailUrl(category.thumbnailImage || null);
-        
-      } catch (error) {
-        console.error("Error fetching category:", error);
-        setError(error instanceof Error ? error.message : "Failed to load category");
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    if (id) {
-      fetchCategory();
-    }
-  }, [id]);
+    fetchCategory();
+  }, [fetchCategory]);
 
   // Handle thumbnail image upload
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -81,8 +110,8 @@ export default function CategoryEdit() {
 
   // Handle form submission
   const handleUpdateCategory = async () => {
-    if (!categoryTitle.trim() || !mainCategory) {
-      alert("Category title and main category are required!");
+    if (!categoryTitle.trim() || selectedCategories.length === 0) {
+      alert("Category title and at least one main category are required!");
       return;
     }
     
@@ -99,7 +128,7 @@ export default function CategoryEdit() {
           description,
           priceRange,
           thumbnailImage: thumbnailImage || originalThumbnailUrl,
-          mainCategory // Include main category
+          mainCategory: selectedCategories // Include main category array
         })
       });
       
@@ -110,6 +139,11 @@ export default function CategoryEdit() {
       
       // Success - redirect to category list
       alert('Category updated successfully!');
+      
+      // Invalidate relevant caches
+      adminCategoryCache.invalidate("admin_categories");
+      adminCategoryCache.invalidate(`admin_category_${id}`);
+      
       router.push("/admin/categorylist");
       
     } catch (error) {
@@ -140,6 +174,11 @@ export default function CategoryEdit() {
       
       // Success - redirect to category list
       alert('Category deleted successfully!');
+      
+      // Invalidate relevant caches
+      adminCategoryCache.invalidate("admin_categories");
+      adminCategoryCache.invalidate(`admin_category_${id}`);
+      
       router.push("/admin/categorylist");
       
     } catch (error) {
@@ -254,22 +293,57 @@ export default function CategoryEdit() {
           <div className="bg-white p-6 rounded-lg shadow-md max-w-3xl mx-auto">
             <h2 className="text-lg font-semibold mb-4">Category Information</h2>
             <div className="space-y-4">
-              {/* Main Category Dropdown - New Field */}
+              {/* Main Category Selection - Changed to checkboxes */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Main Category <span className="text-red-500">*</span>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Main Category (Select at least one)
                 </label>
-                <select
-                  value={mainCategory}
-                  onChange={(e) => setMainCategory(e.target.value)}
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  required
-                >
-                  <option value="" disabled>Select a main category</option>
-                  <option value="Men">Men</option>
-                  <option value="Women">Women</option>
-                  <option value="Accessories">Accessories</option>
-                </select>
+                <div className="flex space-x-60">
+                  {/* Men Category Checkbox */}
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="edit-category-men"
+                      checked={selectedCategories.includes("Men")}
+                      onChange={() => handleCategoryChange("Men")}
+                      className="h-4 w-4 text-orange-500 focus:ring-orange-500 border-gray-300 rounded bg-orange-500 checked:bg-orange-500"
+                      disabled={isSubmitting}
+                    />
+                    <label htmlFor="edit-category-men" className="ml-2 text-sm text-gray-700">
+                      Men
+                    </label>
+                  </div>
+                  
+                  {/* Women Category Checkbox */}
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="edit-category-women"
+                      checked={selectedCategories.includes("Women")}
+                      onChange={() => handleCategoryChange("Women")}
+                      className="h-4 w-4 text-orange-500 focus:ring-orange-500 border-gray-300 rounded bg-orange-500 checked:bg-orange-500"
+                      disabled={isSubmitting}
+                    />
+                    <label htmlFor="edit-category-women" className="ml-2 text-sm text-gray-700">
+                      Women
+                    </label>
+                  </div>
+                  
+                  {/* Accessories Category Checkbox */}
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="edit-category-accessories"
+                      checked={selectedCategories.includes("Accessories")}
+                      onChange={() => handleCategoryChange("Accessories")}
+                      className="h-4 w-4 text-orange-500 focus:ring-orange-500 border-gray-300 rounded bg-orange-500 checked:bg-orange-500"
+                      disabled={isSubmitting}
+                    />
+                    <label htmlFor="edit-category-accessories" className="ml-2 text-sm text-gray-700">
+                      Accessories
+                    </label>
+                  </div>
+                </div>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">

@@ -7,6 +7,8 @@ import Sidebar from "../../components/Sidebar";
 import TopBar from "../../components/TopBar";
 import Image from "next/image";
 import { Crown } from "lucide-react";
+import { getCustomerType } from "@/utils/loyaltyPoints";
+import { getUserPoints } from "@/utils/modelAdapters";
 {/*import { Card, CardContent } from "@/components/ui/card";*/}
 
 interface Customer {
@@ -16,6 +18,7 @@ interface Customer {
   email: string;
   role: string;
   createdAt: string;
+  points?: number | null;
 }
 
 export default function CustomerList() {
@@ -97,11 +100,12 @@ export default function CustomerList() {
     return `${month} ${day} ${year}`;
   };
 
-  // Function to determine customer type (just a placeholder implementation)
-  const getCustomerType = (role: string) => {
-    if (role === 'admin') return 'black';
-    if (role === 'premium') return 'orange';
-    return 'gray';
+  // Function to handle admin role separately
+  const getCrownColor = (customer: Customer) => {
+    if (customer.role === 'admin') {
+      return 'text-orange-500';
+    }
+    return getCustomerType(customer.points || 0).color;
   };
 
   // Default profile image
@@ -163,6 +167,7 @@ export default function CustomerList() {
                   <th className="p-3">Customer Name</th>
                   <th className="p-3">Id</th>
                   <th className="p-3">Joined date</th>
+                  <th className="p-3">Loyalty Status</th>
                   <th className="p-3 text-center">Type</th>
                 </tr>
               </thead>
@@ -191,16 +196,24 @@ export default function CustomerList() {
                         ? formatDate(customer.createdAt)
                         : "N/A"}
                     </td>
+                    <td className="p-3">
+                      <div className="flex items-center">
+                        <span className={`font-medium ${customer.role === 'admin' ? 'text-orange-500' : getCustomerType(getUserPoints(customer)).color}`}>
+                          {customer.role === 'admin' 
+                            ? 'Admin' 
+                            : getCustomerType(getUserPoints(customer)).type}
+                        </span>
+                        <span className="ml-2 text-gray-500">({getUserPoints(customer)} points)</span>
+                      </div>
+                    </td>
                     <td className="p-3 text-center">
-                      <Crown
-                        className={`w-5 h-5 inline ${
-                          getCustomerType(customer.role) === "black"
-                            ? "text-black"
-                            : getCustomerType(customer.role) === "gray"
-                            ? "text-gray-400"
-                            : "text-orange-500"
-                        }`}
-                      />
+                      {customer.role === 'admin' ? (
+                        <span className="text-orange-500">Admin</span>
+                      ) : (
+                        <Crown
+                          className={`w-5 h-5 inline ${getCustomerType(getUserPoints(customer)).color}`}
+                        />
+                      )}
                     </td>
                   </tr>
                 ))}

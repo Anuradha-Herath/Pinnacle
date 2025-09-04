@@ -29,9 +29,17 @@ export async function GET(req: NextRequest) {
       }, { status: 401 });
     }
 
-    // Get orders for the authenticated user
-    const orders = await Order.find({ user: authResult.user?.id })
-      .sort({ createdAt: -1 }); // Most recent orders first
+    console.log("Looking for orders for user ID:", authResult.user?.id);
+    
+    // Check for orders with both potential field names (userId and user)
+    const orders = await Order.find({
+      $or: [
+        { user: authResult.user?.id },
+        { userId: authResult.user?.id }
+      ]
+    }).sort({ createdAt: -1 }); // Most recent orders first
+    
+    console.log(`Found ${orders.length} orders for this user`);
     
     return NextResponse.json({
       success: true,

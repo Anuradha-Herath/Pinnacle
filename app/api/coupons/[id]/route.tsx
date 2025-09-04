@@ -19,11 +19,11 @@ const connectDB = async () => {
 // GET a specific coupon by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
-    const id = params.id;
+    const { id } = await params;
     console.log(`Fetching coupon with ID: ${id}`);
     
     const coupon = await Coupon.findById(id);
@@ -44,21 +44,51 @@ export async function GET(
 // PUT to update a specific coupon by ID
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
-    
-    const id = params.id;
+      const { id } = await params;
     const body = await request.json();
     console.log(`Updating coupon with ID: ${id}`);
     
-    const updatedCoupon = await Coupon.findByIdAndUpdate(id, body, { new: true });
+    // Calculate the status based on dates - similar to discounts
+    const currentDate = new Date().toISOString().split('T')[0]; // Get current date in YYYY-MM-DD format
+    let couponStatus;
+    
+    if (new Date(body.startDate) > new Date(currentDate)) {
+      couponStatus = 'Future Plan';
+    } else if (new Date(body.endDate) < new Date(currentDate)) {
+      couponStatus = 'Inactive';
+    } else {
+      couponStatus = 'Active';
+    }
+    
+    // Extract specific fields with validation
+    const updatedCoupon = await Coupon.findByIdAndUpdate(
+      id, 
+      {
+        product: body.product,
+        price: body.price,
+        discount: body.discount,
+        code: body.code,
+        startDate: body.startDate,
+        endDate: body.endDate,
+        status: couponStatus, // Use calculated status instead of body.status
+        description: body.description || '',
+        customerEligibility: body.customerEligibility,
+        limit: body.limit,
+        oneTimeUse: body.oneTimeUse,
+        couponType: body.couponType,
+        discountType: body.discountType,
+        minOrderValue: body.minOrderValue
+      }, 
+      { new: true, runValidators: true });
     if (!updatedCoupon) {
       return NextResponse.json({ error: "Coupon not found" }, { status: 404 });
     }
     
-    console.log('Coupon updated successfully');
+    console.log('Coupon updated successfully with status:', couponStatus);
     return NextResponse.json({ 
       message: "Coupon updated successfully", 
       coupon: updatedCoupon 
@@ -75,12 +105,12 @@ export async function PUT(
 // DELETE a specific coupon by ID
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
     
-    const id = params.id;
+    const { id } = await params;
     console.log(`Deleting coupon with ID: ${id}`);
     
     const deletedCoupon = await Coupon.findByIdAndDelete(id);
