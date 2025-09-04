@@ -17,12 +17,12 @@ const connectDB = async () => {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
     
-    const userId = params.id;
+    const { id: userId } = await params;
     
     if (!mongoose.Types.ObjectId.isValid(userId)) {
       return NextResponse.json({ 

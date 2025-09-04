@@ -21,7 +21,7 @@ export async function GET() {
       2: 'connecting',
       3: 'disconnecting'
     };
-    console.log(`🔗 Connection state: ${states[connectionState]} (${connectionState})`);
+    console.log(`🔗 Connection state: ${states[connectionState as keyof typeof states]} (${connectionState})`);
     
     // Test Product model
     const totalProducts = await Product.countDocuments();
@@ -70,7 +70,7 @@ export async function GET() {
     
     return NextResponse.json({
       success: true,
-      connectionState: states[connectionState],
+      connectionState: states[connectionState as keyof typeof states],
       stats: {
         totalProducts,
         menProducts,

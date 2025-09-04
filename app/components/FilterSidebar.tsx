@@ -77,7 +77,7 @@ const FilterSidebar: React.FC<FilterSidebarProps> = ({
   };
 
   const resetFilters = () => {
-    const defaultFilters = {
+    const defaultFilters: FilterOptions = {
       priceRange: [priceRange.min, priceRange.max],
       sizes: [],
       sortBy: "newest",

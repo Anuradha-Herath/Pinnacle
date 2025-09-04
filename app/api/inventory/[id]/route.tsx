@@ -18,7 +18,7 @@ const connectDB = async () => {
 // GET single inventory item
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
@@ -49,7 +49,7 @@ export async function GET(
 // DELETE inventory item
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB();

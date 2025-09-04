@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
       "gemini-pro-vision"
     ];
     
-    const modelResults = {};
+    const modelResults: Record<string, any> = {};
     
     for (const modelName of modelNames) {
       try {

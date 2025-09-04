@@ -5,7 +5,7 @@ import Sidebar from "../../components/Sidebar";
 import { BellIcon, Cog6ToothIcon, ClockIcon } from "@heroicons/react/24/solid";
 import Image from "next/image";
 import { Crown } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { getCustomerType } from "@/utils/loyaltyPoints";
 import { getUserPoints } from "@/utils/modelAdapters";
 
@@ -32,7 +32,7 @@ interface User {
   points?: number | null; // Optional points field
 }
 
-export default function CustomerDetails() {
+function CustomerDetailsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const userId = searchParams.get('id');
@@ -273,5 +273,22 @@ export default function CustomerDetails() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function CustomerDetails() {
+  return (
+    <Suspense fallback={
+      <div className="flex">
+        <div className="min-h-screen bg-gray-50 p-6 flex-1 flex items-center justify-center">
+          <div className="text-center">
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-orange-500 border-r-transparent"></div>
+            <p className="mt-2">Loading...</p>
+          </div>
+        </div>
+      </div>
+    }>
+      <CustomerDetailsContent />
+    </Suspense>
   );
 }

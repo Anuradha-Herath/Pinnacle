@@ -18,12 +18,12 @@ const connectDB = async () => {
 // GET coupons applicable to a specific product
 export async function GET(
   request: NextRequest,
-  { params }: { params: { productId: string } }
+  { params }: { params: Promise<{ productId: string }> }
 ) {
   try {
     await connectDB();
     
-    const { productId } = params;
+    const { productId } = await params;
     
     // First, update coupon statuses based on current date - similar to discounts
     const today = new Date().toISOString().split('T')[0]; // Get current date in YYYY-MM-DD format

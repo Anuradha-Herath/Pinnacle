@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { BestSellingProduct } from "@/app/api/dashboard/route";
+import { BestSellingProduct } from "@/lib/dashboard";
 import Image from "next/image";
 import { FaTrophy, FaMedal, FaAward, FaChartLine } from "react-icons/fa";
 

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { BsEyeFill } from "react-icons/bs";
-import { getRecentOrders, RecentOrder } from "@/app/api/dashboard/route";
+import { getRecentOrders, RecentOrder } from "@/lib/dashboard";
 
 const RecentOrders: React.FC = () => {
   const [orders, setOrders] = useState<RecentOrder[]>([]);

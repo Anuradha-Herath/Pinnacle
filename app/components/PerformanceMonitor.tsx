@@ -21,8 +21,8 @@ const PerformanceMonitor = () => {
         
         setMetrics({
           navigationStart: performance.timeOrigin,
-          domContentLoaded: navigation.domContentLoadedEventEnd - navigation.navigationStart,
-          loadComplete: navigation.loadEventEnd - navigation.navigationStart,
+          domContentLoaded: navigation.domContentLoadedEventEnd - (navigation.startTime || performance.timeOrigin),
+          loadComplete: navigation.loadEventEnd - (navigation.startTime || performance.timeOrigin),
           requestCount: resources.length
         });
       }

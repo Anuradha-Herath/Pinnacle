@@ -32,7 +32,7 @@ export async function GET() {
     
     // Test 4: Check collections
     console.log('Test 4: Checking available collections...');
-    const collections = await mongoose.connection.db.listCollections().toArray();
+    const collections = mongoose.connection.db ? await mongoose.connection.db.listCollections().toArray() : [];
     const collectionNames = collections.map(c => c.name);
     console.log('Available collections:', collectionNames);
     

@@ -136,7 +136,7 @@ export async function POST(request: Request) {
 
         await connectDB();
 
-        const newOrder = new Order(orderData);
+        const newOrder: any = new Order(orderData);
 
         await newOrder.save();
 

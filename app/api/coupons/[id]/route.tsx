@@ -19,11 +19,11 @@ const connectDB = async () => {
 // GET a specific coupon by ID
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
-    const id = params.id;
+    const { id } = await params;
     console.log(`Fetching coupon with ID: ${id}`);
     
     const coupon = await Coupon.findById(id);
@@ -44,11 +44,11 @@ export async function GET(
 // PUT to update a specific coupon by ID
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
-      const id = params.id;
+      const { id } = await params;
     const body = await request.json();
     console.log(`Updating coupon with ID: ${id}`);
     
@@ -105,12 +105,12 @@ export async function PUT(
 // DELETE a specific coupon by ID
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
     
-    const id = params.id;
+    const { id } = await params;
     console.log(`Deleting coupon with ID: ${id}`);
     
     const deletedCoupon = await Coupon.findByIdAndDelete(id);

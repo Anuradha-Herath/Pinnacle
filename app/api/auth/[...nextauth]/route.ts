@@ -19,7 +19,7 @@ const connectDB = async () => {
   }
 };
 
-export const authOptions: NextAuthOptions = {
+const authOptions: NextAuthOptions = {
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -87,7 +87,7 @@ export const authOptions: NextAuthOptions = {
           await connectDB();
           
           // Find the user in our database
-          const dbUser = await User.findOne({ email: user.email });
+          const dbUser = await User.findOne({ email: user.email }) as any;
           
           if (dbUser) {
             console.log("NextAuth: Found user for JWT", { userId: dbUser._id });
