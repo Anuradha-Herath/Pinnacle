@@ -21,7 +21,7 @@ export async function GET() {
     await connectDB();
     
     // Check if there are any products to create inventory for
-    const products = await Product.find().limit(5);
+    const products = await Product.find().limit(10); // Increased limit
     
     if (products.length === 0) {
       return NextResponse.json({ message: "No products found to create inventory for" });
@@ -38,23 +38,31 @@ export async function GET() {
         const newInventory = new Inventory({
           productId: product._id,
           productName: product.productName,
-          stock: Math.floor(Math.random() * 50), // Random stock between 0-49
-          status: Math.random() > 0.5 ? 'In Stock' : 'Out Of Stock', // Randomly set status
+          stock: Math.floor(Math.random() * 50) + 10, // Random stock between 10-59 (ensure some stock)
+          status: Math.random() > 0.3 ? 'In Stock' : 'Out Of Stock', // 70% chance of In Stock
           image: product.gallery && product.gallery.length > 0 ? product.gallery[0].src : '',
           // Initialize size stock
           sizeStock: (product.sizes || []).reduce((acc: any, size: string) => {
-            acc[size] = Math.floor(Math.random() * 20);
+            acc[size] = Math.floor(Math.random() * 20) + 5; // Ensure some stock per size
             return acc;
           }, {})
         });
         
         await newInventory.save();
         inventoryItems.push(newInventory);
+      } else {
+        // Update existing inventory to ensure some are In Stock
+        if (existingInventory.status === 'Out Of Stock' && Math.random() > 0.5) {
+          existingInventory.status = 'In Stock';
+          existingInventory.stock = Math.floor(Math.random() * 50) + 10;
+          await existingInventory.save();
+          inventoryItems.push(existingInventory);
+        }
       }
     }
     
     return NextResponse.json({ 
-      message: `Created ${inventoryItems.length} inventory items`,
+      message: `Processed ${inventoryItems.length} inventory items`,
       inventoryItems
     });
     

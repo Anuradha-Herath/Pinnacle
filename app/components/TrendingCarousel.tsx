@@ -115,13 +115,57 @@ const TrendingCarousel = () => {
   }, []);
 
   useEffect(() => {
-    if (carouselRef.current) {
-      const viewportWidth = carouselRef.current.clientWidth;
-      const scrollWidth = carouselRef.current.scrollWidth;
-      const maxScrollable = Math.max(0, scrollWidth - viewportWidth);
-      setMaxScroll(maxScrollable);
+    if (carouselRef.current && products.length > 0) {
+      // Use setTimeout to ensure DOM is fully updated
+      setTimeout(() => {
+        if (carouselRef.current) {
+          const container = carouselRef.current;
+          const viewportWidth = container.clientWidth;
+          const scrollWidth = container.scrollWidth;
+          // Account for the padding we added (px-12 = 3rem = 48px on large screens)
+          const paddingOffset = 48; // Approximate padding offset
+          const maxScrollable = Math.max(0, scrollWidth - viewportWidth - paddingOffset);
+          setMaxScroll(maxScrollable);
+
+          // Debug logging
+          console.log('Carousel dimensions:', {
+            viewportWidth,
+            scrollWidth,
+            maxScrollable,
+            productsCount: products.length,
+            cardsPerView
+          });
+        }
+      }, 100);
     }
   }, [products, cardsPerView]);
+
+  // Recalculate maxScroll when window resizes or carousel content changes
+  useEffect(() => {
+    const handleResize = () => {
+      if (carouselRef.current && products.length > 0) {
+        setTimeout(() => {
+          if (carouselRef.current) {
+            const container = carouselRef.current;
+            const viewportWidth = container.clientWidth;
+            const scrollWidth = container.scrollWidth;
+            const paddingOffset = 48;
+            const maxScrollable = Math.max(0, scrollWidth - viewportWidth - paddingOffset);
+            setMaxScroll(maxScrollable);
+          }
+        }, 100);
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    // Also recalculate after a short delay to handle dynamic content loading
+    const timeoutId = setTimeout(handleResize, 500);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      clearTimeout(timeoutId);
+    };
+  }, [products.length]);
 
   useEffect(() => {
     if (carouselRef.current && products.length > 0) {
@@ -156,12 +200,17 @@ const TrendingCarousel = () => {
   const scroll = (direction: "left" | "right") => {
     if (!carouselRef.current || products.length === 0) return;
 
-    const cardWidth = carouselRef.current.scrollWidth / products.length;
-    const currentIndex = Math.round(scrollPosition / cardWidth);
+    const container = carouselRef.current;
+    // Get the actual width of the first card including gap
+    const firstCard = container.children[0] as HTMLElement;
+    const cardWidth = firstCard ? firstCard.offsetWidth + 16 : 280; // 16px for gap-4
 
+    const currentIndex = Math.floor(scrollPosition / cardWidth);
     let targetIndex = direction === "left" ? currentIndex - 1 : currentIndex + 1;
 
-    targetIndex = Math.max(0, Math.min(targetIndex, products.length - 1));
+    // Ensure we don't scroll beyond available content
+    const maxIndex = Math.max(0, products.length - cardsPerView);
+    targetIndex = Math.max(0, Math.min(targetIndex, maxIndex));
 
     const newPosition = targetIndex * cardWidth;
 
@@ -201,6 +250,15 @@ const TrendingCarousel = () => {
         isProgrammaticScrollRef.current = false;
       }, 500);
     }
+  };
+
+  // Helper function to check if we can scroll in a direction
+  const canScrollLeft = () => scrollPosition > 10; // Small tolerance
+  const canScrollRight = () => {
+    if (!carouselRef.current || products.length <= cardsPerView) return false;
+    // Check if there's more content to scroll to
+    const tolerance = 20; // Small tolerance for floating point precision
+    return scrollPosition < (maxScroll - tolerance);
   };
 
   const getDotCount = () => {
@@ -250,21 +308,25 @@ const TrendingCarousel = () => {
         renderSkeletons()
       ) : products.length > 0 ? (
         <div className="relative group">
+          {/* Left Arrow Button - Always visible on hover, positioned inside carousel */}
           <button
             onClick={() => scroll("left")}
-            className={`absolute left-0 top-1/2 transform -translate-y-1/2 z-10 
-              bg-white rounded-full p-2 shadow-lg opacity-0 group-hover:opacity-100 
-              transition-opacity duration-300 disabled:opacity-0 disabled:cursor-not-allowed
-              focus:outline-none focus:ring-2 focus:ring-primary-500`}
-            disabled={scrollPosition <= 0}
+            className={`absolute left-2 top-1/2 transform -translate-y-1/2 z-10 
+              bg-white rounded-full p-2 shadow-lg transition-all duration-300
+              hover:bg-gray-50 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-primary-500
+              ${!canScrollLeft() 
+                ? 'opacity-50 cursor-not-allowed' 
+                : 'opacity-80 group-hover:opacity-100 cursor-pointer hover:scale-110'
+              }`}
+            disabled={!canScrollLeft()}
             aria-label="Previous products"
           >
-            <ChevronLeft size={24} />
+            <ChevronLeft size={24} className={!canScrollLeft() ? 'text-gray-400' : 'text-gray-700'} />
           </button>
 
           <div
             ref={carouselRef}
-            className="flex gap-4 overflow-x-auto hide-scrollbar pb-4 pt-2 scroll-smooth"
+            className="flex gap-4 overflow-x-auto hide-scrollbar pb-4 pt-2 px-12 scroll-smooth"
             style={{ scrollbarWidth: "none" }}
             onScroll={handleScroll}
           >
@@ -273,16 +335,20 @@ const TrendingCarousel = () => {
             ))}
           </div>
 
+          {/* Right Arrow Button - Always visible on hover, positioned inside carousel */}
           <button
             onClick={() => scroll("right")}
-            className={`absolute right-0 top-1/2 transform -translate-y-1/2 z-10 
-              bg-white rounded-full p-2 shadow-lg opacity-0 group-hover:opacity-100 
-              transition-opacity duration-300 disabled:opacity-0 disabled:cursor-not-allowed
-              focus:outline-none focus:ring-2 focus:ring-primary-500`}
-            disabled={scrollPosition >= maxScroll}
+            className={`absolute right-2 top-1/2 transform -translate-y-1/2 z-10 
+              bg-white rounded-full p-2 shadow-lg transition-all duration-300
+              hover:bg-gray-50 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-primary-500
+              ${!canScrollRight() 
+                ? 'opacity-50 cursor-not-allowed' 
+                : 'opacity-80 group-hover:opacity-100 cursor-pointer hover:scale-110'
+              }`}
+            disabled={!canScrollRight()}
             aria-label="Next products"
           >
-            <ChevronRight size={24} />
+            <ChevronRight size={24} className={!canScrollRight() ? 'text-gray-400' : 'text-gray-700'} />
           </button>
 
           {getDotCount() > 1 && (
