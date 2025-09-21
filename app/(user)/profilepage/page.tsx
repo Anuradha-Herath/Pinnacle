@@ -40,6 +40,8 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [dataLoaded, setDataLoaded] = useState(false); // Flag to prevent repeated API calls
+  const [lastUserId, setLastUserId] = useState<string | null>(null); // Track last user ID
+  const [forceRefresh, setForceRefresh] = useState(0); // Force refresh counter
   
   // Add pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -54,6 +56,28 @@ export default function ProfilePage() {
     if (points >= 500) return "text-gray-400"; // Silver
     return "text-black"; // Black
   };
+
+  // Reset data when user changes
+  useEffect(() => {
+    const currentUserId = user?.id;
+    
+    // If user ID has changed (including from null to a value or vice versa)
+    if (currentUserId !== lastUserId) {
+      console.log('User changed from', lastUserId, 'to', currentUserId);
+      
+      // Clear previous user's data and reset states
+      setProfile(null);
+      setOrders([]);
+      setDataLoaded(false);
+      setLoading(true);
+      setError("");
+      setCurrentPage(1);
+      
+      // Update the last user ID and force refresh
+      setLastUserId(currentUserId || null);
+      setForceRefresh(prev => prev + 1);
+    }
+  }, [user?.id, lastUserId]); // Monitor both user ID and last user ID
 
   // Fetch user profile and orders
   useEffect(() => {
@@ -75,10 +99,12 @@ export default function ProfilePage() {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-        // Fetch user profile with caching headers
+        // Fetch user profile with no caching to ensure fresh data
         const profileRes = await fetch('/api/profile', {
           headers: {
-            'Cache-Control': 'max-age=300', // Cache for 5 minutes
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0',
           },
           signal: controller.signal,
         });
@@ -100,13 +126,15 @@ export default function ProfilePage() {
           });
         }
 
-        // Fetch user orders from the new endpoint with caching
+        // Fetch user orders with no caching to ensure fresh data
         const ordersController = new AbortController();
         const ordersTimeoutId = setTimeout(() => ordersController.abort(), 15000);
         
         const ordersRes = await fetch('/api/profile/user-orders', {
           headers: {
-            'Cache-Control': 'max-age=300', // Cache for 5 minutes
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0',
           },
           signal: ordersController.signal,
         });
@@ -116,7 +144,7 @@ export default function ProfilePage() {
         if (!ordersRes.ok) throw new Error('Failed to fetch orders');
         
         const ordersData = await ordersRes.json();
-        console.log("Orders data received:", ordersData); // For debugging
+        console.log("Orders data received for user:", user?.id, ordersData); // Enhanced debugging
         
         if (ordersData.success) {
           // Orders are already formatted in the API response
@@ -140,11 +168,8 @@ export default function ProfilePage() {
     // Only fetch if we have a user and haven't loaded data yet
     if (user && !dataLoaded) {
       fetchProfileData();
-    } else if (user && dataLoaded) {
-      // If we have user and data is loaded, just set loading to false
-      setLoading(false);
     }
-  }, [user?.id, dataLoaded]); // Removed router from dependencies to prevent unnecessary re-renders
+  }, [user?.id, dataLoaded, forceRefresh]); // Include forceRefresh in dependencies
 
   // Handle edit profile redirect
   const handleEditProfile = () => {
@@ -170,7 +195,14 @@ export default function ProfilePage() {
       <>
         <Header />
         <div className="flex justify-center items-center h-[60vh]">
-          <CircularProgress />
+          <CircularProgress 
+            sx={{ 
+              color: 'black',
+              '& .MuiCircularProgress-circle': {
+                stroke: 'black'
+              }
+            }} 
+          />
         </div>
         <Footer />
       </>
